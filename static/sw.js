@@ -2,7 +2,7 @@
 // Skwad is a live-data app so we don't cache aggressively —
 // just enough to satisfy the PWA install criteria.
 
-const CACHE_NAME = 'skwad-v1';
+const CACHE_NAME = 'skwad-v2';
 const PRECACHE = [
   '/',
   '/style.css',
@@ -43,7 +43,7 @@ self.addEventListener('fetch', function (e) {
   }
 
   e.respondWith(
-    fetch(e.request).then(function (response) {
+    fetch(e.request, { cache: 'no-cache' }).then(function (response) {
       // Update cache with fresh response.
       var clone = response.clone();
       caches.open(CACHE_NAME).then(function (cache) {
