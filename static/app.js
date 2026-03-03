@@ -1144,7 +1144,13 @@
     }
 
     stopPolling();
+    var leftCode = state.sessionCode;
     clearState();
+
+    // Remove from recent sessions list
+    var recent = getRecentSessions();
+    recent = recent.filter(function (s) { return s.code !== leftCode; });
+    setRecentSessions(recent);
 
     // Reset setup state
     state.callsign = '';
