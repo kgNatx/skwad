@@ -2,9 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0a0a0a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="SKWAD">
+  <meta name="mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  <link rel="icon" type="image/svg+xml" href="/skwad-icon.svg">
   <title>SKWAD - FPV Frequency Coordinator</title>
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -13,6 +20,7 @@
   <!-- Landing Page -->
   <div id="screen-landing" class="screen">
     <div class="landing-content">
+      <img src="/skwad-icon.svg" alt="SKWAD" class="landing-icon">
       <h1 class="landing-title">SKWAD</h1>
       <p class="landing-subtitle">FPV FREQUENCY COORDINATOR</p>
       <div class="landing-buttons">
@@ -24,6 +32,14 @@
         <button id="btn-go" class="btn btn-primary btn-go">GO</button>
       </div>
       <div id="landing-error" class="error-msg hidden"></div>
+      <div id="install-banner" class="install-banner hidden">
+        <p class="install-text">INSTALL SKWAD FOR QUICK ACCESS</p>
+        <p id="ios-install-hint" class="install-hint hidden">TAP SHARE, THEN "ADD TO HOME SCREEN"</p>
+        <div class="install-buttons">
+          <button id="btn-install" class="btn btn-primary">INSTALL</button>
+          <button id="btn-install-dismiss" class="btn btn-secondary">NOT NOW</button>
+        </div>
+      </div>
     </div>
   </div>
 

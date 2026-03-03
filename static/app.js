@@ -2029,6 +2029,88 @@
     route();
   }
 
+  // ── Service Worker & Install Prompt ─────────────────────────
+  var deferredInstallPrompt = null;
+
+  function initServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+
+    // Capture the install prompt (Android Chrome).
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      showInstallBanner();
+    });
+
+    // Hide banner if already installed as PWA.
+    window.addEventListener('appinstalled', function () {
+      hideInstallBanner();
+      deferredInstallPrompt = null;
+    });
+  }
+
+  function showInstallBanner() {
+    var banner = $('install-banner');
+    if (banner) banner.classList.remove('hidden');
+  }
+
+  function hideInstallBanner() {
+    var banner = $('install-banner');
+    if (banner) banner.classList.add('hidden');
+  }
+
+  function initInstallBanner() {
+    var btnInstall = $('btn-install');
+    var btnDismiss = $('btn-install-dismiss');
+    if (btnInstall) {
+      btnInstall.addEventListener('click', function () {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          deferredInstallPrompt.userChoice.then(function () {
+            deferredInstallPrompt = null;
+            hideInstallBanner();
+          });
+        }
+      });
+    }
+    if (btnDismiss) {
+      btnDismiss.addEventListener('click', hideInstallBanner);
+    }
+
+    // iOS detection: show a hint since iOS has no beforeinstallprompt.
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone;
+    if (isIOS && !isStandalone) {
+      var banner = $('install-banner');
+      var btnInstall = $('btn-install');
+      var iosHint = $('ios-install-hint');
+      if (banner) banner.classList.remove('hidden');
+      if (btnInstall) btnInstall.classList.add('hidden');
+      if (iosHint) iosHint.classList.remove('hidden');
+    }
+  }
+
+  function init() {
+    initLanding();
+    initCallsignStep();
+    initVideoStep();
+    initFollowUpStep();
+    initChannelStep();
+    initSessionView();
+    initPilotActions();
+    initChannelChange();
+    initCallsignChange();
+    initOtherPilotActions();
+    initChannelChangeBanner();
+    initDisplacementConfirm();
+    initInstallBanner();
+    initServiceWorker();
+    route();
+  }
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {

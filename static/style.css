@@ -131,6 +131,12 @@ body {
   gap: 16px;
 }
 
+.landing-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 20px;
+}
+
 .landing-title {
   font-size: 72px;
   font-weight: 900;
@@ -154,6 +160,44 @@ body {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.install-banner {
+  width: 100%;
+  max-width: 400px;
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid #333333;
+  border-radius: 12px;
+  background: #1a1a1a;
+  text-align: center;
+}
+
+.install-text {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #cccccc;
+  margin-bottom: 12px;
+}
+
+.install-hint {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #999999;
+  margin-bottom: 12px;
+}
+
+.install-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.install-buttons .btn {
+  flex: 1;
+  font-size: 14px;
+  padding: 10px 16px;
 }
 
 .join-input-area {
@@ -344,7 +388,12 @@ body {
 /* ===== SESSION VIEW ===== */
 #screen-session {
   height: 100dvh;
+  min-height: 0;
   overflow: hidden;
+  padding-top: env(safe-area-inset-top, 24px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: 16px;
+  padding-right: 16px;
 }
 
 .session-header {
@@ -354,9 +403,6 @@ body {
   margin-bottom: 0;
   padding-bottom: 16px;
   border-bottom: 2px solid #222222;
-  position: sticky;
-  top: 0;
-  z-index: 10;
   background: #0a0a0a;
   flex-shrink: 0;
 }
