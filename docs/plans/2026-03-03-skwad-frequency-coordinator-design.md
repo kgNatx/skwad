@@ -201,11 +201,14 @@ Existing assignments are preserved unless the optimizer finds a strictly better 
 ## UI Design
 
 ### Principles
-- Mobile-first, outdoor-readable
-- Large text (minimum 18px body, 24px+ for channel assignments)
-- High contrast (dark background, bright text)
-- Big tap targets (minimum 48px, prefer 64px+)
+- Mobile-first, designed for direct sunlight on phone screens
+- **Extreme high contrast**: near-black background (#0a0a0a or similar), bright white text, vivid accent colors. No subtle grays, no transparency effects that reduce contrast. Every element must be readable in direct Texas sun.
+- Large text: minimum 18px body, 28px+ for channel assignments, 36px+ for callsigns
+- Bold weight for all critical info (channel, callsign)
+- Big tap targets (minimum 48px, prefer 64px+) — gloved hands and sweaty fingers
 - Minimal scrolling — most important info visible without scroll
+- No thin fonts, no light font weights, no low-contrast placeholder text
+- Color coding for buddy groups uses saturated, distinct hues (not pastels)
 
 ### Screens
 
