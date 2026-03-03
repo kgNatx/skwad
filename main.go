@@ -57,9 +57,44 @@ func main() {
 		srv.HandleJoinSession(w, r, code)
 	})
 
+	mux.HandleFunc("POST /api/sessions/{code}/preview-join", func(w http.ResponseWriter, r *http.Request) {
+		code := r.PathValue("code")
+		srv.HandlePreviewJoin(w, r, code)
+	})
+
 	mux.HandleFunc("GET /api/sessions/{code}/poll", func(w http.ResponseWriter, r *http.Request) {
 		code := r.PathValue("code")
 		srv.HandlePoll(w, r, code)
+	})
+
+	mux.HandleFunc("PUT /api/pilots/{id}/channel", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		pilotID, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "invalid pilot id", http.StatusBadRequest)
+			return
+		}
+		sessionCode := r.URL.Query().Get("session")
+		if sessionCode == "" {
+			http.Error(w, "session query parameter required", http.StatusBadRequest)
+			return
+		}
+		srv.HandleUpdatePilotChannel(w, r, pilotID, sessionCode)
+	})
+
+	mux.HandleFunc("PUT /api/pilots/{id}/callsign", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		pilotID, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "invalid pilot id", http.StatusBadRequest)
+			return
+		}
+		sessionCode := r.URL.Query().Get("session")
+		if sessionCode == "" {
+			http.Error(w, "session query parameter required", http.StatusBadRequest)
+			return
+		}
+		srv.HandleUpdatePilotCallsign(w, r, pilotID, sessionCode)
 	})
 
 	mux.HandleFunc("DELETE /api/pilots/{id}", func(w http.ResponseWriter, r *http.Request) {
@@ -79,11 +114,13 @@ func main() {
 
 	// Client-side routing: serve index.html for /s/{code} paths.
 	mux.HandleFunc("GET /s/{code}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
 		http.ServeFile(w, r, staticDir+"/index.html")
 	})
 
-	// Static file server for everything else.
-	mux.Handle("GET /", http.FileServer(http.Dir(staticDir)))
+	// Static file server with no-cache headers so deploys take effect immediately.
+	staticFS := http.FileServer(http.Dir(staticDir))
+	mux.Handle("GET /", noCacheMiddleware(staticFS))
 
 	// Wrap with CORS middleware.
 	handler := corsMiddleware(mux)
@@ -92,6 +129,16 @@ func main() {
 	if err := http.ListenAndServe(":"+port, handler); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// noCacheMiddleware sets Cache-Control: no-cache on static file responses.
+// Browsers can still cache, but must revalidate with the server (If-Modified-Since)
+// before using cached content, ensuring deploys take effect immediately.
+func noCacheMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // corsMiddleware adds CORS headers for /api/ paths and handles OPTIONS preflight.

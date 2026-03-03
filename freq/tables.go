@@ -6,9 +6,34 @@ type Channel struct {
 	FreqMHz int    `json:"freq_mhz"` // Center frequency in MHz
 }
 
-// MinSafeSpacingMHz is the minimum spacing between two assigned channels
-// to avoid interference.
-const MinSafeSpacingMHz = 37
+// DefaultGuardBandMHz is the minimum guard band between the edges of two
+// occupied bandwidths to avoid interference.
+const DefaultGuardBandMHz = 10
+
+// OccupiedBandwidth returns the actual RF bandwidth in MHz for a given
+// video system and bandwidth setting. Most systems use 20 MHz; DJI O3/O4
+// can use wider bandwidths based on their bandwidth_mhz setting.
+func OccupiedBandwidth(videoSystem string, bandwidthMHz int) int {
+	switch videoSystem {
+	case "dji_o3", "dji_o4":
+		switch bandwidthMHz {
+		case 40:
+			return 40
+		case 60:
+			return 60
+		default:
+			return 20
+		}
+	default:
+		return 20
+	}
+}
+
+// RequiredSpacing returns the minimum center-to-center frequency separation
+// in MHz required between two signals with the given occupied bandwidths.
+func RequiredSpacing(bwA, bwB int) int {
+	return bwA/2 + bwB/2 + DefaultGuardBandMHz
+}
 
 // ---------- Race Band ----------
 

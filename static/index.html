@@ -115,8 +115,23 @@
   <div id="screen-session" class="screen hidden">
     <div class="session-header">
       <div id="session-code-display" class="session-code" title="Tap to share">
-        <span id="session-code-text"></span>
-        <span class="tap-hint">TAP TO SHARE</span>
+        <svg class="session-code-qr-icon" viewBox="0 0 24 24" fill="currentColor">
+          <rect x="1" y="1" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="4" y="4" width="4" height="4"/>
+          <rect x="13" y="1" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="16" y="4" width="4" height="4"/>
+          <rect x="1" y="13" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
+          <rect x="4" y="16" width="4" height="4"/>
+          <rect x="14" y="14" width="3" height="3"/>
+          <rect x="20" y="14" width="3" height="3"/>
+          <rect x="14" y="20" width="3" height="3"/>
+          <rect x="20" y="20" width="3" height="3"/>
+          <rect x="17" y="17" width="3" height="3"/>
+        </svg>
+        <div class="session-code-info">
+          <span id="session-code-text"></span>
+          <span class="tap-hint">TAP TO SHARE</span>
+        </div>
       </div>
       <div class="live-indicator">
         <span class="live-dot"></span>
@@ -124,11 +139,73 @@
       </div>
     </div>
 
+    <div id="channel-change-banner" class="channel-change-banner hidden">
+      <div class="channel-change-banner-text">
+        <span id="banner-message"></span>
+      </div>
+      <button id="btn-banner-dismiss" class="btn btn-primary channel-change-banner-btn">GOT IT</button>
+    </div>
+
     <div id="pilot-list" class="pilot-list"></div>
 
     <div class="session-footer">
       <p id="pilot-count" class="pilot-count"></p>
       <button id="btn-leave" class="btn btn-danger btn-large">I'M LEAVING</button>
+    </div>
+  </div>
+
+  <!-- Pilot Action Sheet (self) -->
+  <div id="pilot-actions" class="action-sheet hidden">
+    <div class="action-sheet-content">
+      <h3 class="action-sheet-title">OPTIONS</h3>
+      <button id="btn-change-channel" class="btn btn-secondary btn-large">CHANGE CHANNEL</button>
+      <button id="btn-change-callsign" class="btn btn-secondary btn-large">CHANGE CALLSIGN</button>
+      <button id="btn-leave-rotation" class="btn btn-danger btn-large">LEAVE SESSION</button>
+      <button id="btn-action-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Callsign Change -->
+  <div id="callsign-change" class="action-sheet hidden">
+    <div class="action-sheet-content">
+      <h3 class="action-sheet-title">CHANGE CALLSIGN</h3>
+      <input id="input-new-callsign" type="text" class="input-callsign" placeholder="NEW CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20">
+      <div id="callsign-change-error" class="error-msg hidden"></div>
+      <button id="btn-callsign-save" class="btn btn-primary btn-large">SAVE</button>
+      <button id="btn-callsign-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Other Pilot Action Sheet -->
+  <div id="other-pilot-actions" class="action-sheet hidden">
+    <div class="action-sheet-content">
+      <h3 id="other-pilot-name" class="action-sheet-title"></h3>
+      <div class="slide-remove-track" id="slide-remove-track">
+        <div class="slide-remove-handle" id="slide-remove-handle"></div>
+        <span class="slide-remove-label">SLIDE TO REMOVE</span>
+      </div>
+      <button id="btn-other-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Displacement Confirmation -->
+  <div id="displacement-confirm" class="action-sheet hidden">
+    <div class="action-sheet-content">
+      <h3 class="action-sheet-title">HEADS UP</h3>
+      <div id="displacement-list" class="displacement-list"></div>
+      <p class="displacement-note">VERIFY WITH THEM BEFORE CONTINUING</p>
+      <button id="btn-displacement-confirm" class="btn btn-primary btn-large">JOIN ANYWAY</button>
+      <button id="btn-displacement-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Channel Change Picker -->
+  <div id="channel-change" class="action-sheet hidden">
+    <div class="action-sheet-content">
+      <h3 class="action-sheet-title">SELECT CHANNEL</h3>
+      <button id="btn-auto-reassign" class="btn btn-primary btn-large">AUTO-ASSIGN BEST</button>
+      <div id="channel-change-picker" class="channel-picker"></div>
+      <button id="btn-channel-change-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>
   </div>
 

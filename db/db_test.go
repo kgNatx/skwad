@@ -337,6 +337,59 @@ func TestDeleteExpiredSessions(t *testing.T) {
 	}
 }
 
+func TestUpdatePilotCallsign(t *testing.T) {
+	d := newTestDB(t)
+
+	sess, err := d.CreateSession()
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	p, err := d.AddPilot(sess.ID, &Pilot{Callsign: "OLDNAME", VideoSystem: "analog"})
+	if err != nil {
+		t.Fatalf("AddPilot: %v", err)
+	}
+
+	err = d.UpdatePilotCallsign(p.ID, "NEWNAME")
+	if err != nil {
+		t.Fatalf("UpdatePilotCallsign: %v", err)
+	}
+
+	pilots, err := d.GetActivePilots(sess.ID)
+	if err != nil {
+		t.Fatalf("GetActivePilots: %v", err)
+	}
+	if len(pilots) != 1 {
+		t.Fatalf("got %d pilots, want 1", len(pilots))
+	}
+	if pilots[0].Callsign != "NEWNAME" {
+		t.Errorf("callsign: got %q, want %q", pilots[0].Callsign, "NEWNAME")
+	}
+}
+
+func TestUpdatePilotCallsign_Duplicate(t *testing.T) {
+	d := newTestDB(t)
+
+	sess, err := d.CreateSession()
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	_, err = d.AddPilot(sess.ID, &Pilot{Callsign: "ALPHA", VideoSystem: "analog"})
+	if err != nil {
+		t.Fatalf("AddPilot ALPHA: %v", err)
+	}
+	p2, err := d.AddPilot(sess.ID, &Pilot{Callsign: "BRAVO", VideoSystem: "analog"})
+	if err != nil {
+		t.Fatalf("AddPilot BRAVO: %v", err)
+	}
+
+	err = d.UpdatePilotCallsign(p2.ID, "ALPHA")
+	if err == nil {
+		t.Fatal("expected error for duplicate callsign, got nil")
+	}
+}
+
 func TestGenerateCode(t *testing.T) {
 	code := generateCode()
 	if len(code) != 6 {

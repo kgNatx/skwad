@@ -201,6 +201,86 @@ func TestGetSession(t *testing.T) {
 	}
 }
 
+func TestPreviewJoin_ShowsDisplacement(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create session.
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess db.Session
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Add an analog pilot (will get R1 or R8).
+	join1 := JoinRequest{Callsign: "FIRST", VideoSystem: "analog"}
+	body1, _ := json.Marshal(join1)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body1)), sess.ID)
+
+	// Preview joining a pilot locked to the same channel as FIRST.
+	pilots, _ := s.DB.GetActivePilots(sess.ID)
+	firstFreq := pilots[0].AssignedFreqMHz
+
+	preview := JoinRequest{Callsign: "SECOND", VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: firstFreq}
+	previewBody, _ := json.Marshal(preview)
+	previewW := httptest.NewRecorder()
+	s.HandlePreviewJoin(previewW, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(previewBody)), sess.ID)
+
+	if previewW.Result().StatusCode != http.StatusOK {
+		t.Fatalf("preview status = %d, want 200", previewW.Result().StatusCode)
+	}
+
+	var result struct {
+		Displaced []struct {
+			Callsign   string `json:"callsign"`
+			OldChannel string `json:"old_channel"`
+			NewChannel string `json:"new_channel"`
+		} `json:"displaced"`
+	}
+	json.NewDecoder(previewW.Result().Body).Decode(&result)
+
+	// FIRST should be displaced since SECOND is locked to their channel.
+	if len(result.Displaced) != 1 {
+		t.Fatalf("expected 1 displaced pilot, got %d", len(result.Displaced))
+	}
+	if result.Displaced[0].Callsign != "FIRST" {
+		t.Errorf("displaced callsign = %q, want FIRST", result.Displaced[0].Callsign)
+	}
+
+	// Verify the session is unchanged (preview should not commit).
+	pilotsAfter, _ := s.DB.GetActivePilots(sess.ID)
+	if len(pilotsAfter) != 1 {
+		t.Errorf("expected 1 active pilot after preview (no commit), got %d", len(pilotsAfter))
+	}
+}
+
+func TestPreviewJoin_NoDisplacement(t *testing.T) {
+	s := newTestServer(t)
+
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess db.Session
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Add one analog pilot.
+	join1 := JoinRequest{Callsign: "SOLO", VideoSystem: "analog"}
+	body1, _ := json.Marshal(join1)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body1)), sess.ID)
+
+	// Preview adding a second analog pilot (auto-assigned — should not displace).
+	preview := JoinRequest{Callsign: "BUDDY", VideoSystem: "analog"}
+	previewBody, _ := json.Marshal(preview)
+	previewW := httptest.NewRecorder()
+	s.HandlePreviewJoin(previewW, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(previewBody)), sess.ID)
+
+	var result struct {
+		Displaced []struct{} `json:"displaced"`
+	}
+	json.NewDecoder(previewW.Result().Body).Decode(&result)
+
+	if len(result.Displaced) != 0 {
+		t.Errorf("expected 0 displaced, got %d", len(result.Displaced))
+	}
+}
+
 func TestGetSession_NotFound(t *testing.T) {
 	s := newTestServer(t)
 
@@ -244,6 +324,130 @@ func TestPoll(t *testing.T) {
 
 	if result.Version != 1 {
 		t.Errorf("version = %d, want 1", result.Version)
+	}
+}
+
+func TestGetSession_WithConflicts(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create session.
+	createReq := httptest.NewRequest(http.MethodPost, "/api/sessions", nil)
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, createReq)
+
+	var sess db.Session
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Add DJI O3 at 40 MHz (will be on 5795).
+	join1 := JoinRequest{Callsign: "DJIPILOT", VideoSystem: "dji_o3", BandwidthMHz: 40}
+	body1, _ := json.Marshal(join1)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body1)), sess.ID)
+
+	// Add analog pilot locked to R4 (5769) — close to O3@5795.
+	join2 := JoinRequest{Callsign: "ANALOGPILOT", VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5769}
+	body2, _ := json.Marshal(join2)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body2)), sess.ID)
+
+	// GET session and check for conflicts.
+	getW := httptest.NewRecorder()
+	s.HandleGetSession(getW, httptest.NewRequest(http.MethodGet, "/", nil), sess.ID)
+
+	var result struct {
+		Pilots []struct {
+			ID        int `json:"ID"`
+			Conflicts []struct {
+				Level string `json:"level"`
+			} `json:"conflicts"`
+		} `json:"pilots"`
+	}
+	if err := json.NewDecoder(getW.Result().Body).Decode(&result); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// At least one pilot should have conflicts.
+	hasConflict := false
+	for _, p := range result.Pilots {
+		if len(p.Conflicts) > 0 {
+			hasConflict = true
+			break
+		}
+	}
+	if !hasConflict {
+		t.Error("expected at least one pilot to have conflicts when analog@5769 is near O3@5795")
+	}
+}
+
+func TestUpdateCallsign(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create session and join.
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess db.Session
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	joinBody := JoinRequest{Callsign: "OLDNAME", VideoSystem: "analog"}
+	body, _ := json.Marshal(joinBody)
+	joinW := httptest.NewRecorder()
+	s.HandleJoinSession(joinW, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body)), sess.ID)
+
+	var pilot db.Pilot
+	json.NewDecoder(joinW.Result().Body).Decode(&pilot)
+
+	// Change callsign.
+	csBody, _ := json.Marshal(map[string]string{"callsign": "NEWNAME"})
+	csW := httptest.NewRecorder()
+	csReq := httptest.NewRequest(http.MethodPut, "/api/pilots/1/callsign?session="+sess.ID, bytes.NewReader(csBody))
+	s.HandleUpdatePilotCallsign(csW, csReq, pilot.ID, sess.ID)
+
+	if csW.Result().StatusCode != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", csW.Result().StatusCode, http.StatusNoContent)
+	}
+
+	// Verify the callsign changed.
+	getW := httptest.NewRecorder()
+	s.HandleGetSession(getW, httptest.NewRequest(http.MethodGet, "/", nil), sess.ID)
+
+	var result struct {
+		Pilots []struct {
+			Callsign string `json:"Callsign"`
+		} `json:"pilots"`
+	}
+	json.NewDecoder(getW.Result().Body).Decode(&result)
+
+	if len(result.Pilots) != 1 || result.Pilots[0].Callsign != "NEWNAME" {
+		t.Errorf("callsign after update: got %v, want NEWNAME", result.Pilots)
+	}
+}
+
+func TestUpdateCallsign_Duplicate(t *testing.T) {
+	s := newTestServer(t)
+
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess db.Session
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Add two pilots.
+	join1 := JoinRequest{Callsign: "ALPHA", VideoSystem: "analog"}
+	body1, _ := json.Marshal(join1)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body1)), sess.ID)
+
+	join2 := JoinRequest{Callsign: "BRAVO", VideoSystem: "analog"}
+	body2, _ := json.Marshal(join2)
+	joinW2 := httptest.NewRecorder()
+	s.HandleJoinSession(joinW2, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body2)), sess.ID)
+
+	var pilot2 db.Pilot
+	json.NewDecoder(joinW2.Result().Body).Decode(&pilot2)
+
+	// Try to change BRAVO to ALPHA — should fail.
+	csBody, _ := json.Marshal(map[string]string{"callsign": "ALPHA"})
+	csW := httptest.NewRecorder()
+	s.HandleUpdatePilotCallsign(csW, httptest.NewRequest(http.MethodPut, "/", bytes.NewReader(csBody)), pilot2.ID, sess.ID)
+
+	if csW.Result().StatusCode != http.StatusConflict {
+		t.Errorf("duplicate callsign: status = %d, want %d", csW.Result().StatusCode, http.StatusConflict)
 	}
 }
 

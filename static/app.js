@@ -22,6 +22,9 @@
     walksnailMode: '', // 'standard' or 'race'
     channelLocked: false,
     lockedFreqMHz: 0,
+    // Tracked assignment for change detection
+    myChannel: null,
+    myFreqMHz: null,
   };
 
   // ── Buddy group colors ────────────────────────────────────────
@@ -178,6 +181,18 @@
     return res.json();
   }
 
+  async function apiPut(path, body) {
+    const res = await fetch(path, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text.trim() || ('HTTP ' + res.status));
+    }
+  }
+
   async function apiDelete(path) {
     const res = await fetch(path, { method: 'DELETE' });
     if (!res.ok) {
@@ -201,6 +216,8 @@
   function clearState() {
     state.sessionCode = null;
     state.pilotId = null;
+    state.myChannel = null;
+    state.myFreqMHz = null;
     localStorage.removeItem('skwad_session');
     localStorage.removeItem('skwad_pilot');
   }
@@ -539,6 +556,19 @@
     });
   }
 
+  function buildJoinBody() {
+    return {
+      callsign: state.callsign,
+      video_system: getEffectiveVideoSystem(),
+      fcc_unlocked: state.fccUnlocked,
+      goggles: state.goggles,
+      bandwidth_mhz: state.bandwidthMHz,
+      race_mode: state.raceMode,
+      channel_locked: state.channelLocked,
+      locked_frequency_mhz: state.lockedFreqMHz,
+    };
+  }
+
   async function handleJoinSession() {
     if (state.channelLocked && !state.lockedFreqMHz) {
       showError('join-error', 'SELECT A CHANNEL');
@@ -549,18 +579,37 @@
     var btn = $('btn-join-session');
     setLoading(btn, true);
 
-    var effectiveSystem = getEffectiveVideoSystem();
-    var body = {
-      callsign: state.callsign,
-      video_system: effectiveSystem,
-      fcc_unlocked: state.fccUnlocked,
-      goggles: state.goggles,
-      bandwidth_mhz: state.bandwidthMHz,
-      race_mode: state.raceMode,
-      channel_locked: state.channelLocked,
-      locked_frequency_mhz: state.lockedFreqMHz,
-    };
+    var body = buildJoinBody();
 
+    try {
+      // Preview first to check for displacements.
+      var preview = await apiPost('/api/sessions/' + state.sessionCode + '/preview-join', body);
+      var displaced = preview.displaced || [];
+
+      if (displaced.length > 0) {
+        // Show confirmation dialog — actual join happens on confirm.
+        setLoading(btn, false);
+        showDisplacementConfirm(displaced);
+        return;
+      }
+
+      // No displacements — join immediately.
+      await commitJoin(body);
+    } catch (err) {
+      var msg = err.message || '';
+      if (msg.includes('callsign already')) {
+        showError('join-error', 'CALLSIGN ALREADY IN SESSION');
+      } else {
+        showError('join-error', 'FAILED TO JOIN: ' + msg.toUpperCase());
+      }
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  async function commitJoin(body) {
+    var btn = $('btn-join-session');
+    setLoading(btn, true);
     try {
       var pilot = await apiPost('/api/sessions/' + state.sessionCode + '/join', body);
       state.pilotId = pilot.ID;
@@ -578,6 +627,40 @@
     }
   }
 
+  // ── Displacement Confirmation ──────────────────────────────
+  function showDisplacementConfirm(displaced) {
+    var list = $('displacement-list');
+    clearChildren(list);
+
+    displaced.forEach(function (d) {
+      var nameEl = el('div', { className: 'displacement-name', textContent: d.callsign });
+      var moveText = d.old_channel + ' (' + d.old_freq_mhz + ') \u2192 ' +
+        d.new_channel + ' (' + d.new_freq_mhz + ')';
+      var moveEl = el('div', { className: 'displacement-move', textContent: moveText });
+      var item = el('div', { className: 'displacement-item' }, [nameEl, moveEl]);
+      list.appendChild(item);
+    });
+
+    $('displacement-confirm').classList.remove('hidden');
+  }
+
+  function hideDisplacementConfirm() {
+    $('displacement-confirm').classList.add('hidden');
+  }
+
+  function initDisplacementConfirm() {
+    $('btn-displacement-confirm').addEventListener('click', function () {
+      hideDisplacementConfirm();
+      commitJoin(buildJoinBody());
+    });
+    $('btn-displacement-cancel').addEventListener('click', function () {
+      hideDisplacementConfirm();
+    });
+    $('displacement-confirm').addEventListener('click', function (e) {
+      if (e.target === $('displacement-confirm')) hideDisplacementConfirm();
+    });
+  }
+
   // ── Session View ──────────────────────────────────────────────
   function enterSessionView() {
     showScreen('session');
@@ -590,6 +673,34 @@
     try {
       var data = await apiGet('/api/sessions/' + state.sessionCode);
       state.knownVersion = data.session.Version;
+
+      // Detect if our channel was changed by the optimizer.
+      if (state.pilotId && state.myChannel !== null) {
+        var me = null;
+        if (data.pilots) {
+          for (var i = 0; i < data.pilots.length; i++) {
+            if (data.pilots[i].ID === state.pilotId) {
+              me = data.pilots[i];
+              break;
+            }
+          }
+        }
+        if (me && me.AssignedChannel && me.AssignedChannel !== state.myChannel) {
+          showChannelChangeBanner(state.myChannel, state.myFreqMHz, me.AssignedChannel, me.AssignedFreqMHz);
+        }
+      }
+
+      // Update tracked assignment.
+      if (state.pilotId && data.pilots) {
+        for (var j = 0; j < data.pilots.length; j++) {
+          if (data.pilots[j].ID === state.pilotId) {
+            state.myChannel = data.pilots[j].AssignedChannel;
+            state.myFreqMHz = data.pilots[j].AssignedFreqMHz;
+            break;
+          }
+        }
+      }
+
       renderPilotList(data.pilots);
     } catch (err) {
       // Session may have expired
@@ -599,6 +710,22 @@
         showScreen('landing');
       }
     }
+  }
+
+  // ── Channel Change Banner ──────────────────────────────────
+  function showChannelChangeBanner(oldChannel, oldFreq, newChannel, newFreq) {
+    var msg = 'YOUR CHANNEL CHANGED: ' + oldChannel + ' (' + oldFreq + ') \u2192 ' +
+      newChannel + ' (' + newFreq + ')\nCOORDINATE WITH YOUR GROUP BEFORE SWITCHING';
+    $('banner-message').textContent = msg;
+    $('channel-change-banner').classList.remove('hidden');
+  }
+
+  function hideChannelChangeBanner() {
+    $('channel-change-banner').classList.add('hidden');
+  }
+
+  function initChannelChangeBanner() {
+    $('btn-banner-dismiss').addEventListener('click', hideChannelChangeBanner);
   }
 
   function renderPilotList(pilots) {
@@ -633,8 +760,33 @@
       var isMe = p.ID === state.pilotId;
       var buddyIdx = p.BuddyGroup > 0 ? ((p.BuddyGroup - 1) % 8) + 1 : 0;
 
+      if (isMe) {
+        card.classList.add('is-me');
+        card.addEventListener('click', function () {
+          showPilotActions();
+        });
+      } else {
+        card.classList.add('is-other');
+        card.addEventListener('click', function () {
+          showOtherPilotActions(p);
+        });
+      }
+
       if (buddyIdx > 0) {
         card.classList.add('buddy-group', 'buddy-' + buddyIdx);
+      }
+
+      // Determine worst conflict level for card styling
+      var conflicts = p.Conflicts || p.conflicts || [];
+      var worstLevel = null;
+      conflicts.forEach(function (c) {
+        if (c.level === 'danger' || c.Level === 'danger') worstLevel = 'danger';
+        else if (!worstLevel && (c.level === 'warning' || c.Level === 'warning')) worstLevel = 'warning';
+      });
+      if (worstLevel === 'danger') {
+        card.classList.add('has-conflict-danger');
+      } else if (worstLevel === 'warning') {
+        card.classList.add('has-conflict-warning');
       }
 
       // Frequency block
@@ -677,6 +829,19 @@
           info.appendChild(buddyInfo);
         }
       }
+
+      // Conflict warnings
+      conflicts.forEach(function (c) {
+        var level = c.level || c.Level;
+        var otherName = c.other_callsign || c.OtherCallsign || '?';
+        var sep = c.separation_mhz || c.SeparationMHz || 0;
+        var req = c.required_mhz || c.RequiredMHz || 0;
+        var conflictEl = el('div', {
+          className: 'pilot-conflict conflict-' + level,
+          textContent: (level === 'danger' ? 'OVERLAP' : 'CLOSE TO') + ' ' + otherName + ' (' + sep + '/' + req + ' MHz)'
+        });
+        info.appendChild(conflictEl);
+      });
 
       card.appendChild(info);
       container.appendChild(card);
@@ -739,6 +904,263 @@
     $('input-callsign').value = '';
 
     showScreen('landing');
+  }
+
+  // ── Pilot Action Sheet ───────────────────────────────────────
+  function showPilotActions() {
+    $('pilot-actions').classList.remove('hidden');
+  }
+
+  function hidePilotActions() {
+    $('pilot-actions').classList.add('hidden');
+  }
+
+  function initPilotActions() {
+    $('btn-action-cancel').addEventListener('click', hidePilotActions);
+    $('btn-leave-rotation').addEventListener('click', function () {
+      hidePilotActions();
+      handleLeave();
+    });
+    $('btn-change-channel').addEventListener('click', function () {
+      hidePilotActions();
+      showChannelChange();
+    });
+    $('btn-change-callsign').addEventListener('click', function () {
+      hidePilotActions();
+      showCallsignChange();
+    });
+
+    // Close on backdrop tap
+    $('pilot-actions').addEventListener('click', function (e) {
+      if (e.target === $('pilot-actions')) hidePilotActions();
+    });
+  }
+
+  // ── Channel Change ──────────────────────────────────────────
+  function showChannelChange() {
+    var picker = $('channel-change-picker');
+    clearChildren(picker);
+
+    var pool = getChannelPool();
+    pool.forEach(function (ch) {
+      var nameSpan = el('span', { className: 'ch-name', textContent: ch.name });
+      var freqSpan = el('span', { className: 'ch-freq', textContent: String(ch.freq) });
+      var btn = el('button', { className: 'btn-channel' }, [nameSpan, freqSpan]);
+      btn.addEventListener('click', function () {
+        submitChannelChange(true, ch.freq);
+      });
+      picker.appendChild(btn);
+    });
+
+    $('channel-change').classList.remove('hidden');
+  }
+
+  function hideChannelChange() {
+    $('channel-change').classList.add('hidden');
+  }
+
+  function initChannelChange() {
+    $('btn-auto-reassign').addEventListener('click', function () {
+      submitChannelChange(false, 0);
+    });
+    $('btn-channel-change-cancel').addEventListener('click', hideChannelChange);
+    $('channel-change').addEventListener('click', function (e) {
+      if (e.target === $('channel-change')) hideChannelChange();
+    });
+  }
+
+  async function submitChannelChange(locked, freqMHz) {
+    hideChannelChange();
+    try {
+      await apiPut(
+        '/api/pilots/' + state.pilotId + '/channel?session=' + state.sessionCode,
+        { channel_locked: locked, locked_frequency_mhz: freqMHz }
+      );
+      // Update local state
+      state.channelLocked = locked;
+      state.lockedFreqMHz = freqMHz;
+      refreshSession();
+    } catch (err) {
+      // Silently refresh — server state is authoritative
+      refreshSession();
+    }
+  }
+
+  // ── Callsign Change ─────────────────────────────────────────
+  function showCallsignChange() {
+    $('input-new-callsign').value = state.callsign;
+    hideError('callsign-change-error');
+    $('callsign-change').classList.remove('hidden');
+    $('input-new-callsign').focus();
+    $('input-new-callsign').select();
+  }
+
+  function hideCallsignChange() {
+    $('callsign-change').classList.add('hidden');
+  }
+
+  function initCallsignChange() {
+    $('input-new-callsign').addEventListener('input', function (e) {
+      e.target.value = e.target.value.toUpperCase();
+    });
+    $('btn-callsign-save').addEventListener('click', submitCallsignChange);
+    $('btn-callsign-cancel').addEventListener('click', hideCallsignChange);
+    $('callsign-change').addEventListener('click', function (e) {
+      if (e.target === $('callsign-change')) hideCallsignChange();
+    });
+    $('input-new-callsign').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') submitCallsignChange();
+    });
+  }
+
+  async function submitCallsignChange() {
+    var newCallsign = $('input-new-callsign').value.trim();
+    if (!newCallsign) {
+      showError('callsign-change-error', 'ENTER A CALLSIGN');
+      return;
+    }
+    hideError('callsign-change-error');
+
+    var btn = $('btn-callsign-save');
+    setLoading(btn, true);
+
+    try {
+      await apiPut(
+        '/api/pilots/' + state.pilotId + '/callsign?session=' + state.sessionCode,
+        { callsign: newCallsign }
+      );
+      state.callsign = newCallsign;
+      hideCallsignChange();
+      refreshSession();
+    } catch (err) {
+      var msg = err.message || '';
+      if (msg.includes('callsign already') || msg.includes('409')) {
+        showError('callsign-change-error', 'CALLSIGN ALREADY IN USE');
+      } else {
+        showError('callsign-change-error', 'FAILED: ' + msg.toUpperCase());
+      }
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  // ── Other Pilot Actions (with slide to remove) ─────────────
+  var otherPilotTarget = null;
+
+  function showOtherPilotActions(pilot) {
+    otherPilotTarget = pilot;
+    $('other-pilot-name').textContent = pilot.Callsign;
+    resetSlideHandle();
+    $('other-pilot-actions').classList.remove('hidden');
+  }
+
+  function hideOtherPilotActions() {
+    $('other-pilot-actions').classList.add('hidden');
+    otherPilotTarget = null;
+  }
+
+  function resetSlideHandle() {
+    var handle = $('slide-remove-handle');
+    handle.classList.add('snapping');
+    handle.style.left = '4px';
+    setTimeout(function () { handle.classList.remove('snapping'); }, 300);
+  }
+
+  function initOtherPilotActions() {
+    $('btn-other-cancel').addEventListener('click', hideOtherPilotActions);
+    $('other-pilot-actions').addEventListener('click', function (e) {
+      if (e.target === $('other-pilot-actions')) hideOtherPilotActions();
+    });
+
+    // Slide-to-remove touch/mouse handling
+    var handle = $('slide-remove-handle');
+    var track = $('slide-remove-track');
+    var dragging = false;
+    var startX = 0;
+    var handleStartLeft = 0;
+
+    function getTrackWidth() {
+      return track.getBoundingClientRect().width;
+    }
+
+    function onStart(clientX) {
+      dragging = true;
+      startX = clientX;
+      handleStartLeft = handle.offsetLeft;
+      handle.classList.remove('snapping');
+    }
+
+    function onMove(clientX) {
+      if (!dragging) return;
+      var dx = clientX - startX;
+      var newLeft = handleStartLeft + dx;
+      var maxLeft = getTrackWidth() - handle.offsetWidth - 4;
+      if (newLeft < 4) newLeft = 4;
+      if (newLeft > maxLeft) newLeft = maxLeft;
+      handle.style.left = newLeft + 'px';
+    }
+
+    function onEnd() {
+      if (!dragging) return;
+      dragging = false;
+
+      var maxLeft = getTrackWidth() - handle.offsetWidth - 4;
+      var currentLeft = handle.offsetLeft;
+      var pct = currentLeft / maxLeft;
+
+      if (pct > 0.85) {
+        // Triggered — remove the pilot
+        removeOtherPilot();
+      } else {
+        // Snap back
+        resetSlideHandle();
+      }
+    }
+
+    // Touch events
+    handle.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      onStart(e.touches[0].clientX);
+    }, { passive: false });
+
+    document.addEventListener('touchmove', function (e) {
+      if (dragging) {
+        e.preventDefault();
+        onMove(e.touches[0].clientX);
+      }
+    }, { passive: false });
+
+    document.addEventListener('touchend', function () {
+      onEnd();
+    });
+
+    // Mouse events
+    handle.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      onStart(e.clientX);
+    });
+
+    document.addEventListener('mousemove', function (e) {
+      if (dragging) onMove(e.clientX);
+    });
+
+    document.addEventListener('mouseup', function () {
+      onEnd();
+    });
+  }
+
+  async function removeOtherPilot() {
+    if (!otherPilotTarget) return;
+    var pilotId = otherPilotTarget.ID;
+
+    try {
+      await apiDelete('/api/pilots/' + pilotId + '?session=' + state.sessionCode);
+    } catch (err) {
+      // Refresh anyway
+    }
+
+    hideOtherPilotActions();
+    refreshSession();
   }
 
   // ── QR Code ───────────────────────────────────────────────────
@@ -1340,6 +1762,12 @@
     initFollowUpStep();
     initChannelStep();
     initSessionView();
+    initPilotActions();
+    initChannelChange();
+    initCallsignChange();
+    initOtherPilotActions();
+    initChannelChangeBanner();
+    initDisplacementConfirm();
     route();
   }
 

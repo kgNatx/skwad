@@ -31,6 +31,9 @@ func TestOptimize_SingleAnalog(t *testing.T) {
 	if a.BuddyGroup != 0 {
 		t.Errorf("BuddyGroup = %d, want 0 (no buddy group for single pilot)", a.BuddyGroup)
 	}
+	if a.BandwidthMHz != 20 {
+		t.Errorf("BandwidthMHz = %d, want 20", a.BandwidthMHz)
+	}
 }
 
 func TestOptimize_TwoAnalog_MaxSeparation(t *testing.T) {
@@ -53,7 +56,7 @@ func TestOptimize_TwoAnalog_MaxSeparation(t *testing.T) {
 	}
 }
 
-func TestOptimize_FourAnalog_IMDFree(t *testing.T) {
+func TestOptimize_FourAnalog_SafeSpacing(t *testing.T) {
 	pilots := []PilotInput{
 		{ID: 1, VideoSystem: "analog"},
 		{ID: 2, VideoSystem: "analog"},
@@ -74,13 +77,14 @@ func TestOptimize_FourAnalog_IMDFree(t *testing.T) {
 		freqs[a.FreqMHz] = true
 	}
 
-	// All pairs should be >= MinSafeSpacingMHz apart.
+	// All pairs should be >= RequiredSpacing(20, 20) = 30 MHz apart.
+	required := RequiredSpacing(20, 20)
 	for i := 0; i < len(assignments); i++ {
 		for j := i + 1; j < len(assignments); j++ {
 			sep := abs(assignments[i].FreqMHz - assignments[j].FreqMHz)
-			if sep < MinSafeSpacingMHz {
-				t.Errorf("pilots %d and %d too close: %d MHz apart (%s@%d vs %s@%d)",
-					assignments[i].PilotID, assignments[j].PilotID, sep,
+			if sep < required {
+				t.Errorf("pilots %d and %d too close: %d MHz apart, need >= %d (%s@%d vs %s@%d)",
+					assignments[i].PilotID, assignments[j].PilotID, sep, required,
 					assignments[i].Channel, assignments[i].FreqMHz,
 					assignments[j].Channel, assignments[j].FreqMHz)
 			}
@@ -106,10 +110,11 @@ func TestOptimize_LockedChannel(t *testing.T) {
 		t.Errorf("locked pilot channel = %s, want R3", assignments[0].Channel)
 	}
 
-	// Pilot 2 should be far from 5732.
+	// Pilot 2 should be far from 5732 — at least RequiredSpacing(20, 20) = 30 MHz.
 	sep := abs(assignments[1].FreqMHz - 5732)
-	if sep < MinSafeSpacingMHz {
-		t.Errorf("pilot 2 only %d MHz from locked pilot (want >= %d)", sep, MinSafeSpacingMHz)
+	required := RequiredSpacing(20, 20)
+	if sep < required {
+		t.Errorf("pilot 2 only %d MHz from locked pilot (want >= %d)", sep, required)
 	}
 }
 
@@ -157,5 +162,126 @@ func TestOptimize_MixedSystems(t *testing.T) {
 		if a.Channel == "" {
 			t.Errorf("pilot %d has empty Channel", a.PilotID)
 		}
+	}
+}
+
+func TestOptimize_AnalogAndDJIO3_40MHz(t *testing.T) {
+	// Analog pilot locked to R3 (5732), DJI O3 at 40 MHz (center 5795).
+	// Required spacing = 20/2 + 40/2 + 10 = 40 MHz.
+	// R4 (5769) is only 5795-5769 = 26 MHz from O3, which is less than 40.
+	// The optimizer should NOT place the analog pilot on R4.
+	pilots := []PilotInput{
+		{ID: 1, VideoSystem: "dji_o3", BandwidthMHz: 40},                         // Only channel: O3-CH1 at 5795
+		{ID: 2, VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5732}, // R3
+		{ID: 3, VideoSystem: "analog"},                                            // Should avoid R4 (5769)
+	}
+	assignments := Optimize(pilots)
+
+	// Find the flexible analog pilot's assignment.
+	var flexAnalog Assignment
+	for _, a := range assignments {
+		if a.PilotID == 3 {
+			flexAnalog = a
+			break
+		}
+	}
+
+	// Verify pilot 3 was NOT assigned R4 (5769) — only 26 MHz from 5795.
+	if flexAnalog.FreqMHz == 5769 {
+		t.Errorf("flexible analog pilot assigned R4 (5769), only 26 MHz from O3@5795; "+
+			"should be farther away (required spacing = %d)", RequiredSpacing(20, 40))
+	}
+
+	// Verify the separation between pilot 3 and the O3 pilot is reasonable.
+	sep := abs(flexAnalog.FreqMHz - 5795)
+	required := RequiredSpacing(20, 40) // 40 MHz
+	t.Logf("flexible analog assigned %s@%d, separation from O3@5795 = %d (required %d)",
+		flexAnalog.Channel, flexAnalog.FreqMHz, sep, required)
+}
+
+func TestOptimize_BandwidthMHzPopulated(t *testing.T) {
+	pilots := []PilotInput{
+		{ID: 1, VideoSystem: "analog"},
+		{ID: 2, VideoSystem: "dji_o3", BandwidthMHz: 40},
+		{ID: 3, VideoSystem: "dji_o4", BandwidthMHz: 60},
+	}
+	assignments := Optimize(pilots)
+
+	want := map[int]int{1: 20, 2: 40, 3: 60}
+	for _, a := range assignments {
+		if a.BandwidthMHz != want[a.PilotID] {
+			t.Errorf("pilot %d BandwidthMHz = %d, want %d", a.PilotID, a.BandwidthMHz, want[a.PilotID])
+		}
+	}
+}
+
+// ── Conflict detection tests ─────────────────────────────────────
+
+func TestDetectConflicts_Danger(t *testing.T) {
+	// Two 20 MHz signals on the same frequency — overlap.
+	assignments := []Assignment{
+		{PilotID: 1, FreqMHz: 5769, BandwidthMHz: 20},
+		{PilotID: 2, FreqMHz: 5769, BandwidthMHz: 20},
+	}
+	conflicts := DetectConflicts(assignments)
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 conflict, got %d", len(conflicts))
+	}
+	if conflicts[0].Level != ConflictDanger {
+		t.Errorf("level = %q, want %q", conflicts[0].Level, ConflictDanger)
+	}
+	if conflicts[0].SeparationMHz != 0 {
+		t.Errorf("separation = %d, want 0", conflicts[0].SeparationMHz)
+	}
+}
+
+func TestDetectConflicts_Warning(t *testing.T) {
+	// Analog (20 MHz) at 5769, O3 40 MHz at 5795.
+	// Separation = 26 MHz, overlap threshold = 10+20 = 30, required = 40.
+	// 26 < 30 so this is actually a danger, not warning.
+	// Use a case where sep is between overlap and required.
+	// Two 20 MHz signals 25 MHz apart: overlap = 20, required = 30.
+	// 25 > 20 but 25 < 30 → warning.
+	assignments := []Assignment{
+		{PilotID: 1, FreqMHz: 5769, BandwidthMHz: 20},
+		{PilotID: 2, FreqMHz: 5794, BandwidthMHz: 20},
+	}
+	conflicts := DetectConflicts(assignments)
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 conflict, got %d", len(conflicts))
+	}
+	if conflicts[0].Level != ConflictWarning {
+		t.Errorf("level = %q, want %q", conflicts[0].Level, ConflictWarning)
+	}
+	if conflicts[0].SeparationMHz != 25 {
+		t.Errorf("separation = %d, want 25", conflicts[0].SeparationMHz)
+	}
+}
+
+func TestDetectConflicts_NoConflict(t *testing.T) {
+	// Two 20 MHz signals 37 MHz apart: required = 30. 37 >= 30 → no conflict.
+	assignments := []Assignment{
+		{PilotID: 1, FreqMHz: 5658, BandwidthMHz: 20},
+		{PilotID: 2, FreqMHz: 5695, BandwidthMHz: 20},
+	}
+	conflicts := DetectConflicts(assignments)
+	if len(conflicts) != 0 {
+		t.Errorf("expected 0 conflicts, got %d", len(conflicts))
+	}
+}
+
+func TestDetectConflicts_WideBandDanger(t *testing.T) {
+	// Analog (20 MHz) at 5769 (R4), O3 40 MHz at 5795.
+	// Separation = 26, overlap = 10+20=30, 26 < 30 → danger.
+	assignments := []Assignment{
+		{PilotID: 1, FreqMHz: 5769, BandwidthMHz: 20},
+		{PilotID: 2, FreqMHz: 5795, BandwidthMHz: 40},
+	}
+	conflicts := DetectConflicts(assignments)
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 conflict, got %d", len(conflicts))
+	}
+	if conflicts[0].Level != ConflictDanger {
+		t.Errorf("level = %q, want %q", conflicts[0].Level, ConflictDanger)
 	}
 }

@@ -77,3 +77,47 @@ func TestChannelPool_Walksnail_Std_FCC(t *testing.T) {
 		t.Fatalf("expected 8 channels, got %d", len(pool))
 	}
 }
+
+func TestOccupiedBandwidth(t *testing.T) {
+	tests := []struct {
+		system string
+		bw     int
+		want   int
+	}{
+		{"analog", 0, 20},
+		{"hdzero", 0, 20},
+		{"dji_v1", 0, 20},
+		{"walksnail_std", 0, 20},
+		{"walksnail_race", 0, 20},
+		{"dji_o3", 20, 20},
+		{"dji_o3", 40, 40},
+		{"dji_o4", 20, 20},
+		{"dji_o4", 40, 40},
+		{"dji_o4", 60, 60},
+		{"openipc", 0, 20},
+	}
+	for _, tt := range tests {
+		got := OccupiedBandwidth(tt.system, tt.bw)
+		if got != tt.want {
+			t.Errorf("OccupiedBandwidth(%q, %d) = %d, want %d", tt.system, tt.bw, got, tt.want)
+		}
+	}
+}
+
+func TestRequiredSpacing(t *testing.T) {
+	tests := []struct {
+		bwA, bwB, want int
+	}{
+		{20, 20, 30},  // 10+10+10
+		{20, 40, 40},  // 10+20+10
+		{40, 40, 50},  // 20+20+10
+		{40, 60, 60},  // 20+30+10
+		{60, 60, 70},  // 30+30+10
+	}
+	for _, tt := range tests {
+		got := RequiredSpacing(tt.bwA, tt.bwB)
+		if got != tt.want {
+			t.Errorf("RequiredSpacing(%d, %d) = %d, want %d", tt.bwA, tt.bwB, got, tt.want)
+		}
+	}
+}

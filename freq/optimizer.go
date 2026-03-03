@@ -18,23 +18,33 @@ type PilotInput struct {
 
 // Assignment is the optimizer's output for one pilot.
 type Assignment struct {
-	PilotID    int    `json:"pilot_id"`
-	Channel    string `json:"channel"`
-	FreqMHz    int    `json:"freq_mhz"`
-	BuddyGroup int   `json:"buddy_group"`
+	PilotID      int    `json:"pilot_id"`
+	Channel      string `json:"channel"`
+	FreqMHz      int    `json:"freq_mhz"`
+	BandwidthMHz int    `json:"bandwidth_mhz"`
+	BuddyGroup   int    `json:"buddy_group"`
+}
+
+// usedEntry tracks a frequency assignment with its bandwidth.
+type usedEntry struct {
+	freqMHz      int
+	bandwidthMHz int
+	pilotID      int
 }
 
 // Optimize takes a list of pilots and assigns each one a channel that
-// maximizes frequency separation. When channels must be shared, it
-// creates buddy groups.
+// maximizes frequency separation accounting for signal bandwidth.
+// When channels must be shared, it creates buddy groups.
 func Optimize(pilots []PilotInput) []Assignment {
 	// Result map keyed by pilot ID for order preservation.
 	results := make(map[int]Assignment, len(pilots))
 
-	// Build channel pools for each pilot.
+	// Build channel pools and compute occupied bandwidth for each pilot.
 	pools := make(map[int][]Channel, len(pilots))
+	pilotBW := make(map[int]int, len(pilots))
 	for _, p := range pilots {
 		pools[p.ID] = ChannelPool(p.VideoSystem, p.FCCUnlocked, p.BandwidthMHz, p.RaceMode, p.Goggles)
+		pilotBW[p.ID] = OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz)
 	}
 
 	// Separate locked vs flexible pilots.
@@ -52,63 +62,69 @@ func Optimize(pilots []PilotInput) []Assignment {
 		return len(pools[flexible[i].ID]) < len(pools[flexible[j].ID])
 	})
 
-	// usedFreqs tracks which frequencies are in use. Key is frequency,
-	// value is list of pilot IDs on that frequency.
-	usedFreqs := make(map[int][]int)
+	// used tracks all assigned frequencies with their bandwidths.
+	var used []usedEntry
 
 	// Step 1: Lock in fixed-channel pilots.
 	for _, p := range locked {
+		bw := pilotBW[p.ID]
 		chName := findChannelName(pools[p.ID], p.LockedFreqMHz)
 		if chName == "" {
 			// Locked frequency not in pool; use it anyway with a generic name.
 			chName = "LOCKED"
 		}
 		results[p.ID] = Assignment{
-			PilotID: p.ID,
-			Channel: chName,
-			FreqMHz: p.LockedFreqMHz,
+			PilotID:      p.ID,
+			Channel:      chName,
+			FreqMHz:      p.LockedFreqMHz,
+			BandwidthMHz: bw,
 		}
-		usedFreqs[p.LockedFreqMHz] = append(usedFreqs[p.LockedFreqMHz], p.ID)
+		used = append(used, usedEntry{freqMHz: p.LockedFreqMHz, bandwidthMHz: bw, pilotID: p.ID})
 	}
 
 	// Step 2: Assign each flexible pilot the channel that maximizes
-	// minimum separation from all already-used frequencies.
+	// the effective separation margin from all already-used frequencies.
 	for _, p := range flexible {
 		pool := pools[p.ID]
+		bw := pilotBW[p.ID]
 		bestCh := pool[0]
-		bestSep := -1
+		bestMargin := -(1 << 30)
 
 		for _, ch := range pool {
-			sep := minSeparation(ch.FreqMHz, usedFreqs)
+			margin := effectiveSeparation(ch.FreqMHz, bw, used)
 
-			// Prefer previous frequency for stability when separation
-			// is still safe.
-			if ch.FreqMHz == p.PrevFreqMHz && sep >= MinSafeSpacingMHz {
-				if sep >= bestSep {
+			// Prefer previous frequency for stability when margin >= 0.
+			if ch.FreqMHz == p.PrevFreqMHz && margin >= 0 {
+				if margin >= bestMargin {
 					bestCh = ch
-					bestSep = sep
+					bestMargin = margin
 					continue
 				}
 			}
 
-			if sep > bestSep {
+			if margin > bestMargin {
 				bestCh = ch
-				bestSep = sep
+				bestMargin = margin
 			}
 		}
 
 		results[p.ID] = Assignment{
-			PilotID: p.ID,
-			Channel: bestCh.Name,
-			FreqMHz: bestCh.FreqMHz,
+			PilotID:      p.ID,
+			Channel:      bestCh.Name,
+			FreqMHz:      bestCh.FreqMHz,
+			BandwidthMHz: bw,
 		}
-		usedFreqs[bestCh.FreqMHz] = append(usedFreqs[bestCh.FreqMHz], p.ID)
+		used = append(used, usedEntry{freqMHz: bestCh.FreqMHz, bandwidthMHz: bw, pilotID: p.ID})
 	}
 
 	// Step 3: Identify buddy groups — frequencies shared by multiple pilots.
 	buddyGroupID := 1
+	freqCount := make(map[int][]int)
+	for _, u := range used {
+		freqCount[u.freqMHz] = append(freqCount[u.freqMHz], u.pilotID)
+	}
 	freqToGroup := make(map[int]int)
-	for freq, ids := range usedFreqs {
+	for freq, ids := range freqCount {
 		if len(ids) > 1 {
 			freqToGroup[freq] = buddyGroupID
 			buddyGroupID++
@@ -131,23 +147,87 @@ func Optimize(pilots []PilotInput) []Assignment {
 	return out
 }
 
-// minSeparation returns the minimum distance from freq to any used
-// frequency. Returns a large number if no frequencies are in use.
-func minSeparation(freq int, usedFreqs map[int][]int) int {
-	if len(usedFreqs) == 0 {
+// effectiveSeparation returns the worst-case margin between a candidate
+// frequency (with given bandwidth) and all used entries. The margin is
+// the actual center-to-center separation minus the required spacing.
+// Negative values indicate overlap or insufficient guard band.
+// Returns a large positive number if no frequencies are in use.
+func effectiveSeparation(freq, bw int, used []usedEntry) int {
+	if len(used) == 0 {
 		return 1<<31 - 1 // MaxInt
 	}
-	min := 1<<31 - 1
-	for f := range usedFreqs {
-		d := freq - f
+	worstMargin := 1<<31 - 1
+	for _, u := range used {
+		d := freq - u.freqMHz
 		if d < 0 {
 			d = -d
 		}
-		if d < min {
-			min = d
+		required := RequiredSpacing(bw, u.bandwidthMHz)
+		margin := d - required
+		if margin < worstMargin {
+			worstMargin = margin
 		}
 	}
-	return min
+	return worstMargin
+}
+
+// ConflictLevel indicates the severity of a frequency conflict.
+type ConflictLevel string
+
+const (
+	ConflictWarning ConflictLevel = "warning"
+	ConflictDanger  ConflictLevel = "danger"
+)
+
+// Conflict describes a frequency conflict between two pilots.
+type Conflict struct {
+	PilotA        int           `json:"pilot_a"`
+	PilotB        int           `json:"pilot_b"`
+	Level         ConflictLevel `json:"level"`
+	SeparationMHz int           `json:"separation_mhz"`
+	RequiredMHz   int           `json:"required_mhz"`
+}
+
+// DetectConflicts checks all pairs of assignments for frequency conflicts.
+// A "danger" conflict means the signals actually overlap (center separation
+// is less than the sum of half-bandwidths). A "warning" conflict means the
+// separation is less than the required spacing (which includes the guard band)
+// but the signals don't overlap.
+func DetectConflicts(assignments []Assignment) []Conflict {
+	var conflicts []Conflict
+	for i := 0; i < len(assignments); i++ {
+		for j := i + 1; j < len(assignments); j++ {
+			a, b := assignments[i], assignments[j]
+			sep := a.FreqMHz - b.FreqMHz
+			if sep < 0 {
+				sep = -sep
+			}
+
+			halfA := a.BandwidthMHz / 2
+			halfB := b.BandwidthMHz / 2
+			overlapThreshold := halfA + halfB
+			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz)
+
+			if sep < overlapThreshold {
+				conflicts = append(conflicts, Conflict{
+					PilotA:        a.PilotID,
+					PilotB:        b.PilotID,
+					Level:         ConflictDanger,
+					SeparationMHz: sep,
+					RequiredMHz:   required,
+				})
+			} else if sep < required {
+				conflicts = append(conflicts, Conflict{
+					PilotA:        a.PilotID,
+					PilotB:        b.PilotID,
+					Level:         ConflictWarning,
+					SeparationMHz: sep,
+					RequiredMHz:   required,
+				})
+			}
+		}
+	}
+	return conflicts
 }
 
 // findChannelName finds the channel name for a given frequency in a pool.
