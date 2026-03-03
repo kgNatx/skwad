@@ -1,7 +1,7 @@
 {
   "name": "SKWAD - FPV Frequency Coordinator",
   "short_name": "SKWAD",
-  "description": "Coordinate FPV video channels for your flying group",
+  "description": "Sunlight-readable, dead-simple app for optimizing frequency spread in your next FPV fly session.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
