@@ -250,7 +250,12 @@ body {
 
 .btn-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+}
+
+.btn-row .btn-option {
+  min-width: calc(50% - 6px);
 }
 
 .followup-group {
@@ -277,8 +282,8 @@ body {
 }
 
 .channel-pref-btn.active {
-  background: #ffffff;
-  color: #0a0a0a;
+  background: #2a2a2a;
+  color: #ffffff;
   border-color: #ffffff;
 }
 
@@ -337,13 +342,23 @@ body {
 }
 
 /* ===== SESSION VIEW ===== */
+#screen-session {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .session-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 0;
   padding-bottom: 16px;
   border-bottom: 2px solid #222222;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #0a0a0a;
+  flex-shrink: 0;
 }
 
 .session-code {
@@ -382,6 +397,13 @@ body {
 
 .live-indicator {
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.live-status {
+  display: flex;
   align-items: center;
   gap: 8px;
 }
@@ -413,6 +435,7 @@ body {
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
+  padding-top: 16px;
   padding-bottom: 16px;
 }
 
@@ -494,19 +517,24 @@ body {
 
 /* ===== SESSION FOOTER ===== */
 .session-footer {
-  padding-top: 16px;
+  padding-top: 8px;
   border-top: 2px solid #222222;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  flex-shrink: 0;
+  background: #0a0a0a;
 }
 
 .pilot-count {
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 800;
-  text-align: center;
+  text-align: right;
   color: #888888;
   letter-spacing: 1px;
+}
+
+#spectrum-canvas {
+  width: 100%;
+  height: 96px;
+  display: block;
 }
 
 /* ===== QR OVERLAY ===== */
@@ -809,7 +837,7 @@ body {
 }
 
 .slide-remove-handle::after {
-  content: '\u00BB';
+  content: '\00BB';
   color: #ffffff;
   font-size: 28px;
   font-weight: 900;

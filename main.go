@@ -67,6 +67,21 @@ func main() {
 		srv.HandlePoll(w, r, code)
 	})
 
+	mux.HandleFunc("POST /api/pilots/{id}/preview-channel", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		pilotID, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "invalid pilot id", http.StatusBadRequest)
+			return
+		}
+		sessionCode := r.URL.Query().Get("session")
+		if sessionCode == "" {
+			http.Error(w, "session query parameter required", http.StatusBadRequest)
+			return
+		}
+		srv.HandlePreviewChannelChange(w, r, pilotID, sessionCode)
+	})
+
 	mux.HandleFunc("PUT /api/pilots/{id}/channel", func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
 		pilotID, err := strconv.Atoi(idStr)
@@ -80,6 +95,21 @@ func main() {
 			return
 		}
 		srv.HandleUpdatePilotChannel(w, r, pilotID, sessionCode)
+	})
+
+	mux.HandleFunc("PUT /api/pilots/{id}/video-system", func(w http.ResponseWriter, r *http.Request) {
+		idStr := r.PathValue("id")
+		pilotID, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "invalid pilot id", http.StatusBadRequest)
+			return
+		}
+		sessionCode := r.URL.Query().Get("session")
+		if sessionCode == "" {
+			http.Error(w, "session query parameter required", http.StatusBadRequest)
+			return
+		}
+		srv.HandleUpdatePilotVideoSystem(w, r, pilotID, sessionCode)
 	})
 
 	mux.HandleFunc("PUT /api/pilots/{id}/callsign", func(w http.ResponseWriter, r *http.Request) {

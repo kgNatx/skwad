@@ -537,6 +537,9 @@
     });
 
     $('btn-join-session').addEventListener('click', handleJoinSession);
+    $('btn-channel-back').addEventListener('click', function () {
+      showStep('step-video');
+    });
   }
 
   function renderChannelPicker() {
@@ -589,7 +592,7 @@
       if (displaced.length > 0) {
         // Show confirmation dialog — actual join happens on confirm.
         setLoading(btn, false);
-        showDisplacementConfirm(displaced);
+        showDisplacementConfirm(displaced, preview.has_danger);
         return;
       }
 
@@ -607,11 +610,12 @@
     }
   }
 
-  async function commitJoin(body) {
+  async function commitJoin(body, rebalance) {
     var btn = $('btn-join-session');
     setLoading(btn, true);
+    var rebalParam = (rebalance === false) ? '?rebalance=false' : '';
     try {
-      var pilot = await apiPost('/api/sessions/' + state.sessionCode + '/join', body);
+      var pilot = await apiPost('/api/sessions/' + state.sessionCode + '/join' + rebalParam, body);
       state.pilotId = pilot.ID;
       saveState();
       enterSessionView();
@@ -628,7 +632,7 @@
   }
 
   // ── Displacement Confirmation ──────────────────────────────
-  function showDisplacementConfirm(displaced) {
+  function showDisplacementConfirm(displaced, hasDanger) {
     var list = $('displacement-list');
     clearChildren(list);
 
@@ -641,6 +645,14 @@
       list.appendChild(item);
     });
 
+    // Show/hide "JUST MOVE ME" — allowed unless it would cause overlap (danger)
+    var justMeBtn = $('btn-displacement-just-me');
+    if (hasDanger) {
+      justMeBtn.classList.add('hidden');
+    } else {
+      justMeBtn.classList.remove('hidden');
+    }
+
     $('displacement-confirm').classList.remove('hidden');
   }
 
@@ -649,15 +661,37 @@
   }
 
   function initDisplacementConfirm() {
+    // "MOVE EVERYONE" — full rebalance
     $('btn-displacement-confirm').addEventListener('click', function () {
       hideDisplacementConfirm();
-      commitJoin(buildJoinBody());
+      if (state.pendingChannelChange) {
+        var body = state.pendingChannelChange;
+        state.pendingChannelChange = null;
+        commitChannelChange(body, true);
+      } else {
+        commitJoin(buildJoinBody(), true);
+      }
+    });
+    // "JUST MOVE ME" — only apply my assignment, leave others
+    $('btn-displacement-just-me').addEventListener('click', function () {
+      hideDisplacementConfirm();
+      if (state.pendingChannelChange) {
+        var body = state.pendingChannelChange;
+        state.pendingChannelChange = null;
+        commitChannelChange(body, false);
+      } else {
+        commitJoin(buildJoinBody(), false);
+      }
     });
     $('btn-displacement-cancel').addEventListener('click', function () {
+      state.pendingChannelChange = null;
       hideDisplacementConfirm();
     });
     $('displacement-confirm').addEventListener('click', function (e) {
-      if (e.target === $('displacement-confirm')) hideDisplacementConfirm();
+      if (e.target === $('displacement-confirm')) {
+        state.pendingChannelChange = null;
+        hideDisplacementConfirm();
+      }
     });
   }
 
@@ -690,12 +724,19 @@
         }
       }
 
-      // Update tracked assignment.
+      // Update tracked assignment and sync callsign/video from server.
       if (state.pilotId && data.pilots) {
         for (var j = 0; j < data.pilots.length; j++) {
           if (data.pilots[j].ID === state.pilotId) {
             state.myChannel = data.pilots[j].AssignedChannel;
             state.myFreqMHz = data.pilots[j].AssignedFreqMHz;
+            if (!state.callsign) state.callsign = data.pilots[j].Callsign;
+            if (!state.videoSystem) state.videoSystem = data.pilots[j].VideoSystem;
+            // Sync gear settings so channel picker works after page refresh.
+            state.fccUnlocked = data.pilots[j].FCCUnlocked || false;
+            state.bandwidthMHz = data.pilots[j].BandwidthMHz || 0;
+            state.goggles = data.pilots[j].Goggles || '';
+            state.raceMode = data.pilots[j].RaceMode || false;
             break;
           }
         }
@@ -728,6 +769,186 @@
     $('btn-banner-dismiss').addEventListener('click', hideChannelChangeBanner);
   }
 
+  // ── Spectrum Visualization ──────────────────────────────────
+  function occupiedBandwidth(videoSystem, bandwidthMHz) {
+    if (videoSystem === 'dji_o3' || videoSystem === 'dji_o4') {
+      if (bandwidthMHz === 40) return 40;
+      if (bandwidthMHz === 60) return 60;
+      return 20;
+    }
+    return 20;
+  }
+
+  function renderSpectrum(pilots) {
+    var canvas = $('spectrum-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var dpr = window.devicePixelRatio || 1;
+    var rect = canvas.getBoundingClientRect();
+    var w = rect.width * dpr;
+    var h = 96 * dpr;
+    canvas.width = w;
+    canvas.height = h;
+    ctx.scale(dpr, dpr);
+    var cw = rect.width;
+    var ch = 96;
+
+    // Frequency range
+    var fMin = 5640;
+    var fMax = 5930;
+    var fSpan = fMax - fMin;
+
+    // Background track
+    ctx.fillStyle = '#1a1a1a';
+    roundRect(ctx, 0, 0, cw, ch, 8);
+    ctx.fill();
+
+    // Baseline — leave room below for channel labels
+    var baseline = ch - 22;
+    ctx.strokeStyle = '#2a2a2a';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(8, baseline);
+    ctx.lineTo(cw - 8, baseline);
+    ctx.stroke();
+
+    // Race Band tick marks: names above baseline, frequencies below
+    var rbFreqs = [5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917];
+    var rbNames = ['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8'];
+    for (var t = 0; t < rbFreqs.length; t++) {
+      var tx = (rbFreqs[t] - fMin) / fSpan * cw;
+      // Tick mark
+      ctx.strokeStyle = '#888888';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tx, baseline - 4);
+      ctx.lineTo(tx, baseline + 4);
+      ctx.stroke();
+      // Channel name just above baseline (alphabetic baseline for even alignment)
+      ctx.font = '800 11px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#bbbbbb';
+      ctx.fillText(rbNames[t], tx, baseline - 5);
+      // Frequency below baseline (bigger)
+      ctx.font = '600 10px -apple-system, BlinkMacSystemFont, sans-serif';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#666666';
+      ctx.fillText(String(rbFreqs[t]), tx, baseline + 5);
+    }
+
+    if (!pilots || pilots.length === 0) return;
+
+    // Pre-compute each pilot's layout data
+    var items = [];
+    ctx.font = '700 10px -apple-system, BlinkMacSystemFont, sans-serif';
+    pilots.forEach(function (p) {
+      if (!p.AssignedFreqMHz) return;
+      var bw = occupiedBandwidth(p.VideoSystem, p.BandwidthMHz);
+      var centerX = (p.AssignedFreqMHz - fMin) / fSpan * cw;
+      var halfW = (bw / fSpan * cw) / 2;
+      if (halfW < 14) halfW = 14;
+
+      var conflicts = p.Conflicts || p.conflicts || [];
+      var worstLevel = null;
+      conflicts.forEach(function (c) {
+        if (c.level === 'danger' || c.Level === 'danger') worstLevel = 'danger';
+        else if (!worstLevel && (c.level === 'warning' || c.Level === 'warning')) worstLevel = 'warning';
+      });
+
+      var isMe = p.ID === state.pilotId;
+      var color;
+      if (isMe) color = '#33ff33';
+      else if (worstLevel === 'danger') color = '#ff3333';
+      else if (worstLevel === 'warning') color = '#ffaa00';
+      else color = '#888888';
+
+      var label = p.Callsign || '';
+      var labelW = ctx.measureText(label).width;
+
+      items.push({
+        centerX: centerX,
+        halfW: halfW,
+        color: color,
+        isMe: isMe,
+        label: label,
+        labelW: labelW,
+        labelLeft: centerX - labelW / 2,
+        labelRight: centerX + labelW / 2
+      });
+    });
+
+    // Sort by frequency for stagger calculation
+    items.sort(function (a, b) { return a.centerX - b.centerX; });
+
+    // Assign vertical tiers to labels to avoid overlap
+    var labelH = 13;
+    var labelPad = 4;
+    var humpPeakH = 44;
+    var humpPeakY = baseline - humpPeakH;
+    var tierBaseY = humpPeakY - 3; // Y for tier 0 (closest to hump)
+    items.forEach(function (item, i) {
+      var tier = 0;
+      // Check against all previous items for horizontal overlap
+      for (var j = 0; j < i; j++) {
+        var prev = items[j];
+        // Do the labels overlap horizontally?
+        if (item.labelLeft - labelPad < prev.labelRight + labelPad &&
+            item.labelRight + labelPad > prev.labelLeft - labelPad) {
+          // Need to be on a different tier than prev
+          if (tier <= prev.tier) tier = prev.tier + 1;
+        }
+      }
+      item.tier = tier;
+      item.labelY = tierBaseY - tier * (labelH + 2);
+    });
+
+    // Draw waveform humps
+    items.forEach(function (item) {
+      ctx.beginPath();
+      ctx.moveTo(item.centerX - item.halfW, baseline);
+      ctx.bezierCurveTo(
+        item.centerX - item.halfW * 0.5, baseline,
+        item.centerX - item.halfW * 0.4, humpPeakY,
+        item.centerX, humpPeakY
+      );
+      ctx.bezierCurveTo(
+        item.centerX + item.halfW * 0.4, humpPeakY,
+        item.centerX + item.halfW * 0.5, baseline,
+        item.centerX + item.halfW, baseline
+      );
+      ctx.closePath();
+      ctx.fillStyle = item.color + '40';
+      ctx.fill();
+      ctx.strokeStyle = item.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // Draw callsign labels
+    ctx.font = '700 10px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    items.forEach(function (item) {
+      ctx.fillStyle = item.color;
+      ctx.fillText(item.label, item.centerX, item.labelY);
+    });
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
+  }
+
   function renderPilotList(pilots) {
     var container = $('pilot-list');
     clearChildren(container);
@@ -737,7 +958,8 @@
         el('div', { className: 'empty-state-text', textContent: 'WAITING FOR PILOTS...' })
       ]);
       container.appendChild(emptyDiv);
-      $('pilot-count').textContent = '0 PILOTS ACTIVE';
+      $('pilot-count').textContent = '0 PILOTS';
+      renderSpectrum([]);
       return;
     }
 
@@ -848,7 +1070,8 @@
     });
 
     var count = pilots.length;
-    $('pilot-count').textContent = count + ' PILOT' + (count !== 1 ? 'S' : '') + ' ACTIVE';
+    $('pilot-count').textContent = count + ' PILOT' + (count !== 1 ? 'S' : '');
+    renderSpectrum(pilots);
   }
 
   // ── Polling ───────────────────────────────────────────────────
@@ -879,14 +1102,10 @@
   function initSessionView() {
     $('session-code-display').addEventListener('click', showQROverlay);
     $('btn-qr-close').addEventListener('click', hideQROverlay);
-    $('btn-leave').addEventListener('click', handleLeave);
   }
 
   async function handleLeave() {
     if (!state.pilotId || !state.sessionCode) return;
-
-    var btn = $('btn-leave');
-    setLoading(btn, true);
 
     try {
       await apiDelete('/api/pilots/' + state.pilotId + '?session=' + state.sessionCode);
@@ -896,7 +1115,6 @@
 
     stopPolling();
     clearState();
-    setLoading(btn, false);
 
     // Reset setup state
     state.callsign = '';
@@ -963,6 +1181,25 @@
     $('btn-auto-reassign').addEventListener('click', function () {
       submitChannelChange(false, 0);
     });
+    $('btn-change-video-system').addEventListener('click', async function () {
+      hideChannelChange();
+      // Remove from session, keep callsign + session code, go to wizard
+      var savedCallsign = state.callsign;
+      var savedCode = state.sessionCode;
+      try {
+        await apiDelete('/api/pilots/' + state.pilotId + '?session=' + state.sessionCode);
+      } catch (err) {
+        // Continue even if delete fails
+      }
+      stopPolling();
+      clearState();
+      state.sessionCode = savedCode;
+      state.callsign = savedCallsign;
+      state.videoSystem = '';
+      $('input-callsign').value = savedCallsign;
+      showScreen('setup');
+      showStep('step-video');
+    });
     $('btn-channel-change-cancel').addEventListener('click', hideChannelChange);
     $('channel-change').addEventListener('click', function (e) {
       if (e.target === $('channel-change')) hideChannelChange();
@@ -971,17 +1208,38 @@
 
   async function submitChannelChange(locked, freqMHz) {
     hideChannelChange();
+    var body = { channel_locked: locked, locked_frequency_mhz: freqMHz };
+    try {
+      // Preview first to check for displacements.
+      var preview = await apiPost(
+        '/api/pilots/' + state.pilotId + '/preview-channel?session=' + state.sessionCode,
+        body
+      );
+      var displaced = preview.displaced || [];
+      if (displaced.length > 0) {
+        // Stash pending change so displacement confirm can commit it.
+        state.pendingChannelChange = body;
+        showDisplacementConfirm(displaced, preview.has_danger);
+        return;
+      }
+      // No displacements — apply immediately.
+      await commitChannelChange(body);
+    } catch (err) {
+      refreshSession();
+    }
+  }
+
+  async function commitChannelChange(body, rebalance) {
+    var rebalParam = (rebalance === false) ? '&rebalance=false' : '';
     try {
       await apiPut(
-        '/api/pilots/' + state.pilotId + '/channel?session=' + state.sessionCode,
-        { channel_locked: locked, locked_frequency_mhz: freqMHz }
+        '/api/pilots/' + state.pilotId + '/channel?session=' + state.sessionCode + rebalParam,
+        body
       );
-      // Update local state
-      state.channelLocked = locked;
-      state.lockedFreqMHz = freqMHz;
+      state.channelLocked = body.channel_locked;
+      state.lockedFreqMHz = body.locked_frequency_mhz;
       refreshSession();
     } catch (err) {
-      // Silently refresh — server state is authoritative
       refreshSession();
     }
   }

@@ -118,14 +118,22 @@ func TestJoinSession_DuplicateCallsign(t *testing.T) {
 		t.Fatalf("first join: status = %d, want %d", joinW.Result().StatusCode, http.StatusCreated)
 	}
 
-	// Join again with same callsign.
+	// Join again with same callsign — should succeed (deactivates old, creates new).
+	// This supports the "change video system" flow where a pilot leaves and rejoins.
 	body2, _ := json.Marshal(joinBody)
 	joinReq2 := httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body2))
 	joinW2 := httptest.NewRecorder()
 	s.HandleJoinSession(joinW2, joinReq2, sess.ID)
 
-	if joinW2.Result().StatusCode != http.StatusConflict {
-		t.Errorf("duplicate join: status = %d, want %d", joinW2.Result().StatusCode, http.StatusConflict)
+	if joinW2.Result().StatusCode != http.StatusCreated {
+		t.Errorf("rejoin with same callsign: status = %d, want %d", joinW2.Result().StatusCode, http.StatusCreated)
+	}
+
+	// Verify only one active pilot with that callsign.
+	var pilot db.Pilot
+	json.NewDecoder(joinW2.Result().Body).Decode(&pilot)
+	if pilot.Callsign != "DUPES" {
+		t.Errorf("rejoin callsign = %q, want %q", pilot.Callsign, "DUPES")
 	}
 }
 

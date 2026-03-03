@@ -162,18 +162,39 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 
 	added, err := s.DB.AddPilot(code, pilot)
 	if err != nil {
-		// Check for duplicate callsign (UNIQUE constraint violation).
+		// If callsign is still active (e.g., "change video system" flow where
+		// the frontend's delete failed or raced), deactivate the old pilot and retry.
 		if strings.Contains(err.Error(), "UNIQUE") {
-			http.Error(w, "callsign already in session", http.StatusConflict)
+			existingID, findErr := s.DB.FindActivePilotByCallsign(code, req.Callsign)
+			if findErr != nil || existingID == 0 {
+				http.Error(w, "callsign already in session", http.StatusConflict)
+				return
+			}
+			if deactErr := s.DB.DeactivatePilot(existingID); deactErr != nil {
+				http.Error(w, "callsign already in session", http.StatusConflict)
+				return
+			}
+			log.Printf("Deactivated stale pilot %d (%s) for rejoin", existingID, req.Callsign)
+			added, err = s.DB.AddPilot(code, pilot)
+			if err != nil {
+				http.Error(w, "failed to add pilot", http.StatusInternalServerError)
+				log.Printf("AddPilot retry error: %v", err)
+				return
+			}
+		} else {
+			http.Error(w, "failed to add pilot", http.StatusInternalServerError)
+			log.Printf("AddPilot error: %v", err)
 			return
 		}
-		http.Error(w, "failed to add pilot", http.StatusInternalServerError)
-		log.Printf("AddPilot error: %v", err)
-		return
 	}
 
-	// Reoptimize all pilots in the session.
-	s.reoptimize(code)
+	// Reoptimize — check query param for rebalance preference.
+	rebalance := r.URL.Query().Get("rebalance") != "false"
+	if rebalance {
+		s.reoptimize(code)
+	} else {
+		s.reoptimizeForPilot(code, added.ID)
+	}
 
 	// Re-fetch the pilot to get the updated assignment.
 	pilots, err := s.DB.GetActivePilots(code)
@@ -229,13 +250,16 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		return
 	}
 
-	// Check for duplicate callsign among active pilots.
+	// If the callsign already exists as an active pilot, exclude that pilot
+	// from the preview (they'll be reactivated with new settings on actual join).
+	// This handles the "change video system" flow where a pilot leaves and rejoins.
+	filteredPilots := make([]db.Pilot, 0, len(pilots))
 	for _, p := range pilots {
-		if p.Callsign == req.Callsign {
-			http.Error(w, "callsign already in session", http.StatusConflict)
-			return
+		if p.Callsign != req.Callsign {
+			filteredPilots = append(filteredPilots, p)
 		}
 	}
+	pilots = filteredPilots
 
 	// Build optimizer inputs from existing pilots.
 	inputs := make([]freq.PilotInput, len(pilots))
@@ -307,16 +331,166 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		}
 	}
 
+	// Check if placing just the new pilot (without moving others) would cause
+	// danger-level conflicts. Build hypothetical: existing pilots stay put +
+	// new pilot at optimizer's suggested position.
+	var newAssignment freq.Assignment
+	for _, a := range assignments {
+		if a.PilotID == tempID {
+			newAssignment = a
+			break
+		}
+	}
+	hypothetical := buildAssignments(pilots)
+	hypothetical = append(hypothetical, freq.Assignment{
+		PilotID:      tempID,
+		Channel:      newAssignment.Channel,
+		FreqMHz:      newAssignment.FreqMHz,
+		BandwidthMHz: freq.OccupiedBandwidth(req.VideoSystem, req.BandwidthMHz),
+	})
+	hasDanger := false
+	for _, c := range freq.DetectConflicts(hypothetical) {
+		if c.Level == freq.ConflictDanger && (c.PilotA == tempID || c.PilotB == tempID) {
+			hasDanger = true
+			break
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
 		Displaced []DisplacedPilot `json:"displaced"`
-	}{Displaced: displaced})
+		HasDanger bool             `json:"has_danger"`
+	}{Displaced: displaced, HasDanger: hasDanger})
 }
 
 // UpdateChannelRequest is the JSON body for changing a pilot's channel preference.
 type UpdateChannelRequest struct {
 	ChannelLocked bool `json:"channel_locked"`
 	LockedFreqMHz int  `json:"locked_frequency_mhz"`
+}
+
+// HandlePreviewChannelChange dry-runs what would happen if a pilot changed their
+// channel preference. Returns which other pilots would be displaced.
+// POST /api/pilots/{id}/preview-channel?session={code}
+func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
+	var req UpdateChannelRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	pilots, err := s.DB.GetActivePilots(sessionCode)
+	if err != nil {
+		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
+		log.Printf("PreviewChannelChange GetActivePilots error: %v", err)
+		return
+	}
+
+	// Build optimizer inputs, overriding the requesting pilot's preferences.
+	inputs := make([]freq.PilotInput, len(pilots))
+	for i, p := range pilots {
+		input := freq.PilotInput{
+			ID:            p.ID,
+			VideoSystem:   p.VideoSystem,
+			FCCUnlocked:   p.FCCUnlocked,
+			BandwidthMHz:  p.BandwidthMHz,
+			RaceMode:      p.RaceMode,
+			Goggles:       p.Goggles,
+			ChannelLocked: p.ChannelLocked,
+			LockedFreqMHz: p.LockedFrequencyMHz,
+			PrevChannel:   p.AssignedChannel,
+			PrevFreqMHz:   p.AssignedFreqMHz,
+		}
+		if p.ID == pilotID {
+			input.ChannelLocked = req.ChannelLocked
+			input.LockedFreqMHz = req.LockedFreqMHz
+		}
+		inputs[i] = input
+	}
+
+	assignments := freq.Optimize(inputs)
+
+	// Compare old vs new for other pilots (not the requesting pilot).
+	oldAssignments := make(map[int][2]interface{})
+	for _, p := range pilots {
+		oldAssignments[p.ID] = [2]interface{}{p.AssignedChannel, p.AssignedFreqMHz}
+	}
+
+	var displaced []DisplacedPilot
+	for _, a := range assignments {
+		if a.PilotID == pilotID {
+			continue
+		}
+		old, ok := oldAssignments[a.PilotID]
+		if !ok {
+			continue
+		}
+		oldCh := old[0].(string)
+		oldFreq := old[1].(int)
+		if oldCh != "" && (a.Channel != oldCh || a.FreqMHz != oldFreq) {
+			var callsign string
+			for _, p := range pilots {
+				if p.ID == a.PilotID {
+					callsign = p.Callsign
+					break
+				}
+			}
+			displaced = append(displaced, DisplacedPilot{
+				PilotID:    a.PilotID,
+				Callsign:   callsign,
+				OldChannel: oldCh,
+				OldFreqMHz: oldFreq,
+				NewChannel: a.Channel,
+				NewFreqMHz: a.FreqMHz,
+			})
+		}
+	}
+
+	// Check if moving just this pilot (without moving others) would cause
+	// danger-level conflicts.
+	var myAssignment freq.Assignment
+	for _, a := range assignments {
+		if a.PilotID == pilotID {
+			myAssignment = a
+			break
+		}
+	}
+	// Build hypothetical: all other pilots stay, this pilot moves.
+	var requestingPilot db.Pilot
+	var hypothetical []freq.Assignment
+	for _, p := range pilots {
+		if p.ID == pilotID {
+			requestingPilot = p
+			hypothetical = append(hypothetical, freq.Assignment{
+				PilotID:      p.ID,
+				Channel:      myAssignment.Channel,
+				FreqMHz:      myAssignment.FreqMHz,
+				BandwidthMHz: freq.OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz),
+				BuddyGroup:   myAssignment.BuddyGroup,
+			})
+		} else {
+			hypothetical = append(hypothetical, freq.Assignment{
+				PilotID:      p.ID,
+				Channel:      p.AssignedChannel,
+				FreqMHz:      p.AssignedFreqMHz,
+				BandwidthMHz: freq.OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz),
+				BuddyGroup:   p.BuddyGroup,
+			})
+		}
+	}
+	hasDanger := false
+	for _, c := range freq.DetectConflicts(hypothetical) {
+		if c.Level == freq.ConflictDanger && (c.PilotA == requestingPilot.ID || c.PilotB == requestingPilot.ID) {
+			hasDanger = true
+			break
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(struct {
+		Displaced []DisplacedPilot `json:"displaced"`
+		HasDanger bool             `json:"has_danger"`
+	}{Displaced: displaced, HasDanger: hasDanger})
 }
 
 // HandleUpdatePilotChannel updates a pilot's channel preference and reoptimizes.
@@ -335,6 +509,48 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 		}
 		http.Error(w, "failed to update pilot", http.StatusInternalServerError)
 		log.Printf("UpdatePilotPreferences error: %v", err)
+		return
+	}
+
+	rebalance := r.URL.Query().Get("rebalance") != "false"
+	if rebalance {
+		s.reoptimize(sessionCode)
+	} else {
+		s.reoptimizeForPilot(sessionCode, pilotID)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// UpdateVideoSystemRequest is the JSON body for changing a pilot's video system.
+type UpdateVideoSystemRequest struct {
+	VideoSystem  string `json:"video_system"`
+	FCCUnlocked  bool   `json:"fcc_unlocked"`
+	Goggles      string `json:"goggles"`
+	BandwidthMHz int    `json:"bandwidth_mhz"`
+	RaceMode     bool   `json:"race_mode"`
+}
+
+// HandleUpdatePilotVideoSystem changes a pilot's video system and reoptimizes.
+// PUT /api/pilots/{id}/video-system?session={code}
+func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
+	var req UpdateVideoSystemRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(req.VideoSystem) == "" {
+		http.Error(w, "video_system is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.DB.UpdatePilotVideoSystem(pilotID, req.VideoSystem, req.FCCUnlocked, req.Goggles, req.BandwidthMHz, req.RaceMode); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			http.Error(w, "pilot not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "failed to update pilot", http.StatusInternalServerError)
+		log.Printf("UpdatePilotVideoSystem error: %v", err)
 		return
 	}
 
@@ -429,6 +645,52 @@ func buildAssignments(pilots []db.Pilot) []freq.Assignment {
 		}
 	}
 	return assignments
+}
+
+// reoptimizeForPilot runs the optimizer but only applies the result for the
+// specified pilot, leaving all other pilots' assignments unchanged.
+func (s *Server) reoptimizeForPilot(sessionCode string, pilotID int) {
+	pilots, err := s.DB.GetActivePilots(sessionCode)
+	if err != nil {
+		log.Printf("reoptimizeForPilot: GetActivePilots error: %v", err)
+		return
+	}
+
+	if len(pilots) == 0 {
+		return
+	}
+
+	inputs := make([]freq.PilotInput, len(pilots))
+	for i, p := range pilots {
+		inputs[i] = freq.PilotInput{
+			ID:            p.ID,
+			VideoSystem:   p.VideoSystem,
+			FCCUnlocked:   p.FCCUnlocked,
+			BandwidthMHz:  p.BandwidthMHz,
+			RaceMode:      p.RaceMode,
+			Goggles:       p.Goggles,
+			ChannelLocked: p.ChannelLocked,
+			LockedFreqMHz: p.LockedFrequencyMHz,
+			PrevChannel:   p.AssignedChannel,
+			PrevFreqMHz:   p.AssignedFreqMHz,
+		}
+	}
+
+	assignments := freq.Optimize(inputs)
+
+	// Only apply the assignment for the target pilot.
+	for _, a := range assignments {
+		if a.PilotID == pilotID {
+			if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+				log.Printf("reoptimizeForPilot: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
+			}
+			break
+		}
+	}
+
+	if err := s.DB.IncrementVersion(sessionCode); err != nil {
+		log.Printf("reoptimizeForPilot: IncrementVersion error: %v", err)
+	}
 }
 
 // reoptimize gets all active pilots for a session, runs the frequency

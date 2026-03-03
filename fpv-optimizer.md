@@ -96,20 +96,27 @@ Conflicts appear on pilot cards with text like "OVERLAP WAYNE (26/40 MHz)" or "C
    - Race Mode? (DJI O4 with Goggles 3/N3)
    - Standard or Race Mode? (Walksnail)
 4. Choose channel preference: **auto-assign** (recommended) or **lock to a specific channel**
+   - Channel preference buttons are styled as toggles (dark bg, white border when active) — distinct from the solid white JOIN action button
+   - A **BACK** button below JOIN returns to the video system selection to change gear settings
 5. Hit JOIN — you get your optimized channel assignment
 
 ### Displacement Preview
 
-If your join would cause existing pilots to move to different channels, you see a confirmation dialog before the join happens. It shows each affected pilot and where they'd move:
+If your join or channel change would cause existing pilots to move to different channels, you see a confirmation dialog showing each affected pilot and where they'd move:
 
 > **CRASH**
 > R1 (5658) → R7 (5880)
 >
 > VERIFY WITH THEM BEFORE CONTINUING
 >
-> [JOIN ANYWAY] [CANCEL]
+> [MOVE EVERYONE] [JUST MOVE ME] [CANCEL]
 
-This gives you a chance to talk to the group first. If you cancel, nothing changes.
+Three options:
+- **MOVE EVERYONE** — full rebalance, applies the optimizer's ideal assignments for all pilots
+- **JUST MOVE ME** — only applies your new assignment, leaves everyone else where they are. This option is hidden if it would cause a danger-level overlap (red zone). Warning-level proximity (yellow zone) is allowed.
+- **CANCEL** — back out, nothing changes
+
+This dialog appears for both initial joins and in-session channel changes.
 
 ### Channel Change Notification
 
@@ -124,9 +131,26 @@ This reminds you to actually change your VTX channel and lets you coordinate tim
 
 ### Managing Your Session
 
-- **Tap your own card** to access options: change channel (auto or manual), change callsign, or leave session
+- **Tap your own card** to access options: change channel/video, change callsign, or leave session
+- **Change channel** opens a picker with auto-assign and manual channel selection. Also includes **CHANGE VIDEO SYSTEM** which removes you from the session and sends you back to the setup wizard (callsign pre-filled) so you can rejoin with different gear settings.
 - **Tap another pilot's card** to access removal — uses a slide-to-confirm gesture to prevent accidental removal
 - **Tap the session code** to show a fullscreen QR code for sharing
+
+### Spectrum Visualization
+
+The session view footer shows a bandwidth-aware spectrum visualization of the 5.8 GHz band (5640–5930 MHz). Each pilot appears as a bell-curve waveform whose width represents their occupied bandwidth, with their callsign above. Race Band channel names (R1–R8) are labeled above the baseline, with their center frequencies (5658–5917 MHz) shown below.
+
+Colors indicate status:
+- **Green** — you (the current pilot)
+- **Red** — danger-level conflict (signal overlap)
+- **Orange** — warning-level conflict (within guard band)
+- **Gray** — no conflicts
+
+Labels are vertically staggered when pilots are on nearby frequencies so callsigns don't overlap.
+
+### Session View Layout
+
+The session screen uses a sticky header (session code + LIVE indicator + pilot count) and sticky footer (spectrum canvas). Only the pilot card list scrolls between them. This keeps the session code and spectrum always visible.
 
 ### Live Updates
 

@@ -288,6 +288,22 @@ func (d *DB) UpdatePilotPreferences(pilotID int, channelLocked bool, lockedFreqM
 	return nil
 }
 
+// UpdatePilotVideoSystem changes an active pilot's video system and related settings.
+func (d *DB) UpdatePilotVideoSystem(pilotID int, videoSystem string, fccUnlocked bool, goggles string, bandwidthMHz int, raceMode bool) error {
+	res, err := d.db.Exec(
+		`UPDATE pilots SET video_system = ?, fcc_unlocked = ?, goggles = ?, bandwidth_mhz = ?, race_mode = ? WHERE id = ? AND active = TRUE`,
+		videoSystem, fccUnlocked, goggles, bandwidthMHz, raceMode, pilotID,
+	)
+	if err != nil {
+		return fmt.Errorf("update pilot video system: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("pilot %d not found or inactive", pilotID)
+	}
+	return nil
+}
+
 // UpdatePilotCallsign changes an active pilot's callsign.
 func (d *DB) UpdatePilotCallsign(pilotID int, callsign string) error {
 	res, err := d.db.Exec(
@@ -305,6 +321,20 @@ func (d *DB) UpdatePilotCallsign(pilotID int, callsign string) error {
 		return fmt.Errorf("pilot %d not found or inactive", pilotID)
 	}
 	return nil
+}
+
+// FindActivePilotByCallsign returns the ID of an active pilot with the given
+// callsign in the session, or 0 if not found.
+func (d *DB) FindActivePilotByCallsign(sessionID, callsign string) (int, error) {
+	var id int
+	err := d.db.QueryRow(
+		`SELECT id FROM pilots WHERE session_id = ? AND callsign = ? AND active = TRUE`,
+		sessionID, callsign,
+	).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
 }
 
 // DeactivatePilot sets a pilot's active flag to FALSE.

@@ -102,11 +102,12 @@
     <div id="step-channel" class="setup-step hidden">
       <h2 class="step-title">CHANNEL PREFERENCE</h2>
       <div class="channel-pref">
-        <button id="btn-auto-channel" class="btn btn-primary btn-large channel-pref-btn active">ASSIGN ME THE BEST CHANNEL</button>
+        <button id="btn-auto-channel" class="btn btn-secondary btn-large channel-pref-btn active">ASSIGN ME THE BEST CHANNEL</button>
         <button id="btn-lock-channel" class="btn btn-secondary btn-large channel-pref-btn">I'M LOCKED TO A CHANNEL</button>
       </div>
       <div id="channel-picker" class="channel-picker hidden"></div>
       <button id="btn-join-session" class="btn btn-primary btn-large btn-join-final">JOIN</button>
+      <button id="btn-channel-back" class="btn btn-secondary btn-large">BACK</button>
       <div id="join-error" class="error-msg hidden"></div>
     </div>
   </div>
@@ -134,8 +135,11 @@
         </div>
       </div>
       <div class="live-indicator">
-        <span class="live-dot"></span>
-        <span class="live-text">LIVE</span>
+        <div class="live-status">
+          <span class="live-dot"></span>
+          <span class="live-text">LIVE</span>
+        </div>
+        <span id="pilot-count" class="pilot-count"></span>
       </div>
     </div>
 
@@ -149,8 +153,7 @@
     <div id="pilot-list" class="pilot-list"></div>
 
     <div class="session-footer">
-      <p id="pilot-count" class="pilot-count"></p>
-      <button id="btn-leave" class="btn btn-danger btn-large">I'M LEAVING</button>
+      <canvas id="spectrum-canvas"></canvas>
     </div>
   </div>
 
@@ -158,7 +161,7 @@
   <div id="pilot-actions" class="action-sheet hidden">
     <div class="action-sheet-content">
       <h3 class="action-sheet-title">OPTIONS</h3>
-      <button id="btn-change-channel" class="btn btn-secondary btn-large">CHANGE CHANNEL</button>
+      <button id="btn-change-channel" class="btn btn-secondary btn-large">CHANGE CHANNEL / VIDEO</button>
       <button id="btn-change-callsign" class="btn btn-secondary btn-large">CHANGE CALLSIGN</button>
       <button id="btn-leave-rotation" class="btn btn-danger btn-large">LEAVE SESSION</button>
       <button id="btn-action-cancel" class="btn btn-secondary btn-large">CANCEL</button>
@@ -194,7 +197,8 @@
       <h3 class="action-sheet-title">HEADS UP</h3>
       <div id="displacement-list" class="displacement-list"></div>
       <p class="displacement-note">VERIFY WITH THEM BEFORE CONTINUING</p>
-      <button id="btn-displacement-confirm" class="btn btn-primary btn-large">JOIN ANYWAY</button>
+      <button id="btn-displacement-confirm" class="btn btn-primary btn-large">MOVE EVERYONE</button>
+      <button id="btn-displacement-just-me" class="btn btn-secondary btn-large">JUST MOVE ME</button>
       <button id="btn-displacement-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>
   </div>
@@ -205,6 +209,7 @@
       <h3 class="action-sheet-title">SELECT CHANNEL</h3>
       <button id="btn-auto-reassign" class="btn btn-primary btn-large">AUTO-ASSIGN BEST</button>
       <div id="channel-change-picker" class="channel-picker"></div>
+      <button id="btn-change-video-system" class="btn btn-secondary btn-large">CHANGE VIDEO SYSTEM</button>
       <button id="btn-channel-change-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>
   </div>
