@@ -754,10 +754,19 @@
         }
       }
 
-      // Update tracked assignment and sync callsign/video from server.
-      if (state.pilotId && data.pilots) {
+      // If session has no pilots or our pilot isn't in it, abandon it.
+      if (!data.pilots || data.pilots.length === 0) {
+        clearState();
+        stopPolling();
+        validateAndShowLanding();
+        return;
+      }
+
+      var foundSelf = false;
+      if (state.pilotId) {
         for (var j = 0; j < data.pilots.length; j++) {
           if (data.pilots[j].ID === state.pilotId) {
+            foundSelf = true;
             state.myChannel = data.pilots[j].AssignedChannel;
             state.myFreqMHz = data.pilots[j].AssignedFreqMHz;
             if (!state.callsign) state.callsign = data.pilots[j].Callsign;
@@ -772,13 +781,20 @@
         }
       }
 
+      if (!foundSelf) {
+        clearState();
+        stopPolling();
+        validateAndShowLanding();
+        return;
+      }
+
       renderPilotList(data.pilots);
     } catch (err) {
-      // Session may have expired
+      // Session may have expired or been deleted
       if (err.message && err.message.includes('not found')) {
         clearState();
         stopPolling();
-        showScreen('landing');
+        validateAndShowLanding();
       }
     }
   }
