@@ -1,4 +1,4 @@
-# Skwad
+# <img src="skwad-icon.svg" width="48" height="48" alt="Skwad icon"> Skwad
 
 A frequency coordinator for FPV drone pilots. When multiple pilots fly together, everyone needs to be on a different video channel to avoid interference. Skwad handles the channel math so pilots can scan a QR code, enter their gear info, and get told which channel to use.
 
@@ -28,17 +28,17 @@ The server starts on port 8080 by default. Set `PORT`, `DB_PATH`, and `STATIC_DI
 
 ## Supported Video Systems
 
-| System | Channels | Notes |
-|--------|----------|-------|
-| **Analog 5.8 GHz** | R1–R8 (Race Band) | 5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917 MHz |
-| **HDZero** | R1–R8 (Race Band) | Same frequencies as analog |
-| **DJI V1 / Vista** | 4 stock, 8 FCC-unlocked | Different center frequencies than Race Band |
-| **DJI O3** | 3 stock (20 MHz), 7 FCC (20 MHz), 1 at 40 MHz | 40 MHz mode only has one channel: 5795 MHz |
-| **DJI O4 / O4 Pro** | 3–7 channels depending on mode | Supports 20/40/60 MHz bandwidth, Race Mode with Goggles 3/N3 |
-| **Walksnail Avatar** | Standard mode (same as DJI V1) or Race Mode (Race Band) | |
-| **OpenIPC** | Single channel: WiFi-165 at 5825 MHz | |
+| System | Channels | Bandwidth | Notes |
+|--------|----------|-----------|-------|
+| **Analog 5.8 GHz** | R1–R8 (Race Band) | 20 MHz | 5658–5917 MHz |
+| **HDZero** | R1–R8 (Race Band) | 20 MHz | Same frequencies as analog |
+| **DJI V1 / Vista** | 4 stock, 8 FCC | 20 MHz | Different center frequencies than Race Band |
+| **DJI O3** | 3 stock, 7 FCC (20 MHz); 1 ch at 40 MHz | 20/40 MHz | 40 MHz: single channel at 5795 MHz |
+| **DJI O4 / O4 Pro** | 3 stock, 7 FCC (20 MHz); 1–3 at 40 MHz; 1 at 60 MHz | 20/40/60 MHz | Race Mode (Goggles 3/N3) uses Race Band |
+| **Walksnail Avatar** | Standard (same as DJI V1) or Race Mode (Race Band) | 20 MHz | FCC unlock applies to standard mode |
+| **OpenIPC** | WiFi-165 | 20 MHz | Single channel at 5825 MHz |
 
-Available channels depend on the pilot's settings: FCC unlock status, which goggles they use (for DJI O4 Race Mode), and their bandwidth setting.
+Available channels depend on the pilot's settings: FCC unlock status, which goggles they use (for DJI O4 Race Mode), and their bandwidth setting. See [fpv-optimizer.md](fpv-optimizer.md) for the complete channel tables.
 
 ## How Spacing Works
 
@@ -63,6 +63,8 @@ Examples:
 - DJI O4 at 60 MHz next to analog (60 + 20): need **50 MHz** center-to-center
 
 The 10 MHz guard band provides a safety margin beyond the signal edges.
+
+For a deeper dive into the optimization logic, frequency tables, and conflict detection, see [fpv-optimizer.md](fpv-optimizer.md).
 
 ## How the Optimizer Works
 

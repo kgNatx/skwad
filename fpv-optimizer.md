@@ -10,19 +10,74 @@ FPV video transmitters all share the 5.8 GHz band, but different systems (analog
 
 ## Frequency Tables
 
-Skwad knows the channel tables for every major FPV video system:
+Skwad knows the channel tables for every major FPV video system. The available channels depend on the pilot's settings: FCC unlock status, goggles (for DJI O4 Race Mode), and bandwidth setting.
 
-| System | Channels | Notes |
-|--------|----------|-------|
-| **Analog 5.8 GHz** | R1-R8 (Race Band) | 5658, 5695, 5732, 5769, 5806, 5843, 5880, 5917 MHz |
-| **HDZero** | R1-R8 (Race Band) | Same frequencies as analog |
-| **DJI V1 / Vista** | 4 stock, 8 FCC-unlocked | Different center frequencies than Race Band |
-| **DJI O3** | 3 stock (20 MHz), 7 FCC (20 MHz), 1 at 40 MHz | 40 MHz mode only has one channel: 5795 MHz |
-| **DJI O4 / O4 Pro** | 3-7 channels depending on mode | Supports 20/40/60 MHz bandwidth, Race Mode with Goggles 3/N3 |
-| **Walksnail Avatar** | Standard mode (same as DJI V1) or Race Mode (Race Band) | |
-| **OpenIPC** | Single channel: WiFi-165 at 5825 MHz | |
+### Race Band (Analog, HDZero)
 
-The available channels depend on the pilot's settings: whether they have FCC unlock, which goggles they use (for DJI O4 Race Mode), and their bandwidth setting.
+All analog and HDZero systems use the standard Race Band channels:
+
+| Channel | R1 | R2 | R3 | R4 | R5 | R6 | R7 | R8 |
+|---------|----|----|----|----|----|----|----|----|
+| **MHz** | 5658 | 5695 | 5732 | 5769 | 5806 | 5843 | 5880 | 5917 |
+
+Occupied bandwidth: 20 MHz per channel.
+
+### DJI V1 / Vista
+
+| Channel | CH1 | CH2 | CH3 | CH4 | CH5 | CH6 | CH7 | CH8 |
+|---------|-----|-----|-----|-----|-----|-----|-----|-----|
+| **MHz** | 5660 | 5695 | 5735 | 5770 | 5805 | 5878 | 5914 | 5839 |
+| **Stock** | | | yes | yes | yes | | | yes |
+| **FCC** | yes | yes | yes | yes | yes | yes | yes | yes |
+
+Stock pilots get 4 channels (CH3, CH4, CH5, CH8). FCC unlock enables all 8. Occupied bandwidth: 20 MHz.
+
+### DJI O3
+
+**20 MHz bandwidth:**
+
+| Channel | CH1 | CH2 | CH3 | CH4 | CH5 | CH6 | CH7 |
+|---------|-----|-----|-----|-----|-----|-----|-----|
+| **MHz** | 5669 | 5705 | 5741 | 5769 | 5805 | 5840 | 5876 |
+| **Stock** | | | | yes | yes | yes | |
+| **FCC** | yes | yes | yes | yes | yes | yes | yes |
+
+Stock pilots get 3 channels (CH4, CH5, CH6 — labeled CH1-CH3 in stock mode). FCC unlock enables all 7.
+
+**40 MHz bandwidth:** Single channel at 5795 MHz (same for stock and FCC).
+
+### DJI O4 / O4 Pro
+
+**20 MHz bandwidth:**
+
+| Channel | CH1 | CH2 | CH3 | CH4 | CH5 | CH6 | CH7 |
+|---------|-----|-----|-----|-----|-----|-----|-----|
+| **MHz** | 5669 | 5705 | 5741 | 5769 | 5790 | 5815 | 5876 |
+| **Stock** | | | | yes | yes | yes | |
+| **FCC** | yes | yes | yes | yes | yes | yes | yes |
+
+**40 MHz bandwidth:**
+
+| Channel | CH1 | CH2 | CH3 |
+|---------|-----|-----|-----|
+| **MHz** | 5735 | 5795 | 5855 |
+| **Stock** | | yes | |
+| **FCC** | yes | yes | yes |
+
+Stock gets 1 channel (5795). FCC unlock enables all 3.
+
+**60 MHz bandwidth:** Single channel at 5795 MHz.
+
+**Race Mode (Goggles 3 / Goggles N3 only):** Uses standard Race Band (R1-R8), same as analog. Not available with Goggles 2 or Integra.
+
+### Walksnail Avatar
+
+- **Standard mode:** Same channel table as DJI V1 (4 stock / 8 FCC). Occupied bandwidth: 20 MHz.
+- **Race mode:** Uses standard Race Band (R1-R8). Occupied bandwidth: 20 MHz.
+
+### OpenIPC / Other
+
+Single channel: WiFi-165 at 5825 MHz. Occupied bandwidth: 20 MHz.
 
 ## How Spacing Works
 
