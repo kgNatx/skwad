@@ -10,6 +10,6 @@ FROM alpine:3.19
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=builder /build/skwad .
-COPY static[/] ./static/
+COPY --from=builder /build/static/ ./static/
 EXPOSE 8080
 CMD ["./skwad"]
