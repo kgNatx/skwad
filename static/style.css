@@ -262,10 +262,12 @@ body {
 /* Landing Footer */
 .landing-footer {
   margin-top: 32px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 400;
   color: #666;
   letter-spacing: 0.5px;
+  text-align: center;
+  line-height: 1.6;
 }
 
 .footer-link {
