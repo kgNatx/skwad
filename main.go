@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kyleg/skwad/api"
 	"github.com/kyleg/skwad/db"
@@ -33,6 +34,20 @@ func main() {
 		log.Fatalf("Failed to open database: %v", err)
 	}
 	defer database.Close()
+
+	// Start background cleanup of expired sessions.
+	go func() {
+		ticker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			deleted, err := database.DeleteExpiredSessions()
+			if err != nil {
+				log.Printf("Cleanup error: %v", err)
+			} else if deleted > 0 {
+				log.Printf("Cleaned up %d expired session(s)", deleted)
+			}
+		}
+	}()
 
 	srv := api.NewServer(database)
 
