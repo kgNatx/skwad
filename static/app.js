@@ -2057,24 +2057,27 @@
     $('recent-sessions').classList.add('hidden');
 
     // Validate all sessions in parallel
-    var validated = [];
-    var results = await Promise.allSettled(recent.map(function (entry) {
-      return apiGet('/api/sessions/' + entry.code).then(function () {
-        return entry;
+    try {
+      var validated = [];
+      var results = await Promise.allSettled(recent.map(function (entry) {
+        return apiGet('/api/sessions/' + entry.code).then(function () {
+          return entry;
+        });
+      }));
+      results.forEach(function (result) {
+        if (result.status === 'fulfilled') {
+          validated.push(result.value);
+        }
       });
-    }));
-    results.forEach(function (result) {
-      if (result.status === 'fulfilled') {
-        validated.push(result.value);
-      }
-    });
 
-    // Update localStorage with only valid sessions
-    setRecentSessions(validated);
-
-    // Render and show
-    renderRecentSessions(validated);
-    document.querySelector('.landing-buttons').style.display = '';
+      // Update localStorage with only valid sessions
+      setRecentSessions(validated);
+      renderRecentSessions(validated);
+    } catch (e) {
+      renderRecentSessions([]);
+    } finally {
+      document.querySelector('.landing-buttons').style.display = '';
+    }
   }
 
   function renderRecentSessions(sessions) {

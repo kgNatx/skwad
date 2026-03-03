@@ -238,6 +238,7 @@ body {
   border: 1px solid #333;
   border-radius: 12px;
   cursor: pointer;
+  font-family: inherit;
   -webkit-tap-highlight-color: transparent;
 }
 
