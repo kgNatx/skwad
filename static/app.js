@@ -315,6 +315,7 @@
     apiGet('/api/config').then(function (config) {
       if (config.show_fpvfc_link) {
         $('fpvfc-link').classList.remove('hidden');
+        $('fpvfc-link-qr').classList.remove('hidden');
       }
     }).catch(function () {
       // Silently ignore — link stays hidden
@@ -841,12 +842,12 @@
     var dpr = window.devicePixelRatio || 1;
     var rect = canvas.getBoundingClientRect();
     var w = rect.width * dpr;
-    var h = 96 * dpr;
+    var h = 120 * dpr;
     canvas.width = w;
     canvas.height = h;
     ctx.scale(dpr, dpr);
     var cw = rect.width;
-    var ch = 96;
+    var ch = 120;
 
     // Frequency range
     var fMin = 5640;
@@ -955,7 +956,7 @@
         }
       }
       item.tier = tier;
-      item.labelY = tierBaseY - tier * (labelH + 2);
+      item.labelY = Math.max(labelH, tierBaseY - tier * (labelH + 2));
     });
 
     // Draw waveform humps
@@ -1077,21 +1078,21 @@
       var info = document.createElement('div');
       info.className = 'pilot-info';
 
-      var nameRow = document.createElement('div');
-      var nameEl = el('span', { className: 'pilot-callsign', textContent: p.Callsign });
-      nameRow.appendChild(nameEl);
+      var nameEl = el('div', { className: 'pilot-callsign', textContent: p.Callsign });
+      info.appendChild(nameEl);
+
+      // Badge row: system badge + YOU badge
+      var badgeRow = el('div', { className: 'pilot-badge-row' });
+      var sysLabel = SYSTEM_LABELS[p.VideoSystem] || p.VideoSystem.toUpperCase();
+      var badge = el('span', { className: 'pilot-system-badge', textContent: sysLabel });
+      badgeRow.appendChild(badge);
 
       if (isMe) {
         var youBadge = el('span', { className: 'pilot-you-badge', textContent: 'YOU' });
-        nameRow.appendChild(youBadge);
+        badgeRow.appendChild(youBadge);
       }
 
-      info.appendChild(nameRow);
-
-      // System badge
-      var sysLabel = SYSTEM_LABELS[p.VideoSystem] || p.VideoSystem.toUpperCase();
-      var badge = el('span', { className: 'pilot-system-badge', textContent: sysLabel });
-      info.appendChild(badge);
+      info.appendChild(badgeRow);
 
       // Buddy info
       if (buddyIdx > 0 && buddyGroups[p.BuddyGroup] && buddyGroups[p.BuddyGroup].length > 1) {
