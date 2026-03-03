@@ -320,6 +320,100 @@
     }).catch(function () {
       // Silently ignore — link stays hidden
     });
+
+    // QR scanner — always show on devices with cameras (mobile)
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      $('btn-scan-qr').classList.remove('hidden');
+    }
+    $('btn-scan-qr').addEventListener('click', openQRScanner);
+    $('btn-scanner-close').addEventListener('click', closeQRScanner);
+  }
+
+  var scannerStream = null;
+  var scannerInterval = null;
+
+  function openQRScanner() {
+    $('qr-scanner').classList.remove('hidden');
+    var video = $('qr-video');
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    })
+      .then(function (stream) {
+        scannerStream = stream;
+        video.srcObject = stream;
+        video.play();
+        startScanning(video);
+      })
+      .catch(function () {
+        closeQRScanner();
+        showError('landing-error', 'CAMERA ACCESS DENIED');
+      });
+  }
+
+  function startScanning(video) {
+    var canvas = document.createElement('canvas');
+    var ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    var useNative = 'BarcodeDetector' in window;
+    var detector = useNative ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+    var scanning = false;
+    var hasJsQR = typeof jsQR === 'function';
+    var matched = false;
+
+    scannerInterval = setInterval(function () {
+      if (video.readyState < 2 || scanning || matched) return;
+      var w = video.videoWidth;
+      var h = video.videoHeight;
+      if (!w || !h) return;
+
+      // Scale down large frames for jsQR performance
+      var scale = 1;
+      if (!useNative && w > 640) scale = 640 / w;
+      var sw = Math.round(w * scale);
+      var sh = Math.round(h * scale);
+      canvas.width = sw;
+      canvas.height = sh;
+      ctx.drawImage(video, 0, 0, sw, sh);
+
+      if (useNative) {
+        scanning = true;
+        detector.detect(video).then(function (barcodes) {
+          scanning = false;
+          handleResult(barcodes);
+        }).catch(function () { scanning = false; });
+      } else if (hasJsQR) {
+        var imageData = ctx.getImageData(0, 0, sw, sh);
+        var qr = jsQR(imageData.data, sw, sh, { inversionAttempts: 'dontInvert' });
+        if (qr) handleResult([{ rawValue: qr.data }]);
+      }
+    }, 300);
+
+    function handleResult(barcodes) {
+      if (!barcodes || barcodes.length === 0 || matched) return;
+      var raw = (barcodes[0].rawValue || '').trim();
+      if (raw) {
+        matched = true;
+        closeQRScanner();
+        // QR alphanumeric mode uppercases URLs — normalize the path
+        try {
+          var parsed = new URL(raw);
+          parsed.pathname = parsed.pathname.toLowerCase();
+          window.location.href = parsed.href;
+        } catch (e) {
+          window.location.href = raw;
+        }
+      }
+    }
+  }
+
+  function closeQRScanner() {
+    $('qr-scanner').classList.add('hidden');
+    if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
+    if (scannerStream) {
+      scannerStream.getTracks().forEach(function (t) { t.stop(); });
+      scannerStream = null;
+    }
+    $('qr-video').srcObject = null;
   }
 
   async function handleStartSession() {
@@ -382,6 +476,9 @@
     $('input-callsign').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') $('btn-callsign-next').click();
     });
+    $('btn-callsign-cancel').addEventListener('click', function () {
+      validateAndShowLanding();
+    });
   }
 
   // ── Setup: Step 2 — Video System ──────────────────────────────
@@ -398,6 +495,9 @@
         state.walksnailMode = '';
         startFollowUpFlow(sys);
       });
+    });
+    $('btn-video-cancel').addEventListener('click', function () {
+      validateAndShowLanding();
     });
   }
 
@@ -478,6 +578,9 @@
 
     // Next button for follow-up step
     $('btn-followup-next').addEventListener('click', goToChannelStep);
+    $('btn-followup-cancel').addEventListener('click', function () {
+      validateAndShowLanding();
+    });
   }
 
   function handleFccSelected() {

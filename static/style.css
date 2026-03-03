@@ -291,6 +291,34 @@ body {
   box-sizing: border-box;
 }
 
+.join-row {
+  display: flex;
+  gap: 12px;
+}
+
+.join-row-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-scan-qr {
+  background: none;
+  border: 2px solid #555555;
+  border-radius: 12px;
+  color: #888888;
+  padding: 0 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-scan-qr:active {
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
 .input-code {
   flex: 1;
   min-width: 0;
@@ -716,6 +744,51 @@ body {
   color: #aaaaaa;
   text-align: center;
   word-break: break-all;
+}
+
+/* ===== QR SCANNER ===== */
+.qr-scanner-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #0a0a0a;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-scanner-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.qr-scanner-title {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+
+.qr-scanner-viewfinder {
+  width: 280px;
+  height: 280px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 3px solid #333333;
+  background: #000000;
+}
+
+.qr-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* ===== BUDDY GROUP COLORS ===== */
