@@ -222,6 +222,35 @@
     localStorage.removeItem('skwad_pilot');
   }
 
+  // ── Recent Sessions ────────────────────────────────────────────
+  var RECENT_SESSIONS_KEY = 'skwad_recent_sessions';
+  var MAX_RECENT_SESSIONS = 10;
+
+  function getRecentSessions() {
+    try {
+      return JSON.parse(localStorage.getItem(RECENT_SESSIONS_KEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveRecentSession(code, pilotId, callsign) {
+    var sessions = getRecentSessions();
+    // Remove existing entry for this session code (if rejoining)
+    sessions = sessions.filter(function (s) { return s.code !== code; });
+    // Add to front
+    sessions.unshift({ code: code, pilotId: pilotId, callsign: callsign });
+    // Cap at max
+    if (sessions.length > MAX_RECENT_SESSIONS) {
+      sessions = sessions.slice(0, MAX_RECENT_SESSIONS);
+    }
+    localStorage.setItem(RECENT_SESSIONS_KEY, JSON.stringify(sessions));
+  }
+
+  function setRecentSessions(sessions) {
+    localStorage.setItem(RECENT_SESSIONS_KEY, JSON.stringify(sessions));
+  }
+
   // ── Channel pool lookup (mirrors Go logic) ────────────────────
   // Uses getEffectiveVideoSystem() so it works during setup (when
   // state.videoSystem is still the raw UI value like 'walksnail').
@@ -618,6 +647,7 @@
       var pilot = await apiPost('/api/sessions/' + state.sessionCode + '/join' + rebalParam, body);
       state.pilotId = pilot.ID;
       saveState();
+      saveRecentSession(state.sessionCode, pilot.ID, state.callsign);
       enterSessionView();
     } catch (err) {
       var msg = err.message || '';
