@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,6 +29,8 @@ func main() {
 	if staticDir == "" {
 		staticDir = "./static"
 	}
+
+	showFPVFCLink := os.Getenv("SHOW_FPVFC_LINK") != "false"
 
 	database, err := db.New(dbPath)
 	if err != nil {
@@ -57,6 +60,14 @@ func main() {
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintln(w, "ok")
+	})
+
+	// Config endpoint (feature flags).
+	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{
+			"show_fpvfc_link": showFPVFCLink,
+		})
 	})
 
 	// API routes.

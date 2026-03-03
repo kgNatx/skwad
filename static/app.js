@@ -310,6 +310,15 @@
     $('input-code').addEventListener('input', function (e) {
       e.target.value = e.target.value.toUpperCase().replace(/[^A-F0-9]/g, '');
     });
+
+    // Fetch config to show/hide FPVFC link
+    apiGet('/api/config').then(function (config) {
+      if (config.show_fpvfc_link) {
+        $('fpvfc-link').classList.remove('hidden');
+      }
+    }).catch(function () {
+      // Silently ignore — link stays hidden
+    });
   }
 
   async function handleStartSession() {

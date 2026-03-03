@@ -259,6 +259,24 @@ body {
   color: #aaa;
 }
 
+/* Landing Footer */
+.landing-footer {
+  margin-top: 32px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #666;
+  letter-spacing: 0.5px;
+}
+
+.footer-link {
+  color: #888;
+  text-decoration: none;
+}
+
+.footer-link:hover {
+  color: #aaa;
+}
+
 .join-input-area {
   width: 100%;
   max-width: 400px;
