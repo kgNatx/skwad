@@ -2038,8 +2038,85 @@
       // Returning user with active session
       enterSessionView();
     } else {
-      showScreen('landing');
+      // Validate recent sessions before showing landing
+      validateAndShowLanding();
     }
+  }
+
+  async function validateAndShowLanding() {
+    var recent = getRecentSessions();
+    if (recent.length === 0) {
+      renderRecentSessions([]);
+      showScreen('landing');
+      return;
+    }
+
+    // Show landing with buttons hidden while validating
+    showScreen('landing');
+    document.querySelector('.landing-buttons').style.display = 'none';
+    $('recent-sessions').classList.add('hidden');
+
+    // Validate all sessions in parallel
+    var validated = [];
+    var results = await Promise.allSettled(recent.map(function (entry) {
+      return apiGet('/api/sessions/' + entry.code).then(function () {
+        return entry;
+      });
+    }));
+    results.forEach(function (result) {
+      if (result.status === 'fulfilled') {
+        validated.push(result.value);
+      }
+    });
+
+    // Update localStorage with only valid sessions
+    setRecentSessions(validated);
+
+    // Render and show
+    renderRecentSessions(validated);
+    document.querySelector('.landing-buttons').style.display = '';
+  }
+
+  function renderRecentSessions(sessions) {
+    var container = $('recent-sessions');
+    var list = $('recent-sessions-list');
+    clearChildren(list);
+
+    if (sessions.length === 0) {
+      container.classList.add('hidden');
+      return;
+    }
+
+    sessions.forEach(function (entry) {
+      var btn = document.createElement('button');
+      btn.className = 'btn-recent-session';
+
+      var codeSpan = document.createElement('span');
+      codeSpan.className = 'recent-session-code';
+      codeSpan.textContent = entry.code;
+
+      var sepSpan = document.createElement('span');
+      sepSpan.className = 'recent-session-sep';
+      sepSpan.textContent = '\u2014';
+
+      var callsignSpan = document.createElement('span');
+      callsignSpan.className = 'recent-session-callsign';
+      callsignSpan.textContent = entry.callsign;
+
+      btn.appendChild(codeSpan);
+      btn.appendChild(sepSpan);
+      btn.appendChild(callsignSpan);
+
+      btn.addEventListener('click', function () {
+        state.sessionCode = entry.code;
+        state.pilotId = entry.pilotId;
+        saveState();
+        enterSessionView();
+      });
+      list.appendChild(btn);
+    });
+
+    container.classList.remove('hidden');
   }
 
   // ── Init ──────────────────────────────────────────────────────

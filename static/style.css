@@ -200,6 +200,64 @@ body {
   padding: 10px 16px;
 }
 
+/* Recent Sessions */
+.recent-sessions {
+  width: 100%;
+  max-width: 400px;
+  margin-top: 24px;
+}
+
+.recent-sessions-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #888;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.recent-sessions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-recent-session {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 16px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fff;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-recent-session:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+.recent-session-code {
+  color: #fff;
+}
+
+.recent-session-sep {
+  color: #555;
+}
+
+.recent-session-callsign {
+  color: #aaa;
+}
+
 .join-input-area {
   width: 100%;
   max-width: 400px;
