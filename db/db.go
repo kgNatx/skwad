@@ -98,25 +98,32 @@ func (d *DB) Close() error {
 }
 
 // CreateSession generates a new session with a 6-char hex code that expires in 24 hours.
+// Retries with a new code if a collision occurs (primary key conflict).
 func (d *DB) CreateSession() (*Session, error) {
-	id := generateCode()
 	now := time.Now().UTC()
 	expires := now.Add(24 * time.Hour)
 
-	_, err := d.db.Exec(
-		`INSERT INTO sessions (id, created_at, expires_at, version) VALUES (?, ?, ?, 1)`,
-		id, now, expires,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("insert session: %w", err)
+	const maxRetries = 5
+	for i := 0; i < maxRetries; i++ {
+		id := generateCode()
+		_, err := d.db.Exec(
+			`INSERT INTO sessions (id, created_at, expires_at, version) VALUES (?, ?, ?, 1)`,
+			id, now, expires,
+		)
+		if err != nil {
+			if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "PRIMARY") {
+				continue // collision, retry with new code
+			}
+			return nil, fmt.Errorf("insert session: %w", err)
+		}
+		return &Session{
+			ID:        id,
+			CreatedAt: now,
+			ExpiresAt: expires,
+			Version:   1,
+		}, nil
 	}
-
-	return &Session{
-		ID:        id,
-		CreatedAt: now,
-		ExpiresAt: expires,
-		Version:   1,
-	}, nil
+	return nil, fmt.Errorf("failed to generate unique session ID after %d attempts", maxRetries)
 }
 
 // GetSession retrieves a session by ID. Returns an error if the session does

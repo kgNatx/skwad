@@ -390,6 +390,26 @@ func TestUpdatePilotCallsign_Duplicate(t *testing.T) {
 	}
 }
 
+func TestCreateSession_CollisionRetry(t *testing.T) {
+	d := newTestDB(t)
+
+	first, err := d.CreateSession()
+	if err != nil {
+		t.Fatalf("first CreateSession: %v", err)
+	}
+
+	// Creating many sessions should never fail — retries handle collisions.
+	for i := 0; i < 50; i++ {
+		sess, err := d.CreateSession()
+		if err != nil {
+			t.Fatalf("CreateSession #%d: %v", i, err)
+		}
+		if sess.ID == first.ID {
+			t.Fatalf("collision not retried: got duplicate ID %q", sess.ID)
+		}
+	}
+}
+
 func TestGenerateCode(t *testing.T) {
 	code := generateCode()
 	if len(code) != 6 {
