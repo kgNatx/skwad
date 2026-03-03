@@ -2128,9 +2128,12 @@
 
       btn.addEventListener('click', function () {
         state.sessionCode = entry.code;
-        state.pilotId = entry.pilotId;
+        state.pilotId = null;
         saveState();
-        enterSessionView();
+        state.callsign = entry.callsign;
+        $('input-callsign').value = entry.callsign;
+        showScreen('setup');
+        showStep('step-callsign');
       });
       list.appendChild(btn);
     });
