@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>SKWAD - FPV Frequency Coordinator</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <!-- Landing Page -->
+  <div id="screen-landing" class="screen">
+    <div class="landing-content">
+      <h1 class="landing-title">SKWAD</h1>
+      <p class="landing-subtitle">FPV FREQUENCY COORDINATOR</p>
+      <div class="landing-buttons">
+        <button id="btn-start" class="btn btn-primary btn-large">START SESSION</button>
+        <button id="btn-join" class="btn btn-secondary btn-large">JOIN SESSION</button>
+      </div>
+      <div id="join-input-area" class="join-input-area hidden">
+        <input id="input-code" type="text" class="input-code" maxlength="6" placeholder="ENTER CODE" autocapitalize="characters" autocomplete="off" spellcheck="false">
+        <button id="btn-go" class="btn btn-primary btn-go">GO</button>
+      </div>
+      <div id="landing-error" class="error-msg hidden"></div>
+    </div>
+  </div>
+
+  <!-- Pilot Setup -->
+  <div id="screen-setup" class="screen hidden">
+
+    <!-- Step 1: Callsign -->
+    <div id="step-callsign" class="setup-step">
+      <h2 class="step-title">YOUR CALLSIGN</h2>
+      <input id="input-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20">
+      <button id="btn-callsign-next" class="btn btn-primary btn-large">NEXT</button>
+      <div id="callsign-error" class="error-msg hidden"></div>
+    </div>
+
+    <!-- Step 2: Video System -->
+    <div id="step-video" class="setup-step hidden">
+      <h2 class="step-title">VIDEO SYSTEM</h2>
+      <div class="system-grid">
+        <button class="btn btn-system" data-system="analog">ANALOG 5.8GHz</button>
+        <button class="btn btn-system" data-system="dji_v1">DJI V1 / VISTA</button>
+        <button class="btn btn-system" data-system="dji_o3">DJI O3</button>
+        <button class="btn btn-system" data-system="dji_o4">DJI O4 / O4 PRO</button>
+        <button class="btn btn-system" data-system="hdzero">HDZERO</button>
+        <button class="btn btn-system" data-system="walksnail">WALKSNAIL AVATAR</button>
+        <button class="btn btn-system" data-system="openipc">OPENIPC / OTHER</button>
+      </div>
+    </div>
+
+    <!-- Step 3: System-specific follow-ups -->
+    <div id="step-followup" class="setup-step hidden">
+      <h2 id="followup-title" class="step-title"></h2>
+
+      <div id="followup-fcc" class="followup-group hidden">
+        <p class="followup-label">FCC UNLOCKED?</p>
+        <div class="btn-row">
+          <button class="btn btn-option" data-fcc="true">YES</button>
+          <button class="btn btn-option" data-fcc="false">NO</button>
+        </div>
+      </div>
+
+      <div id="followup-bandwidth" class="followup-group hidden">
+        <p class="followup-label">BANDWIDTH</p>
+        <div id="bandwidth-buttons" class="btn-row"></div>
+      </div>
+
+      <div id="followup-goggles" class="followup-group hidden">
+        <p class="followup-label">WHICH GOGGLES?</p>
+        <div class="system-grid">
+          <button class="btn btn-option" data-goggles="goggles_3">GOGGLES 3</button>
+          <button class="btn btn-option" data-goggles="goggles_n3">GOGGLES N3</button>
+          <button class="btn btn-option" data-goggles="goggles_2">GOGGLES 2</button>
+          <button class="btn btn-option" data-goggles="integra">INTEGRA</button>
+        </div>
+      </div>
+
+      <div id="followup-racemode" class="followup-group hidden">
+        <p class="followup-label">RACE MODE?</p>
+        <div class="btn-row">
+          <button class="btn btn-option" data-racemode="true">YES</button>
+          <button class="btn btn-option" data-racemode="false">NO</button>
+        </div>
+      </div>
+
+      <div id="followup-walksnail-mode" class="followup-group hidden">
+        <p class="followup-label">MODE</p>
+        <div class="btn-row">
+          <button class="btn btn-option" data-wsmode="standard">STANDARD</button>
+          <button class="btn btn-option" data-wsmode="race">RACE MODE</button>
+        </div>
+      </div>
+
+      <button id="btn-followup-next" class="btn btn-primary btn-large hidden">NEXT</button>
+    </div>
+
+    <!-- Step 4: Channel Preference -->
+    <div id="step-channel" class="setup-step hidden">
+      <h2 class="step-title">CHANNEL PREFERENCE</h2>
+      <div class="channel-pref">
+        <button id="btn-auto-channel" class="btn btn-primary btn-large channel-pref-btn active">ASSIGN ME THE BEST CHANNEL</button>
+        <button id="btn-lock-channel" class="btn btn-secondary btn-large channel-pref-btn">I'M LOCKED TO A CHANNEL</button>
+      </div>
+      <div id="channel-picker" class="channel-picker hidden"></div>
+      <button id="btn-join-session" class="btn btn-primary btn-large btn-join-final">JOIN</button>
+      <div id="join-error" class="error-msg hidden"></div>
+    </div>
+  </div>
+
+  <!-- Session View -->
+  <div id="screen-session" class="screen hidden">
+    <div class="session-header">
+      <div id="session-code-display" class="session-code" title="Tap to share">
+        <span id="session-code-text"></span>
+        <span class="tap-hint">TAP TO SHARE</span>
+      </div>
+      <div class="live-indicator">
+        <span class="live-dot"></span>
+        <span class="live-text">LIVE</span>
+      </div>
+    </div>
+
+    <div id="pilot-list" class="pilot-list"></div>
+
+    <div class="session-footer">
+      <p id="pilot-count" class="pilot-count"></p>
+      <button id="btn-leave" class="btn btn-danger btn-large">I'M LEAVING</button>
+    </div>
+  </div>
+
+  <!-- QR Code Overlay -->
+  <div id="qr-overlay" class="qr-overlay hidden">
+    <div class="qr-content">
+      <h2 class="qr-title">SCAN TO JOIN</h2>
+      <canvas id="qr-canvas" class="qr-canvas"></canvas>
+      <p id="qr-url" class="qr-url"></p>
+      <button id="btn-qr-close" class="btn btn-secondary btn-large">CLOSE</button>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
