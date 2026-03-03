@@ -449,7 +449,9 @@ body {
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
-  padding-top: env(safe-area-inset-top, 24px);
+  padding-top: 24px;
+  padding-top: calc(24px + env(safe-area-inset-top, 0px));
+  padding-bottom: 0px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: 16px;
   padding-right: 16px;
