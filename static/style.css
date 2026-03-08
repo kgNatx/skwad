@@ -1101,6 +1101,53 @@ body {
   letter-spacing: 1px;
 }
 
+/* ===== ADD PILOT OPTIONS ===== */
+.add-pilot-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.add-pilot-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toggle-label {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #e0e0e0;
+}
+
+.btn-toggle {
+  min-width: 60px;
+  padding: 8px 16px;
+  border: 2px solid #444;
+  border-radius: 8px;
+  background: #1a1a1a;
+  color: #aaa;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-toggle.active {
+  border-color: #33ff33;
+  color: #33ff33;
+  background: rgba(51, 255, 51, 0.1);
+}
+
+.bw-buttons {
+  display: flex;
+  gap: 8px;
+}
+
 /* ===== BUDDY SUGGESTION ===== */
 .buddy-suggestion-text {
   font-size: 18px;

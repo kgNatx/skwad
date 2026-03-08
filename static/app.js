@@ -1842,16 +1842,67 @@
   }
 
   // ── Add Pilot Dialog ────────────────────────────────────────
+  // Systems that need no follow-up options.
+  var SIMPLE_SYSTEMS = ['analog', 'hdzero', 'openipc', 'walksnail_race'];
+  // Systems that need FCC toggle only.
+  var FCC_SYSTEMS = ['dji_v1', 'walksnail_std'];
+  // Systems that need FCC + bandwidth.
+  var BW_SYSTEMS = { dji_o3: [20, 40], dji_o4: [20, 40, 60] };
+
+  var addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0 };
+
   function showAddPilotDialog() {
     $('input-add-callsign').value = '';
     hideError('add-pilot-error');
     document.querySelectorAll('.btn-add-system').forEach(function (b) { b.classList.remove('selected'); });
+    $('add-pilot-options').classList.add('hidden');
+    addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0 };
     $('add-pilot').classList.remove('hidden');
     $('input-add-callsign').focus();
   }
 
   function hideAddPilotDialog() {
     $('add-pilot').classList.add('hidden');
+  }
+
+  function showAddPilotOptions(system) {
+    addPilotState.system = system;
+    addPilotState.fccUnlocked = false;
+    addPilotState.bandwidthMHz = 20;
+
+    // FCC toggle
+    var needsFCC = FCC_SYSTEMS.indexOf(system) !== -1 || BW_SYSTEMS[system];
+    if (needsFCC) {
+      $('add-pilot-fcc').classList.remove('hidden');
+      $('btn-add-fcc').textContent = 'NO';
+      $('btn-add-fcc').classList.remove('active');
+    } else {
+      $('add-pilot-fcc').classList.add('hidden');
+    }
+
+    // Bandwidth buttons
+    var bwOptions = BW_SYSTEMS[system];
+    if (bwOptions) {
+      var bwContainer = $('add-pilot-bw-buttons');
+      clearChildren(bwContainer);
+      bwOptions.forEach(function (bw) {
+        var btn = el('button', {
+          className: 'btn btn-toggle' + (bw === 20 ? ' active' : ''),
+          textContent: bw + ' MHz'
+        });
+        btn.addEventListener('click', function () {
+          addPilotState.bandwidthMHz = bw;
+          bwContainer.querySelectorAll('.btn-toggle').forEach(function (b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+        });
+        bwContainer.appendChild(btn);
+      });
+      $('add-pilot-bw').classList.remove('hidden');
+    } else {
+      $('add-pilot-bw').classList.add('hidden');
+    }
+
+    $('add-pilot-options').classList.remove('hidden');
   }
 
   function initAddPilotDialog() {
@@ -1868,8 +1919,37 @@
         }
         hideError('add-pilot-error');
         var system = btn.dataset.addSystem;
-        addPilot(callsign, system);
+
+        // Highlight selected system.
+        document.querySelectorAll('.btn-add-system').forEach(function (b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+
+        if (SIMPLE_SYSTEMS.indexOf(system) !== -1) {
+          // No follow-up needed — add immediately.
+          addPilot(callsign, system, false, 0);
+        } else {
+          // Show follow-up options.
+          showAddPilotOptions(system);
+        }
       });
+    });
+
+    // FCC toggle
+    $('btn-add-fcc').addEventListener('click', function () {
+      addPilotState.fccUnlocked = !addPilotState.fccUnlocked;
+      $('btn-add-fcc').textContent = addPilotState.fccUnlocked ? 'YES' : 'NO';
+      $('btn-add-fcc').classList.toggle('active', addPilotState.fccUnlocked);
+    });
+
+    // Confirm button
+    $('btn-add-pilot-confirm').addEventListener('click', function () {
+      var callsign = $('input-add-callsign').value.trim();
+      if (!callsign) {
+        showError('add-pilot-error', 'ENTER A CALLSIGN');
+        return;
+      }
+      hideError('add-pilot-error');
+      addPilot(callsign, addPilotState.system, addPilotState.fccUnlocked, addPilotState.bandwidthMHz);
     });
 
     $('btn-add-pilot-cancel').addEventListener('click', hideAddPilotDialog);
@@ -1878,11 +1958,13 @@
     });
   }
 
-  async function addPilot(callsign, videoSystem) {
+  async function addPilot(callsign, videoSystem, fccUnlocked, bandwidthMHz) {
     try {
       await apiPost('/api/sessions/' + state.sessionCode + '/add-pilot', {
         callsign: callsign,
         video_system: videoSystem,
+        fcc_unlocked: fccUnlocked || false,
+        bandwidth_mhz: bandwidthMHz || 0,
       });
       hideAddPilotDialog();
       refreshSession();

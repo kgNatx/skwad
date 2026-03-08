@@ -295,6 +295,17 @@
         <button class="btn btn-system btn-add-system" data-add-system="walksnail_std">WALKSNAIL</button>
         <button class="btn btn-system btn-add-system" data-add-system="openipc">OPENIPC / OTHER</button>
       </div>
+      <div id="add-pilot-options" class="add-pilot-options hidden">
+        <div id="add-pilot-fcc" class="add-pilot-option-row hidden">
+          <label class="toggle-label">FCC UNLOCKED</label>
+          <button id="btn-add-fcc" class="btn btn-toggle">NO</button>
+        </div>
+        <div id="add-pilot-bw" class="add-pilot-option-row hidden">
+          <label class="toggle-label">BANDWIDTH</label>
+          <div id="add-pilot-bw-buttons" class="bw-buttons"></div>
+        </div>
+        <button id="btn-add-pilot-confirm" class="btn btn-primary btn-large">ADD TO SESSION</button>
+      </div>
       <div id="add-pilot-error" class="error-msg hidden"></div>
       <button id="btn-add-pilot-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>
