@@ -174,6 +174,12 @@ func main() {
 		http.ServeFile(w, r, staticDir+"/index.html")
 	})
 
+	// QR alphanumeric mode uppercases URLs — handle /S/{code} the same as /s/{code}.
+	mux.HandleFunc("GET /S/{code}", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		http.ServeFile(w, r, staticDir+"/index.html")
+	})
+
 	// Static file server with no-cache headers so deploys take effect immediately.
 	staticFS := http.FileServer(http.Dir(staticDir))
 	mux.Handle("GET /", noCacheMiddleware(staticFS))

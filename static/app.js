@@ -2141,7 +2141,7 @@
   // ── Client-side routing ───────────────────────────────────────
   function route() {
     var path = window.location.pathname;
-    var match = path.match(/^\/s\/([A-Fa-f0-9]{6})$/);
+    var match = path.match(/^\/[sS]\/([A-Fa-f0-9]{6})$/);
 
     if (match) {
       var code = match[1].toUpperCase();
