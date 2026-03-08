@@ -827,7 +827,11 @@
     // "JOIN" — confirm with displacements
     $('btn-displacement-confirm').addEventListener('click', function () {
       hideDisplacementConfirm();
-      if (state.pendingChannelChange) {
+      if (state.pendingChannelChangeForPilot) {
+        var pending = state.pendingChannelChangeForPilot;
+        state.pendingChannelChangeForPilot = null;
+        commitChannelChangeForPilot(pending.pilotId, pending.body);
+      } else if (state.pendingChannelChange) {
         var body = state.pendingChannelChange;
         state.pendingChannelChange = null;
         commitChannelChange(body);
@@ -837,11 +841,13 @@
     });
     $('btn-displacement-cancel').addEventListener('click', function () {
       state.pendingChannelChange = null;
+      state.pendingChannelChangeForPilot = null;
       hideDisplacementConfirm();
     });
     $('displacement-confirm').addEventListener('click', function (e) {
       if (e.target === $('displacement-confirm')) {
         state.pendingChannelChange = null;
+        state.pendingChannelChangeForPilot = null;
         hideDisplacementConfirm();
       }
     });
@@ -1415,6 +1421,9 @@
       picker.appendChild(btn);
     });
 
+    $('channel-change-title').textContent = 'SELECT CHANNEL';
+    $('btn-auto-reassign').classList.remove('hidden');
+    $('btn-change-video-system').classList.remove('hidden');
     $('channel-change').classList.remove('hidden');
   }
 
@@ -1506,6 +1515,95 @@
     }
   }
 
+  // ── Channel Change for Other Pilot (Leader) ────────────────
+  function getChannelPoolForPilot(pilot) {
+    var sys = pilot.VideoSystem;
+    var fcc = pilot.FCCUnlocked || false;
+    var bw = pilot.BandwidthMHz || 0;
+    var rm = pilot.RaceMode || false;
+    var goggles = pilot.Goggles || '';
+
+    switch (sys) {
+      case 'analog':
+      case 'hdzero':
+        return CHANNELS.raceband;
+      case 'dji_v1':
+        return fcc ? CHANNELS.dji_v1_fcc : CHANNELS.dji_v1_stock;
+      case 'dji_o3':
+        if (bw >= 40) return CHANNELS.dji_o3_40;
+        return fcc ? CHANNELS.dji_o3_fcc : CHANNELS.dji_o3_stock;
+      case 'dji_o4':
+        if (rm && (goggles === 'goggles_3' || goggles === 'goggles_n3'))
+          return CHANNELS.raceband;
+        if (bw >= 60) return CHANNELS.dji_o4_60;
+        if (bw >= 40) return fcc ? CHANNELS.dji_o4_40_fcc : CHANNELS.dji_o4_40_stock;
+        return fcc ? CHANNELS.dji_o4_fcc : CHANNELS.dji_o4_stock;
+      case 'walksnail_std':
+        return fcc ? CHANNELS.dji_v1_fcc : CHANNELS.dji_v1_stock;
+      case 'walksnail_race':
+        return CHANNELS.raceband;
+      case 'openipc':
+        return CHANNELS.openipc;
+      default:
+        return CHANNELS.raceband;
+    }
+  }
+
+  function showChannelChangeForPilot(pilot) {
+    var picker = $('channel-change-picker');
+    clearChildren(picker);
+
+    var pool = getChannelPoolForPilot(pilot);
+    pool.forEach(function (ch) {
+      var nameSpan = el('span', { className: 'ch-name', textContent: ch.name });
+      var freqSpan = el('span', { className: 'ch-freq', textContent: String(ch.freq) });
+      var btn = el('button', { className: 'btn-channel' }, [nameSpan, freqSpan]);
+      btn.addEventListener('click', function () {
+        submitChannelChangeForPilot(pilot.ID, true, ch.freq);
+      });
+      picker.appendChild(btn);
+    });
+
+    // Update the title and hide self-only buttons.
+    $('channel-change-title').textContent = 'CHANGE CHANNEL: ' + pilot.Callsign;
+    $('btn-auto-reassign').classList.add('hidden');
+    $('btn-change-video-system').classList.add('hidden');
+    $('channel-change').classList.remove('hidden');
+  }
+
+  async function submitChannelChangeForPilot(pilotId, locked, freqMHz) {
+    hideChannelChange();
+    var body = { channel_locked: locked, locked_frequency_mhz: freqMHz };
+    try {
+      var preview = await apiPost(
+        '/api/pilots/' + pilotId + '/preview-channel?session=' + state.sessionCode,
+        body
+      );
+      var displaced = preview.displaced || [];
+
+      if (displaced.length > 0) {
+        state.pendingChannelChangeForPilot = { pilotId: pilotId, body: body };
+        showDisplacementPreview(displaced);
+        return;
+      }
+      await commitChannelChangeForPilot(pilotId, body);
+    } catch (err) {
+      refreshSession();
+    }
+  }
+
+  async function commitChannelChangeForPilot(pilotId, body) {
+    try {
+      await apiPut(
+        '/api/pilots/' + pilotId + '/channel?session=' + state.sessionCode,
+        body
+      );
+      refreshSession();
+    } catch (err) {
+      refreshSession();
+    }
+  }
+
   // ── Callsign Change ─────────────────────────────────────────
   function showCallsignChange() {
     $('input-new-callsign').value = state.callsign;
@@ -1573,9 +1671,11 @@
     resetSlideHandle();
     // Show/hide leader-only controls
     if (state.isLeader) {
+      $('btn-change-other-channel').classList.remove('hidden');
       $('btn-transfer-leader').classList.remove('hidden');
       $('slide-remove-track').classList.remove('hidden');
     } else {
+      $('btn-change-other-channel').classList.add('hidden');
       $('btn-transfer-leader').classList.add('hidden');
       $('slide-remove-track').classList.add('hidden');
     }
@@ -1596,6 +1696,11 @@
 
   function initOtherPilotActions() {
     $('btn-other-cancel').addEventListener('click', hideOtherPilotActions);
+    $('btn-change-other-channel').addEventListener('click', function () {
+      if (!otherPilotTarget) return;
+      hideOtherPilotActions();
+      showChannelChangeForPilot(otherPilotTarget);
+    });
     $('other-pilot-actions').addEventListener('click', function (e) {
       if (e.target === $('other-pilot-actions')) hideOtherPilotActions();
     });
