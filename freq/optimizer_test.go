@@ -323,6 +323,60 @@ func TestDetectConflicts_NoConflict(t *testing.T) {
 	}
 }
 
+// ── FindMinimalDisplacement tests ────────────────────────────────
+
+func TestFindMinimalDisplacement_Level0_NoConflict(t *testing.T) {
+	// Two existing pilots well-spaced. New pilot should fit without moving anyone.
+	existing := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
+		{ID: 2, VideoSystem: "analog", PrevChannel: "R5", PrevFreqMHz: 5806},
+	}
+	newPilot := PilotInput{ID: -1, VideoSystem: "analog"}
+
+	result := FindMinimalDisplacement(existing, newPilot)
+
+	if result.Level != 0 {
+		t.Errorf("expected level 0, got %d", result.Level)
+	}
+	// Existing pilots should not have moved.
+	for _, a := range result.Assignments {
+		if a.PilotID == 1 && a.FreqMHz != 5658 {
+			t.Errorf("pilot 1 moved to %d", a.FreqMHz)
+		}
+		if a.PilotID == 2 && a.FreqMHz != 5806 {
+			t.Errorf("pilot 2 moved to %d", a.FreqMHz)
+		}
+	}
+	if result.BuddySuggestion != nil {
+		t.Error("unexpected buddy suggestion at level 0")
+	}
+}
+
+func TestFindMinimalDisplacement_Level0_NewPilotGetsAssignment(t *testing.T) {
+	existing := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
+	}
+	newPilot := PilotInput{ID: -1, VideoSystem: "analog"}
+
+	result := FindMinimalDisplacement(existing, newPilot)
+
+	if result.Level != 0 {
+		t.Errorf("expected level 0, got %d", result.Level)
+	}
+	var found bool
+	for _, a := range result.Assignments {
+		if a.PilotID == -1 {
+			found = true
+			if a.FreqMHz == 0 {
+				t.Error("new pilot has no frequency")
+			}
+		}
+	}
+	if !found {
+		t.Error("new pilot not in assignments")
+	}
+}
+
 func TestDetectConflicts_WideBandDanger(t *testing.T) {
 	// Analog (20 MHz) at 5769 (R4), O3 40 MHz at 5795.
 	// Separation = 26, overlap = 10+20=30, 26 < 30 → danger.

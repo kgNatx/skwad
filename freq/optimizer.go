@@ -245,6 +245,82 @@ func DetectConflicts(assignments []Assignment) []Conflict {
 	return conflicts
 }
 
+// BuddySuggestion recommends sharing a frequency with an existing pilot.
+type BuddySuggestion struct {
+	PilotID int    `json:"pilot_id"`
+	Channel string `json:"channel"`
+	FreqMHz int    `json:"freq_mhz"`
+}
+
+// DisplacementResult is the output of FindMinimalDisplacement.
+type DisplacementResult struct {
+	Level           int              // 0-3
+	Assignments     []Assignment     // full assignment set
+	BuddySuggestion *BuddySuggestion // non-nil only at Level 3
+}
+
+// FindMinimalDisplacement tries progressively more disruptive strategies to
+// place newPilot into an existing session. Stops at the first level that
+// produces no danger-level conflicts involving any moved pilot.
+//
+//	Level 0: lock all existing, slot new pilot only
+//	Level 1: unlock one existing pilot at a time
+//	Level 2: unlock pairs of existing pilots
+//	Level 3: suggest buddying up with an existing pilot
+func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) DisplacementResult {
+	all := make([]PilotInput, len(existing)+1)
+	copy(all, existing)
+	all[len(existing)] = newPilot
+
+	// Build the set of all existing pilot IDs.
+	allExistingIDs := make(map[int]bool, len(existing))
+	for _, p := range existing {
+		allExistingIDs[p.ID] = true
+	}
+
+	// Level 0: lock all existing pilots, only new pilot is flexible.
+	assignments := OptimizeWithLocks(all, allExistingIDs)
+	movedIDs := movedPilotIDs(existing, assignments)
+	movedIDs[newPilot.ID] = true // new pilot is always "moved"
+	if !hasDangerInvolving(assignments, movedIDs) {
+		return DisplacementResult{Level: 0, Assignments: assignments}
+	}
+
+	// Levels 1-3 implemented in subsequent tasks.
+	// Placeholder: return Level 0 result even if it has danger.
+	return DisplacementResult{Level: 0, Assignments: assignments}
+}
+
+// hasDangerInvolving returns true if any danger-level conflict involves
+// a pilot in the given set. Pre-existing conflicts between pilots NOT
+// in the set are ignored.
+func hasDangerInvolving(assignments []Assignment, pilotIDs map[int]bool) bool {
+	for _, c := range DetectConflicts(assignments) {
+		if c.Level == ConflictDanger {
+			if pilotIDs[c.PilotA] || pilotIDs[c.PilotB] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// movedPilotIDs compares assignments against PrevFreqMHz to find which
+// existing pilots were displaced.
+func movedPilotIDs(existing []PilotInput, assignments []Assignment) map[int]bool {
+	moved := make(map[int]bool)
+	prevFreqs := make(map[int]int, len(existing))
+	for _, p := range existing {
+		prevFreqs[p.ID] = p.PrevFreqMHz
+	}
+	for _, a := range assignments {
+		if prev, ok := prevFreqs[a.PilotID]; ok && prev != 0 && a.FreqMHz != prev {
+			moved[a.PilotID] = true
+		}
+	}
+	return moved
+}
+
 // findChannelName finds the channel name for a given frequency in a pool.
 func findChannelName(pool []Channel, freqMHz int) string {
 	for _, ch := range pool {
