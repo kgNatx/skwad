@@ -201,6 +201,11 @@
       <button id="btn-banner-dismiss" class="btn btn-primary channel-change-banner-btn">GOT IT</button>
     </div>
 
+    <div id="leader-controls" class="leader-controls hidden">
+      <button id="btn-rebalance-all" class="btn btn-secondary btn-leader">REBALANCE ALL</button>
+      <button id="btn-add-pilot" class="btn btn-secondary btn-leader">ADD PILOT</button>
+    </div>
+
     <div id="pilot-list" class="pilot-list"></div>
 
     <div class="session-footer">
@@ -234,6 +239,7 @@
   <div id="other-pilot-actions" class="action-sheet hidden">
     <div class="action-sheet-content">
       <h3 id="other-pilot-name" class="action-sheet-title"></h3>
+      <button id="btn-transfer-leader" class="btn btn-secondary btn-large hidden">TRANSFER LEADERSHIP</button>
       <div class="slide-remove-track" id="slide-remove-track">
         <div class="slide-remove-handle" id="slide-remove-handle"></div>
         <span class="slide-remove-label">SLIDE TO REMOVE</span>
@@ -248,9 +254,48 @@
       <h3 class="action-sheet-title">HEADS UP</h3>
       <div id="displacement-list" class="displacement-list"></div>
       <p class="displacement-note">VERIFY WITH THEM BEFORE CONTINUING</p>
-      <button id="btn-displacement-confirm" class="btn btn-primary btn-large">MOVE EVERYONE</button>
-      <button id="btn-displacement-just-me" class="btn btn-secondary btn-large">JUST MOVE ME</button>
+      <button id="btn-displacement-confirm" class="btn btn-primary btn-large">JOIN</button>
       <button id="btn-displacement-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Buddy Suggestion (Level 3) -->
+  <div id="buddy-suggestion" class="action-sheet hidden">
+    <div class="action-sheet-content">
+      <h3 class="action-sheet-title">NO CLEAR CHANNEL</h3>
+      <p id="buddy-suggestion-text" class="buddy-suggestion-text"></p>
+      <button id="btn-buddy-up" class="btn btn-primary btn-large">BUDDY UP</button>
+      <button id="btn-buddy-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Leader Leave Dialog -->
+  <div id="leader-leave" class="action-sheet hidden">
+    <div class="action-sheet-content">
+      <h3 class="action-sheet-title">YOU ARE THE LEADER</h3>
+      <p class="leader-leave-text">HAND OFF LEADERSHIP BEFORE LEAVING, OR LEAVE WITHOUT A LEADER.</p>
+      <div id="leader-leave-pilots" class="leader-leave-pilots"></div>
+      <button id="btn-leave-anyway" class="btn btn-danger btn-large">LEAVE ANYWAY</button>
+      <button id="btn-leader-leave-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Add Pilot (Leader) -->
+  <div id="add-pilot" class="action-sheet hidden">
+    <div class="action-sheet-content">
+      <h3 class="action-sheet-title">ADD PILOT</h3>
+      <input id="input-add-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20">
+      <div class="system-grid" id="add-pilot-systems">
+        <button class="btn btn-system btn-add-system" data-add-system="analog">ANALOG 5.8GHz</button>
+        <button class="btn btn-system btn-add-system" data-add-system="dji_v1">DJI V1 / VISTA</button>
+        <button class="btn btn-system btn-add-system" data-add-system="dji_o3">DJI O3</button>
+        <button class="btn btn-system btn-add-system" data-add-system="dji_o4">DJI O4 / O4 PRO</button>
+        <button class="btn btn-system btn-add-system" data-add-system="hdzero">HDZERO</button>
+        <button class="btn btn-system btn-add-system" data-add-system="walksnail_std">WALKSNAIL</button>
+        <button class="btn btn-system btn-add-system" data-add-system="openipc">OPENIPC / OTHER</button>
+      </div>
+      <div id="add-pilot-error" class="error-msg hidden"></div>
+      <button id="btn-add-pilot-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>
   </div>
 

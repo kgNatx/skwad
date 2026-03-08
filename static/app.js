@@ -25,6 +25,9 @@
     // Tracked assignment for change detection
     myChannel: null,
     myFreqMHz: null,
+    // Leader state
+    isLeader: false,
+    leaderPilotId: null,
   };
 
   // ── Buddy group colors ────────────────────────────────────────
@@ -159,10 +162,18 @@
   }
 
   // ── API calls ─────────────────────────────────────────────────
+  function apiHeaders() {
+    var headers = { 'Content-Type': 'application/json' };
+    if (state.pilotId) {
+      headers['X-Pilot-ID'] = String(state.pilotId);
+    }
+    return headers;
+  }
+
   async function apiPost(path, body) {
     const res = await fetch(path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
@@ -173,7 +184,11 @@
   }
 
   async function apiGet(path) {
-    const res = await fetch(path);
+    var opts = {};
+    if (state.pilotId) {
+      opts.headers = { 'X-Pilot-ID': String(state.pilotId) };
+    }
+    const res = await fetch(path, opts);
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text.trim() || ('HTTP ' + res.status));
@@ -184,7 +199,7 @@
   async function apiPut(path, body) {
     const res = await fetch(path, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders(),
       body: body ? JSON.stringify(body) : undefined,
     });
     if (!res.ok) {
@@ -194,7 +209,11 @@
   }
 
   async function apiDelete(path) {
-    const res = await fetch(path, { method: 'DELETE' });
+    var headers = {};
+    if (state.pilotId) {
+      headers['X-Pilot-ID'] = String(state.pilotId);
+    }
+    const res = await fetch(path, { method: 'DELETE', headers: headers });
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text.trim() || ('HTTP ' + res.status));
@@ -218,6 +237,8 @@
     state.pilotId = null;
     state.myChannel = null;
     state.myFreqMHz = null;
+    state.isLeader = false;
+    state.leaderPilotId = null;
     localStorage.removeItem('skwad_session');
     localStorage.removeItem('skwad_pilot');
   }
@@ -730,11 +751,19 @@
       // Preview first to check for displacements.
       var preview = await apiPost('/api/sessions/' + state.sessionCode + '/preview-join', body);
       var displaced = preview.displaced || [];
+      var level = preview.level || 0;
+
+      if (level === 3 && preview.buddy_suggestion) {
+        // Level 3 — no clear channel, offer buddy suggestion.
+        setLoading(btn, false);
+        showBuddySuggestion(preview.buddy_suggestion);
+        return;
+      }
 
       if (displaced.length > 0) {
-        // Show confirmation dialog — actual join happens on confirm.
+        // Show displacement preview — confirm or cancel.
         setLoading(btn, false);
-        showDisplacementConfirm(displaced, preview.has_danger);
+        showDisplacementPreview(displaced);
         return;
       }
 
@@ -752,12 +781,11 @@
     }
   }
 
-  async function commitJoin(body, rebalance) {
+  async function commitJoin(body) {
     var btn = $('btn-join-session');
     setLoading(btn, true);
-    var rebalParam = (rebalance === false) ? '?rebalance=false' : '';
     try {
-      var pilot = await apiPost('/api/sessions/' + state.sessionCode + '/join' + rebalParam, body);
+      var pilot = await apiPost('/api/sessions/' + state.sessionCode + '/join', body);
       state.pilotId = pilot.ID;
       saveState();
       saveRecentSession(state.sessionCode, pilot.ID, state.callsign);
@@ -774,8 +802,8 @@
     }
   }
 
-  // ── Displacement Confirmation ──────────────────────────────
-  function showDisplacementConfirm(displaced, hasDanger) {
+  // ── Displacement Preview ──────────────────────────────────
+  function showDisplacementPreview(displaced) {
     var list = $('displacement-list');
     clearChildren(list);
 
@@ -788,14 +816,6 @@
       list.appendChild(item);
     });
 
-    // Show/hide "JUST MOVE ME" — allowed unless it would cause overlap (danger)
-    var justMeBtn = $('btn-displacement-just-me');
-    if (hasDanger) {
-      justMeBtn.classList.add('hidden');
-    } else {
-      justMeBtn.classList.remove('hidden');
-    }
-
     $('displacement-confirm').classList.remove('hidden');
   }
 
@@ -804,26 +824,15 @@
   }
 
   function initDisplacementConfirm() {
-    // "MOVE EVERYONE" — full rebalance
+    // "JOIN" — confirm with displacements
     $('btn-displacement-confirm').addEventListener('click', function () {
       hideDisplacementConfirm();
       if (state.pendingChannelChange) {
         var body = state.pendingChannelChange;
         state.pendingChannelChange = null;
-        commitChannelChange(body, true);
+        commitChannelChange(body);
       } else {
-        commitJoin(buildJoinBody(), true);
-      }
-    });
-    // "JUST MOVE ME" — only apply my assignment, leave others
-    $('btn-displacement-just-me').addEventListener('click', function () {
-      hideDisplacementConfirm();
-      if (state.pendingChannelChange) {
-        var body = state.pendingChannelChange;
-        state.pendingChannelChange = null;
-        commitChannelChange(body, false);
-      } else {
-        commitJoin(buildJoinBody(), false);
+        commitJoin(buildJoinBody());
       }
     });
     $('btn-displacement-cancel').addEventListener('click', function () {
@@ -834,6 +843,57 @@
       if (e.target === $('displacement-confirm')) {
         state.pendingChannelChange = null;
         hideDisplacementConfirm();
+      }
+    });
+  }
+
+  // ── Buddy Suggestion (Level 3) ──────────────────────────────
+  function showBuddySuggestion(suggestion) {
+    state.pendingBuddySuggestion = suggestion;
+    var text = 'You could share ' + suggestion.channel + ' (' + suggestion.freq_mhz + ' MHz) with ' + suggestion.callsign + '.';
+    $('buddy-suggestion-text').textContent = text;
+    $('buddy-suggestion').classList.remove('hidden');
+  }
+
+  function hideBuddySuggestion() {
+    $('buddy-suggestion').classList.add('hidden');
+    state.pendingBuddySuggestion = null;
+  }
+
+  function initBuddySuggestion() {
+    $('btn-buddy-up').addEventListener('click', function () {
+      if (state._buddyUpForChange) {
+        // Channel change context
+        var suggestion = state.pendingBuddySuggestionForChange;
+        state._buddyUpForChange = false;
+        state.pendingBuddySuggestionForChange = null;
+        hideBuddySuggestion();
+        if (suggestion) {
+          var body = { channel_locked: true, locked_frequency_mhz: suggestion.freq_mhz };
+          commitChannelChange(body);
+        }
+      } else {
+        // Join context
+        var suggestion = state.pendingBuddySuggestion;
+        hideBuddySuggestion();
+        if (suggestion) {
+          var body = buildJoinBody();
+          body.channel_locked = true;
+          body.locked_frequency_mhz = suggestion.freq_mhz;
+          commitJoin(body);
+        }
+      }
+    });
+    $('btn-buddy-cancel').addEventListener('click', function () {
+      state._buddyUpForChange = false;
+      state.pendingBuddySuggestionForChange = null;
+      hideBuddySuggestion();
+    });
+    $('buddy-suggestion').addEventListener('click', function (e) {
+      if (e.target === $('buddy-suggestion')) {
+        state._buddyUpForChange = false;
+        state.pendingBuddySuggestionForChange = null;
+        hideBuddySuggestion();
       }
     });
   }
@@ -850,6 +910,10 @@
     try {
       var data = await apiGet('/api/sessions/' + state.sessionCode);
       state.knownVersion = data.session.Version;
+
+      // Track leader state.
+      state.leaderPilotId = data.session.LeaderPilotID || null;
+      state.isLeader = (state.pilotId && state.leaderPilotId === state.pilotId);
 
       // Detect if our channel was changed by the optimizer.
       if (state.pilotId && state.myChannel !== null) {
@@ -902,6 +966,7 @@
       }
 
       renderPilotList(data.pilots);
+      updateLeaderControls();
     } catch (err) {
       // Session may have expired or been deleted
       if (err.message && err.message.includes('not found')) {
@@ -1195,6 +1260,11 @@
         badgeRow.appendChild(youBadge);
       }
 
+      if (p.ID === state.leaderPilotId) {
+        var leaderBadge = el('span', { className: 'pilot-leader-badge', textContent: 'LEADER' });
+        badgeRow.appendChild(leaderBadge);
+      }
+
       info.appendChild(badgeRow);
 
       // Buddy info
@@ -1266,6 +1336,18 @@
   async function handleLeave() {
     if (!state.pilotId || !state.sessionCode) return;
 
+    // If leader, show leader-leave dialog instead of leaving directly.
+    if (state.isLeader) {
+      showLeaderLeaveDialog();
+      return;
+    }
+
+    await doLeave();
+  }
+
+  async function doLeave() {
+    if (!state.pilotId || !state.sessionCode) return;
+
     try {
       await apiDelete('/api/pilots/' + state.pilotId + '?session=' + state.sessionCode);
     } catch (err) {
@@ -1278,6 +1360,8 @@
     // Reset setup state
     state.callsign = '';
     state.videoSystem = '';
+    state.isLeader = false;
+    state.leaderPilotId = null;
     $('input-callsign').value = '';
 
     validateAndShowLanding();
@@ -1375,10 +1459,19 @@
         body
       );
       var displaced = preview.displaced || [];
+      var level = preview.level || 0;
+
+      if (level === 3 && preview.buddy_suggestion) {
+        // Level 3 — offer buddy suggestion for channel change.
+        state.pendingChannelChange = body;
+        showBuddySuggestionForChange(preview.buddy_suggestion);
+        return;
+      }
+
       if (displaced.length > 0) {
         // Stash pending change so displacement confirm can commit it.
         state.pendingChannelChange = body;
-        showDisplacementConfirm(displaced, preview.has_danger);
+        showDisplacementPreview(displaced);
         return;
       }
       // No displacements — apply immediately.
@@ -1388,11 +1481,19 @@
     }
   }
 
-  async function commitChannelChange(body, rebalance) {
-    var rebalParam = (rebalance === false) ? '&rebalance=false' : '';
+  function showBuddySuggestionForChange(suggestion) {
+    state.pendingBuddySuggestionForChange = suggestion;
+    var text = 'You could share ' + suggestion.channel + ' (' + suggestion.freq_mhz + ' MHz) with ' + suggestion.callsign + '.';
+    $('buddy-suggestion-text').textContent = text;
+    $('buddy-suggestion').classList.remove('hidden');
+    // Override buddy-up handler for channel change context
+    state._buddyUpForChange = true;
+  }
+
+  async function commitChannelChange(body) {
     try {
       await apiPut(
-        '/api/pilots/' + state.pilotId + '/channel?session=' + state.sessionCode + rebalParam,
+        '/api/pilots/' + state.pilotId + '/channel?session=' + state.sessionCode,
         body
       );
       state.channelLocked = body.channel_locked;
@@ -1468,6 +1569,12 @@
     otherPilotTarget = pilot;
     $('other-pilot-name').textContent = pilot.Callsign;
     resetSlideHandle();
+    // Show/hide leader-only controls
+    if (state.isLeader) {
+      $('btn-transfer-leader').classList.remove('hidden');
+    } else {
+      $('btn-transfer-leader').classList.add('hidden');
+    }
     $('other-pilot-actions').classList.remove('hidden');
   }
 
@@ -1578,6 +1685,167 @@
 
     hideOtherPilotActions();
     refreshSession();
+  }
+
+  // ── Leader Controls ──────────────────────────────────────────
+  function updateLeaderControls() {
+    var leaderControls = $('leader-controls');
+    if (state.isLeader) {
+      leaderControls.classList.remove('hidden');
+    } else {
+      leaderControls.classList.add('hidden');
+    }
+  }
+
+  function initLeaderControls() {
+    $('btn-rebalance-all').addEventListener('click', async function () {
+      var btn = $('btn-rebalance-all');
+      setLoading(btn, true);
+      try {
+        await apiPost('/api/sessions/' + state.sessionCode + '/rebalance');
+        refreshSession();
+      } catch (err) {
+        // Silently ignore
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+
+    $('btn-add-pilot').addEventListener('click', function () {
+      showAddPilotDialog();
+    });
+
+    $('btn-transfer-leader').addEventListener('click', function () {
+      if (!otherPilotTarget) return;
+      transferLeadership(otherPilotTarget.ID);
+    });
+  }
+
+  async function transferLeadership(pilotId) {
+    hideOtherPilotActions();
+    try {
+      await apiPost('/api/sessions/' + state.sessionCode + '/transfer-leader', { pilot_id: pilotId });
+      refreshSession();
+    } catch (err) {
+      refreshSession();
+    }
+  }
+
+  // ── Add Pilot Dialog ────────────────────────────────────────
+  function showAddPilotDialog() {
+    $('input-add-callsign').value = '';
+    hideError('add-pilot-error');
+    document.querySelectorAll('.btn-add-system').forEach(function (b) { b.classList.remove('selected'); });
+    $('add-pilot').classList.remove('hidden');
+    $('input-add-callsign').focus();
+  }
+
+  function hideAddPilotDialog() {
+    $('add-pilot').classList.add('hidden');
+  }
+
+  function initAddPilotDialog() {
+    $('input-add-callsign').addEventListener('input', function (e) {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
+    document.querySelectorAll('.btn-add-system').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var callsign = $('input-add-callsign').value.trim();
+        if (!callsign) {
+          showError('add-pilot-error', 'ENTER A CALLSIGN');
+          return;
+        }
+        hideError('add-pilot-error');
+        var system = btn.dataset.addSystem;
+        addPilot(callsign, system);
+      });
+    });
+
+    $('btn-add-pilot-cancel').addEventListener('click', hideAddPilotDialog);
+    $('add-pilot').addEventListener('click', function (e) {
+      if (e.target === $('add-pilot')) hideAddPilotDialog();
+    });
+  }
+
+  async function addPilot(callsign, videoSystem) {
+    try {
+      await apiPost('/api/sessions/' + state.sessionCode + '/add-pilot', {
+        callsign: callsign,
+        video_system: videoSystem,
+      });
+      hideAddPilotDialog();
+      refreshSession();
+    } catch (err) {
+      var msg = err.message || '';
+      if (msg.includes('callsign already') || msg.includes('409')) {
+        showError('add-pilot-error', 'CALLSIGN ALREADY IN SESSION');
+      } else {
+        showError('add-pilot-error', 'FAILED: ' + msg.toUpperCase());
+      }
+    }
+  }
+
+  // ── Leader Leave Dialog ──────────────────────────────────────
+  var cachedPilotsForLeave = null;
+
+  function showLeaderLeaveDialog() {
+    // Fetch pilot list for transfer options
+    var pilotListEl = $('leader-leave-pilots');
+    clearChildren(pilotListEl);
+
+    apiGet('/api/sessions/' + state.sessionCode).then(function (data) {
+      var pilots = (data.pilots || []).filter(function (p) { return p.ID !== state.pilotId; });
+      cachedPilotsForLeave = pilots;
+
+      if (pilots.length === 0) {
+        // No one to transfer to
+        var note = el('p', { className: 'leader-leave-text', textContent: 'NO OTHER PILOTS IN SESSION.' });
+        pilotListEl.appendChild(note);
+      } else {
+        pilots.forEach(function (p) {
+          var btn = el('button', {
+            className: 'btn btn-secondary btn-large',
+            textContent: 'TRANSFER TO ' + p.Callsign
+          });
+          btn.addEventListener('click', function () {
+            transferAndLeave(p.ID);
+          });
+          pilotListEl.appendChild(btn);
+        });
+      }
+
+      $('leader-leave').classList.remove('hidden');
+    }).catch(function () {
+      // If fetch fails, just show leave anyway
+      $('leader-leave').classList.remove('hidden');
+    });
+  }
+
+  function hideLeaderLeaveDialog() {
+    $('leader-leave').classList.add('hidden');
+    cachedPilotsForLeave = null;
+  }
+
+  async function transferAndLeave(newLeaderId) {
+    hideLeaderLeaveDialog();
+    try {
+      await apiPost('/api/sessions/' + state.sessionCode + '/transfer-leader', { pilot_id: newLeaderId });
+    } catch (err) {
+      // Continue with leave even if transfer fails
+    }
+    await doLeave();
+  }
+
+  function initLeaderLeaveDialog() {
+    $('btn-leave-anyway').addEventListener('click', function () {
+      hideLeaderLeaveDialog();
+      doLeave();
+    });
+    $('btn-leader-leave-cancel').addEventListener('click', hideLeaderLeaveDialog);
+    $('leader-leave').addEventListener('click', function (e) {
+      if (e.target === $('leader-leave')) hideLeaderLeaveDialog();
+    });
   }
 
   // ── QR Code ───────────────────────────────────────────────────
@@ -2254,23 +2522,6 @@
     container.classList.remove('hidden');
   }
 
-  // ── Init ──────────────────────────────────────────────────────
-  function init() {
-    initLanding();
-    initCallsignStep();
-    initVideoStep();
-    initFollowUpStep();
-    initChannelStep();
-    initSessionView();
-    initPilotActions();
-    initChannelChange();
-    initCallsignChange();
-    initOtherPilotActions();
-    initChannelChangeBanner();
-    initDisplacementConfirm();
-    route();
-  }
-
   // ── Service Worker & Install Prompt ─────────────────────────
   var deferredInstallPrompt = null;
 
@@ -2348,6 +2599,10 @@
     initOtherPilotActions();
     initChannelChangeBanner();
     initDisplacementConfirm();
+    initBuddySuggestion();
+    initLeaderControls();
+    initAddPilotDialog();
+    initLeaderLeaveDialog();
     initInstallBanner();
     initServiceWorker();
     route();

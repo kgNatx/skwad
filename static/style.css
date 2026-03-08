@@ -1072,6 +1072,64 @@ body {
   pointer-events: none;
 }
 
+/* ===== LEADER BADGE ===== */
+.pilot-leader-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #ffaa00;
+  color: #0a0a0a;
+  vertical-align: middle;
+}
+
+/* ===== LEADER CONTROLS ===== */
+.leader-controls {
+  display: flex;
+  gap: 10px;
+  padding: 12px 0;
+  flex-shrink: 0;
+}
+
+.btn-leader {
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+/* ===== BUDDY SUGGESTION ===== */
+.buddy-suggestion-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #cccccc;
+  text-align: center;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+/* ===== LEADER LEAVE DIALOG ===== */
+.leader-leave-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: #cccccc;
+  text-align: center;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.leader-leave-pilots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
 /* ===== SAFE AREA (notch phones) ===== */
 @supports (padding-top: env(safe-area-inset-top)) {
   .screen {
