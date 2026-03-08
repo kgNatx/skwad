@@ -217,6 +217,59 @@ func TestOptimize_BandwidthMHzPopulated(t *testing.T) {
 
 // ── Conflict detection tests ─────────────────────────────────────
 
+func TestOptimizeWithLocks_LockedPilotsStay(t *testing.T) {
+	// Two existing pilots on R1 and R4, both locked.
+	// New flexible pilot should slot in without moving them.
+	inputs := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
+		{ID: 2, VideoSystem: "analog", PrevChannel: "R4", PrevFreqMHz: 5769},
+		{ID: 3, VideoSystem: "analog"}, // new pilot, no prev
+	}
+	lockedIDs := map[int]bool{1: true, 2: true}
+
+	assignments := OptimizeWithLocks(inputs, lockedIDs)
+
+	// Pilots 1 and 2 must stay exactly where they were.
+	for _, a := range assignments {
+		switch a.PilotID {
+		case 1:
+			if a.FreqMHz != 5658 {
+				t.Errorf("pilot 1 moved from 5658 to %d", a.FreqMHz)
+			}
+		case 2:
+			if a.FreqMHz != 5769 {
+				t.Errorf("pilot 2 moved from 5769 to %d", a.FreqMHz)
+			}
+		case 3:
+			if a.FreqMHz == 0 {
+				t.Error("pilot 3 was not assigned a frequency")
+			}
+			// Should not be on 5658 or 5769
+			if a.FreqMHz == 5658 || a.FreqMHz == 5769 {
+				t.Errorf("pilot 3 placed on locked frequency %d", a.FreqMHz)
+			}
+		}
+	}
+}
+
+func TestOptimizeWithLocks_EmptyLockedSet(t *testing.T) {
+	// With no locks, should behave identically to Optimize().
+	inputs := []PilotInput{
+		{ID: 1, VideoSystem: "analog"},
+		{ID: 2, VideoSystem: "analog"},
+	}
+	locked := OptimizeWithLocks(inputs, map[int]bool{})
+	unlocked := Optimize(inputs)
+
+	for i := range locked {
+		if locked[i].FreqMHz != unlocked[i].FreqMHz {
+			t.Errorf("pilot %d: locked=%d unlocked=%d", locked[i].PilotID, locked[i].FreqMHz, unlocked[i].FreqMHz)
+		}
+	}
+}
+
+// ── Conflict detection tests ─────────────────────────────────────
+
 func TestDetectConflicts_Danger(t *testing.T) {
 	// Two 20 MHz signals on the same frequency — overlap.
 	assignments := []Assignment{

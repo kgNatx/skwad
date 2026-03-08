@@ -147,6 +147,21 @@ func Optimize(pilots []PilotInput) []Assignment {
 	return out
 }
 
+// OptimizeWithLocks runs the optimizer but forces pilots in lockedIDs to be
+// channel-locked at their PrevFreqMHz, regardless of their actual preference.
+// This preserves existing assignments while allowing unlocked pilots to move.
+func OptimizeWithLocks(pilots []PilotInput, lockedIDs map[int]bool) []Assignment {
+	modified := make([]PilotInput, len(pilots))
+	for i, p := range pilots {
+		modified[i] = p
+		if lockedIDs[p.ID] {
+			modified[i].ChannelLocked = true
+			modified[i].LockedFreqMHz = p.PrevFreqMHz
+		}
+	}
+	return Optimize(modified)
+}
+
 // effectiveSeparation returns the worst-case margin between a candidate
 // frequency (with given bandwidth) and all used entries. The margin is
 // the actual center-to-center separation minus the required spacing.
