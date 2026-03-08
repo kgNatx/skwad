@@ -1698,8 +1698,9 @@
     $('btn-other-cancel').addEventListener('click', hideOtherPilotActions);
     $('btn-change-other-channel').addEventListener('click', function () {
       if (!otherPilotTarget) return;
+      var pilot = otherPilotTarget;
       hideOtherPilotActions();
-      showChannelChangeForPilot(otherPilotTarget);
+      showChannelChangeForPilot(pilot);
     });
     $('other-pilot-actions').addEventListener('click', function (e) {
       if (e.target === $('other-pilot-actions')) hideOtherPilotActions();
