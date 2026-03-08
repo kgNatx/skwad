@@ -1213,9 +1213,11 @@
         });
       } else {
         card.classList.add('is-other');
-        card.addEventListener('click', function () {
-          showOtherPilotActions(p);
-        });
+        if (state.isLeader) {
+          card.addEventListener('click', function () {
+            showOtherPilotActions(p);
+          });
+        }
       }
 
       if (buddyIdx > 0) {
@@ -1572,8 +1574,10 @@
     // Show/hide leader-only controls
     if (state.isLeader) {
       $('btn-transfer-leader').classList.remove('hidden');
+      $('slide-remove-track').classList.remove('hidden');
     } else {
       $('btn-transfer-leader').classList.add('hidden');
+      $('slide-remove-track').classList.add('hidden');
     }
     $('other-pilot-actions').classList.remove('hidden');
   }
