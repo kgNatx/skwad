@@ -342,7 +342,21 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) Displac
 		return *bestResult
 	}
 
-	// Level 3: buddy suggestion (next task).
+	// Level 3: buddy suggestion.
+	buddy := findBestBuddy(existing, newPilot)
+	if buddy != nil {
+		// Place new pilot at buddy's frequency.
+		buddiedPilot := newPilot
+		buddiedPilot.ChannelLocked = true
+		buddiedPilot.LockedFreqMHz = buddy.FreqMHz
+		allBuddy := make([]PilotInput, len(existing)+1)
+		copy(allBuddy, existing)
+		allBuddy[len(existing)] = buddiedPilot
+		assignments = OptimizeWithLocks(allBuddy, allExistingIDs)
+		return DisplacementResult{Level: 3, Assignments: assignments, BuddySuggestion: buddy}
+	}
+
+	// Fallback: return Level 0 result (shouldn't happen if there are any existing pilots).
 	return DisplacementResult{Level: 0, Assignments: OptimizeWithLocks(all, allExistingIDs)}
 }
 
@@ -429,4 +443,65 @@ func copyAssignments(a []Assignment) []Assignment {
 	out := make([]Assignment, len(a))
 	copy(out, a)
 	return out
+}
+
+// findBestBuddy picks the best existing pilot to share a frequency with.
+// Prefers: same video system, similar bandwidth, most margin to other pilots.
+func findBestBuddy(existing []PilotInput, newPilot PilotInput) *BuddySuggestion {
+	newPool := ChannelPool(newPilot.VideoSystem, newPilot.FCCUnlocked, newPilot.BandwidthMHz, newPilot.RaceMode, newPilot.Goggles)
+	newPoolFreqs := make(map[int]bool, len(newPool))
+	for _, ch := range newPool {
+		newPoolFreqs[ch.FreqMHz] = true
+	}
+
+	newBW := OccupiedBandwidth(newPilot.VideoSystem, newPilot.BandwidthMHz)
+
+	type candidate struct {
+		pilot PilotInput
+		score int // higher is better
+	}
+	var candidates []candidate
+
+	for _, p := range existing {
+		// Buddy's frequency must be in the new pilot's channel pool.
+		if !newPoolFreqs[p.PrevFreqMHz] {
+			continue
+		}
+
+		score := 0
+		// Prefer same video system.
+		if p.VideoSystem == newPilot.VideoSystem {
+			score += 100
+		}
+		// Prefer similar bandwidth (penalize difference).
+		pBW := OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz)
+		bwDiff := newBW - pBW
+		if bwDiff < 0 {
+			bwDiff = -bwDiff
+		}
+		score -= bwDiff
+
+		candidates = append(candidates, candidate{pilot: p, score: score})
+	}
+
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	// Pick highest score.
+	sort.SliceStable(candidates, func(i, j int) bool {
+		return candidates[i].score > candidates[j].score
+	})
+	best := candidates[0]
+
+	chName := findChannelName(
+		ChannelPool(best.pilot.VideoSystem, best.pilot.FCCUnlocked, best.pilot.BandwidthMHz, best.pilot.RaceMode, best.pilot.Goggles),
+		best.pilot.PrevFreqMHz,
+	)
+
+	return &BuddySuggestion{
+		PilotID: best.pilot.ID,
+		Channel: chName,
+		FreqMHz: best.pilot.PrevFreqMHz,
+	}
 }

@@ -432,6 +432,38 @@ func TestFindMinimalDisplacement_Level1_SkipsLockedPilots(t *testing.T) {
 	}
 }
 
+func TestFindMinimalDisplacement_Level3_BuddySuggestion(t *testing.T) {
+	// 8 analog pilots fill all 8 race band channels.
+	// 9th analog pilot has no clear slot — should get a buddy suggestion.
+	existing := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
+		{ID: 2, VideoSystem: "analog", PrevChannel: "R2", PrevFreqMHz: 5695},
+		{ID: 3, VideoSystem: "analog", PrevChannel: "R3", PrevFreqMHz: 5732},
+		{ID: 4, VideoSystem: "analog", PrevChannel: "R4", PrevFreqMHz: 5769},
+		{ID: 5, VideoSystem: "analog", PrevChannel: "R5", PrevFreqMHz: 5806},
+		{ID: 6, VideoSystem: "analog", PrevChannel: "R6", PrevFreqMHz: 5843},
+		{ID: 7, VideoSystem: "analog", PrevChannel: "R7", PrevFreqMHz: 5880},
+		{ID: 8, VideoSystem: "analog", PrevChannel: "R8", PrevFreqMHz: 5917},
+	}
+	newPilot := PilotInput{ID: -1, VideoSystem: "analog"}
+
+	result := FindMinimalDisplacement(existing, newPilot)
+
+	if result.Level != 3 {
+		t.Errorf("expected level 3 (buddy), got %d", result.Level)
+	}
+	if result.BuddySuggestion == nil {
+		t.Fatal("expected buddy suggestion, got nil")
+	}
+	// Buddy should be one of the existing pilots.
+	if result.BuddySuggestion.PilotID < 1 || result.BuddySuggestion.PilotID > 8 {
+		t.Errorf("buddy pilot ID %d not in existing set", result.BuddySuggestion.PilotID)
+	}
+	if result.BuddySuggestion.FreqMHz == 0 {
+		t.Error("buddy suggestion has no frequency")
+	}
+}
+
 func TestDetectConflicts_WideBandDanger(t *testing.T) {
 	// Analog (20 MHz) at 5769 (R4), O3 40 MHz at 5795.
 	// Separation = 26, overlap = 10+20=30, 26 < 30 → danger.
