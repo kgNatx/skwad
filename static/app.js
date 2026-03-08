@@ -1808,17 +1808,8 @@
   }
 
   function initLeaderControls() {
-    $('btn-rebalance-all').addEventListener('click', async function () {
-      var btn = $('btn-rebalance-all');
-      setLoading(btn, true);
-      try {
-        await apiPost('/api/sessions/' + state.sessionCode + '/rebalance');
-        refreshSession();
-      } catch (err) {
-        // Silently ignore
-      } finally {
-        setLoading(btn, false);
-      }
+    $('btn-rebalance-all').addEventListener('click', function () {
+      $('rebalance-confirm').classList.remove('hidden');
     });
 
     $('btn-add-pilot').addEventListener('click', function () {
@@ -1828,6 +1819,29 @@
     $('btn-transfer-leader').addEventListener('click', function () {
       if (!otherPilotTarget) return;
       transferLeadership(otherPilotTarget.ID);
+    });
+
+    // Rebalance confirmation
+    $('btn-rebalance-confirm').addEventListener('click', async function () {
+      $('rebalance-confirm').classList.add('hidden');
+      var btn = $('btn-rebalance-all');
+      setLoading(btn, true);
+      try {
+        await apiPost('/api/sessions/' + state.sessionCode + '/rebalance');
+        await refreshSession();
+      } catch (err) {
+        // Silently ignore
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+    $('btn-rebalance-cancel').addEventListener('click', function () {
+      $('rebalance-confirm').classList.add('hidden');
+    });
+    $('rebalance-confirm').addEventListener('click', function (e) {
+      if (e.target === $('rebalance-confirm')) {
+        $('rebalance-confirm').classList.add('hidden');
+      }
     });
   }
 

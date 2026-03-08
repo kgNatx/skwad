@@ -1101,6 +1101,15 @@ body {
   letter-spacing: 1px;
 }
 
+/* ===== REBALANCE CONFIRMATION ===== */
+.rebalance-confirm-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ccc;
+  line-height: 1.5;
+  padding: 8px 0 12px;
+}
+
 /* ===== ADD PILOT OPTIONS ===== */
 .add-pilot-options {
   display: flex;
