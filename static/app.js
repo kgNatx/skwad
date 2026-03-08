@@ -1854,7 +1854,10 @@
   function showAddPilotDialog() {
     $('input-add-callsign').value = '';
     hideError('add-pilot-error');
-    document.querySelectorAll('.btn-add-system').forEach(function (b) { b.classList.remove('selected'); });
+    document.querySelectorAll('.btn-add-system').forEach(function (b) {
+      b.classList.remove('selected');
+      b.classList.remove('hidden');
+    });
     $('add-pilot-options').classList.add('hidden');
     addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0 };
     $('add-pilot').classList.remove('hidden');
@@ -1924,11 +1927,16 @@
         document.querySelectorAll('.btn-add-system').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
 
+        // Hide other system buttons to reduce clutter.
+        document.querySelectorAll('.btn-add-system').forEach(function (b) {
+          if (b !== btn) b.classList.add('hidden');
+        });
+
         if (SIMPLE_SYSTEMS.indexOf(system) !== -1) {
           // No follow-up needed — add immediately.
           addPilot(callsign, system, false, 0);
         } else {
-          // Show follow-up options.
+          // Show follow-up options below the selected system.
           showAddPilotOptions(system);
         }
       });
