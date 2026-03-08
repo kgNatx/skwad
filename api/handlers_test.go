@@ -3,12 +3,15 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/kyleg/skwad/db"
+	"github.com/kyleg/skwad/freq"
 )
 
 // newTestServer creates a Server backed by a temporary SQLite database.
@@ -500,5 +503,179 @@ func TestDeactivatePilot(t *testing.T) {
 
 	if len(result.Pilots) != 0 {
 		t.Errorf("got %d active pilots, want 0 after deactivation", len(result.Pilots))
+	}
+}
+
+// --- Test helpers ---
+
+func createTestSession(t *testing.T, srv *Server) *db.Session {
+	t.Helper()
+	req := httptest.NewRequest("POST", "/api/sessions", nil)
+	w := httptest.NewRecorder()
+	srv.HandleCreateSession(w, req)
+	var sess db.Session
+	json.NewDecoder(w.Body).Decode(&sess)
+	return &sess
+}
+
+func joinTestPilot(t *testing.T, srv *Server, sessionID, callsign, videoSystem string) {
+	t.Helper()
+	body := fmt.Sprintf(`{"callsign":"%s","video_system":"%s"}`, callsign, videoSystem)
+	req := httptest.NewRequest("POST", "/api/sessions/"+sessionID+"/join", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	srv.HandleJoinSession(w, req, sessionID)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("join %s failed: %d %s", callsign, w.Code, w.Body.String())
+	}
+}
+
+func getTestPilots(t *testing.T, srv *Server, sessionID string) []db.Pilot {
+	t.Helper()
+	pilots, err := srv.DB.GetActivePilots(sessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return pilots
+}
+
+// --- Graduated escalation tests ---
+
+func TestJoinSession_NoUnnecessaryDisplacement(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "PILOT1", "analog")
+
+	// Get pilot 1's assignment.
+	pilots := getTestPilots(t, srv, sess.ID)
+	pilot1Freq := pilots[0].AssignedFreqMHz
+
+	// Join second pilot.
+	joinTestPilot(t, srv, sess.ID, "PILOT2", "analog")
+
+	// Pilot 1 should not have moved.
+	updated := getTestPilots(t, srv, sess.ID)
+	for _, p := range updated {
+		if p.Callsign == "PILOT1" && p.AssignedFreqMHz != pilot1Freq {
+			t.Errorf("PILOT1 moved from %d to %d", pilot1Freq, p.AssignedFreqMHz)
+		}
+	}
+}
+
+func TestJoinSession_FirstPilotBecomesLeader(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+
+	body := `{"callsign":"LEADER","video_system":"analog"}`
+	req := httptest.NewRequest("POST", "/api/sessions/"+sess.ID+"/join", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	srv.HandleJoinSession(w, req, sess.ID)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", w.Code)
+	}
+
+	leaderID, _ := srv.DB.GetLeader(sess.ID)
+	var joined db.Pilot
+	json.NewDecoder(w.Body).Decode(&joined)
+	if leaderID != joined.ID {
+		t.Errorf("expected leader=%d, got leader=%d", joined.ID, leaderID)
+	}
+}
+
+func TestPreviewJoin_ReturnsLevel(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "PILOT1", "analog")
+
+	body := `{"callsign":"PILOT2","video_system":"analog"}`
+	req := httptest.NewRequest("POST", "/api/sessions/"+sess.ID+"/preview-join", strings.NewReader(body))
+	w := httptest.NewRecorder()
+	srv.HandlePreviewJoin(w, req, sess.ID)
+
+	var resp struct {
+		Level      int              `json:"level"`
+		Assignment freq.Assignment  `json:"assignment"`
+		Displaced  []DisplacedPilot `json:"displaced"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp.Level != 0 {
+		t.Errorf("expected level 0, got %d", resp.Level)
+	}
+	if resp.Assignment.FreqMHz == 0 {
+		t.Error("no assignment in preview")
+	}
+}
+
+func TestDeactivatePilot_OthersStayPut(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "PILOT1", "analog")
+	joinTestPilot(t, srv, sess.ID, "PILOT2", "analog")
+	joinTestPilot(t, srv, sess.ID, "PILOT3", "analog")
+
+	pilots := getTestPilots(t, srv, sess.ID)
+	freqsBefore := make(map[string]int)
+	var pilot2ID int
+	for _, p := range pilots {
+		freqsBefore[p.Callsign] = p.AssignedFreqMHz
+		if p.Callsign == "PILOT2" {
+			pilot2ID = p.ID
+		}
+	}
+
+	// Deactivate pilot 2.
+	req := httptest.NewRequest("DELETE", "/api/pilots/"+fmt.Sprint(pilot2ID)+"?session="+sess.ID, nil)
+	w := httptest.NewRecorder()
+	srv.HandleDeactivatePilot(w, req, pilot2ID, sess.ID)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", w.Code)
+	}
+
+	// Remaining pilots should be on same frequencies.
+	remaining := getTestPilots(t, srv, sess.ID)
+	for _, p := range remaining {
+		if freqsBefore[p.Callsign] != p.AssignedFreqMHz {
+			t.Errorf("%s moved from %d to %d after deactivation", p.Callsign, freqsBefore[p.Callsign], p.AssignedFreqMHz)
+		}
+	}
+}
+
+func TestUpdateChannel_NoUnnecessaryDisplacement(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "PILOT1", "analog")
+	joinTestPilot(t, srv, sess.ID, "PILOT2", "analog")
+
+	pilots := getTestPilots(t, srv, sess.ID)
+	var pilot1Freq int
+	var pilot2 db.Pilot
+	for _, p := range pilots {
+		if p.Callsign == "PILOT1" {
+			pilot1Freq = p.AssignedFreqMHz
+		}
+		if p.Callsign == "PILOT2" {
+			pilot2 = p
+		}
+	}
+
+	// Change pilot 2's channel preference (unlock).
+	body := `{"channel_locked":false,"locked_frequency_mhz":0}`
+	req := httptest.NewRequest("PUT", "/api/pilots/"+fmt.Sprint(pilot2.ID)+"/channel?session="+sess.ID, strings.NewReader(body))
+	w := httptest.NewRecorder()
+	srv.HandleUpdatePilotChannel(w, req, pilot2.ID, sess.ID)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", w.Code)
+	}
+
+	// Pilot 1 should not have moved.
+	updated := getTestPilots(t, srv, sess.ID)
+	for _, p := range updated {
+		if p.Callsign == "PILOT1" && p.AssignedFreqMHz != pilot1Freq {
+			t.Errorf("PILOT1 moved from %d to %d", pilot1Freq, p.AssignedFreqMHz)
+		}
 	}
 }

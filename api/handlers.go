@@ -188,16 +188,48 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 		}
 	}
 
-	// Reoptimize — check query param for rebalance preference.
-	rebalance := r.URL.Query().Get("rebalance") != "false"
-	if rebalance {
-		s.reoptimize(code)
-	} else {
-		s.reoptimizeForPilot(code, added.ID)
+	// Graduated escalation: minimize displacement of existing pilots.
+	pilots, err := s.DB.GetActivePilots(code)
+	if err != nil {
+		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
+		log.Printf("HandleJoinSession GetActivePilots error: %v", err)
+		return
+	}
+
+	inputs := buildPilotInputs(pilots)
+
+	// Separate the newly added pilot from existing pilots.
+	var newPilotInput freq.PilotInput
+	var existingInputs []freq.PilotInput
+	for _, inp := range inputs {
+		if inp.ID == added.ID {
+			newPilotInput = inp
+		} else {
+			existingInputs = append(existingInputs, inp)
+		}
+	}
+
+	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput)
+
+	// Apply all assignments from the result.
+	for _, a := range result.Assignments {
+		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+			log.Printf("HandleJoinSession: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
+		}
+	}
+
+	if err := s.DB.IncrementVersion(code); err != nil {
+		log.Printf("IncrementVersion error: %v", err)
+	}
+
+	// First pilot becomes leader.
+	leaderID, _ := s.DB.GetLeader(code)
+	if leaderID == 0 {
+		s.DB.SetLeader(code, added.ID)
 	}
 
 	// Re-fetch the pilot to get the updated assignment.
-	pilots, err := s.DB.GetActivePilots(code)
+	pilots, err = s.DB.GetActivePilots(code)
 	if err == nil {
 		for _, p := range pilots {
 			if p.ID == added.ID {
@@ -222,8 +254,17 @@ type DisplacedPilot struct {
 	NewFreqMHz int    `json:"new_freq_mhz"`
 }
 
-// HandlePreviewJoin dry-runs the optimizer with a hypothetical new pilot and
-// returns which existing pilots would be displaced. Nothing is committed.
+// PreviewResponse is the JSON response shape for preview-join and preview-channel.
+type PreviewResponse struct {
+	Level           int                   `json:"level"`
+	Assignment      freq.Assignment       `json:"assignment"`
+	Displaced       []DisplacedPilot      `json:"displaced"`
+	BuddySuggestion *freq.BuddySuggestion `json:"buddy_suggestion"`
+}
+
+// HandlePreviewJoin dry-runs graduated escalation with a hypothetical new pilot
+// and returns the escalation level, new pilot's assignment, and displaced pilots.
+// Nothing is committed.
 // POST /api/sessions/{code}/preview-join
 func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code string) {
 	_, err := s.DB.GetSession(code)
@@ -261,26 +302,11 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 	}
 	pilots = filteredPilots
 
-	// Build optimizer inputs from existing pilots.
-	inputs := make([]freq.PilotInput, len(pilots))
-	for i, p := range pilots {
-		inputs[i] = freq.PilotInput{
-			ID:            p.ID,
-			VideoSystem:   p.VideoSystem,
-			FCCUnlocked:   p.FCCUnlocked,
-			BandwidthMHz:  p.BandwidthMHz,
-			RaceMode:      p.RaceMode,
-			Goggles:       p.Goggles,
-			ChannelLocked: p.ChannelLocked,
-			LockedFreqMHz: p.LockedFrequencyMHz,
-			PrevChannel:   p.AssignedChannel,
-			PrevFreqMHz:   p.AssignedFreqMHz,
-		}
-	}
+	existingInputs := buildPilotInputs(pilots)
 
-	// Add the hypothetical new pilot with a temporary ID.
+	// Build the hypothetical new pilot with a temporary ID.
 	tempID := -1
-	inputs = append(inputs, freq.PilotInput{
+	newPilotInput := freq.PilotInput{
 		ID:            tempID,
 		VideoSystem:   req.VideoSystem,
 		FCCUnlocked:   req.FCCUnlocked,
@@ -289,40 +315,33 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		Goggles:       req.Goggles,
 		ChannelLocked: req.ChannelLocked,
 		LockedFreqMHz: req.LockedFreqMHz,
-	})
-
-	// Run the optimizer.
-	assignments := freq.Optimize(inputs)
-
-	// Compare existing pilots' old vs new assignments.
-	oldAssignments := make(map[int][2]interface{}) // id -> [channel, freq]
-	for _, p := range pilots {
-		oldAssignments[p.ID] = [2]interface{}{p.AssignedChannel, p.AssignedFreqMHz}
 	}
 
+	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput)
+
+	// Find the new pilot's assignment and build displaced list.
+	var newAssignment freq.Assignment
 	var displaced []DisplacedPilot
-	for _, a := range assignments {
+	pilotCallsigns := make(map[int]string, len(pilots))
+	pilotOldFreqs := make(map[int]int, len(pilots))
+	pilotOldChannels := make(map[int]string, len(pilots))
+	for _, p := range pilots {
+		pilotCallsigns[p.ID] = p.Callsign
+		pilotOldFreqs[p.ID] = p.AssignedFreqMHz
+		pilotOldChannels[p.ID] = p.AssignedChannel
+	}
+
+	for _, a := range result.Assignments {
 		if a.PilotID == tempID {
+			newAssignment = a
 			continue
 		}
-		old, ok := oldAssignments[a.PilotID]
-		if !ok {
-			continue
-		}
-		oldCh := old[0].(string)
-		oldFreq := old[1].(int)
+		oldCh := pilotOldChannels[a.PilotID]
+		oldFreq := pilotOldFreqs[a.PilotID]
 		if oldCh != "" && (a.Channel != oldCh || a.FreqMHz != oldFreq) {
-			// Find callsign for this pilot.
-			var callsign string
-			for _, p := range pilots {
-				if p.ID == a.PilotID {
-					callsign = p.Callsign
-					break
-				}
-			}
 			displaced = append(displaced, DisplacedPilot{
 				PilotID:    a.PilotID,
-				Callsign:   callsign,
+				Callsign:   pilotCallsigns[a.PilotID],
 				OldChannel: oldCh,
 				OldFreqMHz: oldFreq,
 				NewChannel: a.Channel,
@@ -331,36 +350,13 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		}
 	}
 
-	// Check if placing just the new pilot (without moving others) would cause
-	// danger-level conflicts. Build hypothetical: existing pilots stay put +
-	// new pilot at optimizer's suggested position.
-	var newAssignment freq.Assignment
-	for _, a := range assignments {
-		if a.PilotID == tempID {
-			newAssignment = a
-			break
-		}
-	}
-	hypothetical := buildAssignments(pilots)
-	hypothetical = append(hypothetical, freq.Assignment{
-		PilotID:      tempID,
-		Channel:      newAssignment.Channel,
-		FreqMHz:      newAssignment.FreqMHz,
-		BandwidthMHz: freq.OccupiedBandwidth(req.VideoSystem, req.BandwidthMHz),
-	})
-	hasDanger := false
-	for _, c := range freq.DetectConflicts(hypothetical) {
-		if c.Level == freq.ConflictDanger && (c.PilotA == tempID || c.PilotB == tempID) {
-			hasDanger = true
-			break
-		}
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(struct {
-		Displaced []DisplacedPilot `json:"displaced"`
-		HasDanger bool             `json:"has_danger"`
-	}{Displaced: displaced, HasDanger: hasDanger})
+	json.NewEncoder(w).Encode(PreviewResponse{
+		Level:           result.Level,
+		Assignment:      newAssignment,
+		Displaced:       displaced,
+		BuddySuggestion: result.BuddySuggestion,
+	})
 }
 
 // UpdateChannelRequest is the JSON body for changing a pilot's channel preference.
@@ -369,8 +365,8 @@ type UpdateChannelRequest struct {
 	LockedFreqMHz int  `json:"locked_frequency_mhz"`
 }
 
-// HandlePreviewChannelChange dry-runs what would happen if a pilot changed their
-// channel preference. Returns which other pilots would be displaced.
+// HandlePreviewChannelChange dry-runs graduated escalation for a pilot changing
+// their channel preference. Returns the escalation level, assignment, and displaced pilots.
 // POST /api/pilots/{id}/preview-channel?session={code}
 func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
 	var req UpdateChannelRequest
@@ -386,58 +382,49 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Build optimizer inputs, overriding the requesting pilot's preferences.
-	inputs := make([]freq.PilotInput, len(pilots))
-	for i, p := range pilots {
-		input := freq.PilotInput{
-			ID:            p.ID,
-			VideoSystem:   p.VideoSystem,
-			FCCUnlocked:   p.FCCUnlocked,
-			BandwidthMHz:  p.BandwidthMHz,
-			RaceMode:      p.RaceMode,
-			Goggles:       p.Goggles,
-			ChannelLocked: p.ChannelLocked,
-			LockedFreqMHz: p.LockedFrequencyMHz,
-			PrevChannel:   p.AssignedChannel,
-			PrevFreqMHz:   p.AssignedFreqMHz,
+	inputs := buildPilotInputs(pilots)
+
+	// Separate the changing pilot (with updated preferences) from the rest.
+	var changingPilotInput freq.PilotInput
+	var existingInputs []freq.PilotInput
+	for _, inp := range inputs {
+		if inp.ID == pilotID {
+			changingPilotInput = inp
+			changingPilotInput.ChannelLocked = req.ChannelLocked
+			changingPilotInput.LockedFreqMHz = req.LockedFreqMHz
+			// Clear prev assignment since preferences changed.
+			changingPilotInput.PrevChannel = ""
+			changingPilotInput.PrevFreqMHz = 0
+		} else {
+			existingInputs = append(existingInputs, inp)
 		}
-		if p.ID == pilotID {
-			input.ChannelLocked = req.ChannelLocked
-			input.LockedFreqMHz = req.LockedFreqMHz
-		}
-		inputs[i] = input
 	}
 
-	assignments := freq.Optimize(inputs)
+	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput)
 
-	// Compare old vs new for other pilots (not the requesting pilot).
-	oldAssignments := make(map[int][2]interface{})
-	for _, p := range pilots {
-		oldAssignments[p.ID] = [2]interface{}{p.AssignedChannel, p.AssignedFreqMHz}
-	}
-
+	// Find the changing pilot's assignment and build displaced list.
+	var myAssignment freq.Assignment
 	var displaced []DisplacedPilot
-	for _, a := range assignments {
+	pilotCallsigns := make(map[int]string, len(pilots))
+	pilotOldFreqs := make(map[int]int, len(pilots))
+	pilotOldChannels := make(map[int]string, len(pilots))
+	for _, p := range pilots {
+		pilotCallsigns[p.ID] = p.Callsign
+		pilotOldFreqs[p.ID] = p.AssignedFreqMHz
+		pilotOldChannels[p.ID] = p.AssignedChannel
+	}
+
+	for _, a := range result.Assignments {
 		if a.PilotID == pilotID {
+			myAssignment = a
 			continue
 		}
-		old, ok := oldAssignments[a.PilotID]
-		if !ok {
-			continue
-		}
-		oldCh := old[0].(string)
-		oldFreq := old[1].(int)
+		oldCh := pilotOldChannels[a.PilotID]
+		oldFreq := pilotOldFreqs[a.PilotID]
 		if oldCh != "" && (a.Channel != oldCh || a.FreqMHz != oldFreq) {
-			var callsign string
-			for _, p := range pilots {
-				if p.ID == a.PilotID {
-					callsign = p.Callsign
-					break
-				}
-			}
 			displaced = append(displaced, DisplacedPilot{
 				PilotID:    a.PilotID,
-				Callsign:   callsign,
+				Callsign:   pilotCallsigns[a.PilotID],
 				OldChannel: oldCh,
 				OldFreqMHz: oldFreq,
 				NewChannel: a.Channel,
@@ -446,51 +433,13 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	// Check if moving just this pilot (without moving others) would cause
-	// danger-level conflicts.
-	var myAssignment freq.Assignment
-	for _, a := range assignments {
-		if a.PilotID == pilotID {
-			myAssignment = a
-			break
-		}
-	}
-	// Build hypothetical: all other pilots stay, this pilot moves.
-	var requestingPilot db.Pilot
-	var hypothetical []freq.Assignment
-	for _, p := range pilots {
-		if p.ID == pilotID {
-			requestingPilot = p
-			hypothetical = append(hypothetical, freq.Assignment{
-				PilotID:      p.ID,
-				Channel:      myAssignment.Channel,
-				FreqMHz:      myAssignment.FreqMHz,
-				BandwidthMHz: freq.OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz),
-				BuddyGroup:   myAssignment.BuddyGroup,
-			})
-		} else {
-			hypothetical = append(hypothetical, freq.Assignment{
-				PilotID:      p.ID,
-				Channel:      p.AssignedChannel,
-				FreqMHz:      p.AssignedFreqMHz,
-				BandwidthMHz: freq.OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz),
-				BuddyGroup:   p.BuddyGroup,
-			})
-		}
-	}
-	hasDanger := false
-	for _, c := range freq.DetectConflicts(hypothetical) {
-		if c.Level == freq.ConflictDanger && (c.PilotA == requestingPilot.ID || c.PilotB == requestingPilot.ID) {
-			hasDanger = true
-			break
-		}
-	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(struct {
-		Displaced []DisplacedPilot `json:"displaced"`
-		HasDanger bool             `json:"has_danger"`
-	}{Displaced: displaced, HasDanger: hasDanger})
+	json.NewEncoder(w).Encode(PreviewResponse{
+		Level:           result.Level,
+		Assignment:      myAssignment,
+		Displaced:       displaced,
+		BuddySuggestion: result.BuddySuggestion,
+	})
 }
 
 // HandleUpdatePilotChannel updates a pilot's channel preference and reoptimizes.
@@ -512,12 +461,41 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	rebalance := r.URL.Query().Get("rebalance") != "false"
-	if rebalance {
-		s.reoptimize(sessionCode)
-	} else {
-		s.reoptimizeForPilot(sessionCode, pilotID)
+	// Graduated escalation: treat the changing pilot as "new".
+	pilots, err := s.DB.GetActivePilots(sessionCode)
+	if err != nil {
+		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
+		log.Printf("HandleUpdatePilotChannel GetActivePilots error: %v", err)
+		return
 	}
+
+	inputs := buildPilotInputs(pilots)
+
+	var changingPilotInput freq.PilotInput
+	var existingInputs []freq.PilotInput
+	for _, inp := range inputs {
+		if inp.ID == pilotID {
+			changingPilotInput = inp
+			// Clear prev assignment since preferences changed.
+			changingPilotInput.PrevChannel = ""
+			changingPilotInput.PrevFreqMHz = 0
+		} else {
+			existingInputs = append(existingInputs, inp)
+		}
+	}
+
+	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput)
+
+	for _, a := range result.Assignments {
+		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+			log.Printf("HandleUpdatePilotChannel: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
+		}
+	}
+
+	if err := s.DB.IncrementVersion(sessionCode); err != nil {
+		log.Printf("IncrementVersion error: %v", err)
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -554,7 +532,41 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	s.reoptimize(sessionCode)
+	// Graduated escalation: treat the changing pilot as "new".
+	pilots, err := s.DB.GetActivePilots(sessionCode)
+	if err != nil {
+		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
+		log.Printf("HandleUpdatePilotVideoSystem GetActivePilots error: %v", err)
+		return
+	}
+
+	inputs := buildPilotInputs(pilots)
+
+	var changingPilotInput freq.PilotInput
+	var existingInputs []freq.PilotInput
+	for _, inp := range inputs {
+		if inp.ID == pilotID {
+			changingPilotInput = inp
+			// Clear prev assignment since video system changed.
+			changingPilotInput.PrevChannel = ""
+			changingPilotInput.PrevFreqMHz = 0
+		} else {
+			existingInputs = append(existingInputs, inp)
+		}
+	}
+
+	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput)
+
+	for _, a := range result.Assignments {
+		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+			log.Printf("HandleUpdatePilotVideoSystem: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
+		}
+	}
+
+	if err := s.DB.IncrementVersion(sessionCode); err != nil {
+		log.Printf("IncrementVersion error: %v", err)
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -608,8 +620,6 @@ func (s *Server) HandleDeactivatePilot(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
-	s.reoptimize(sessionCode)
-
 	if err := s.DB.IncrementVersion(sessionCode); err != nil {
 		log.Printf("IncrementVersion error: %v", err)
 	}
@@ -630,6 +640,26 @@ func (s *Server) HandlePoll(w http.ResponseWriter, r *http.Request, code string)
 	json.NewEncoder(w).Encode(struct {
 		Version int `json:"version"`
 	}{Version: sess.Version})
+}
+
+// buildPilotInputs converts DB pilots to freq.PilotInput structs for the optimizer.
+func buildPilotInputs(pilots []db.Pilot) []freq.PilotInput {
+	inputs := make([]freq.PilotInput, len(pilots))
+	for i, p := range pilots {
+		inputs[i] = freq.PilotInput{
+			ID:            p.ID,
+			VideoSystem:   p.VideoSystem,
+			FCCUnlocked:   p.FCCUnlocked,
+			BandwidthMHz:  p.BandwidthMHz,
+			RaceMode:      p.RaceMode,
+			Goggles:       p.Goggles,
+			ChannelLocked: p.ChannelLocked,
+			LockedFreqMHz: p.LockedFrequencyMHz,
+			PrevChannel:   p.AssignedChannel,
+			PrevFreqMHz:   p.AssignedFreqMHz,
+		}
+	}
+	return inputs
 }
 
 // buildAssignments converts DB pilots to freq.Assignment structs for conflict detection.
