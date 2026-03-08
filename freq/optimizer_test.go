@@ -377,6 +377,61 @@ func TestFindMinimalDisplacement_Level0_NewPilotGetsAssignment(t *testing.T) {
 	}
 }
 
+func TestFindMinimalDisplacement_Level1_UnlockOne(t *testing.T) {
+	// Pack the spectrum tight so the new pilot can't fit at Level 0,
+	// but unlocking one flexible pilot creates room.
+	// Existing: analog R1(5658), analog R4(5769), analog R7(5880).
+	// New: DJI O3 at 40MHz — only has 1 channel at 5795.
+	// At Level 0: place O3 at 5795. Check: |5795-5769|=26, required spacing between
+	// 40MHz and 20MHz = 20+10+10=40. 26 < 40 → danger overlap with pilot on R4.
+	// Level 1: unlock pilot on R4 → optimizer can move them away from 5795.
+	existing := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
+		{ID: 2, VideoSystem: "analog", PrevChannel: "R4", PrevFreqMHz: 5769},
+		{ID: 3, VideoSystem: "analog", PrevChannel: "R7", PrevFreqMHz: 5880},
+	}
+	newPilot := PilotInput{ID: -1, VideoSystem: "dji_o3", BandwidthMHz: 40}
+
+	result := FindMinimalDisplacement(existing, newPilot)
+
+	if result.Level != 1 {
+		t.Errorf("expected level 1, got %d", result.Level)
+	}
+	// New pilot should be at 5795 (only O3 40MHz channel).
+	for _, a := range result.Assignments {
+		if a.PilotID == -1 && a.FreqMHz != 5795 {
+			t.Errorf("new pilot expected 5795, got %d", a.FreqMHz)
+		}
+	}
+	// Pilot on R4 (5769) should have moved away from 5795.
+	for _, a := range result.Assignments {
+		if a.PilotID == 2 && a.FreqMHz == 5769 {
+			t.Error("pilot 2 should have been displaced from R4")
+		}
+	}
+}
+
+func TestFindMinimalDisplacement_Level1_SkipsLockedPilots(t *testing.T) {
+	// A channel-locked pilot should never be unlocked at Level 1.
+	// Same scenario as above but pilot 2 is channel-locked on R4.
+	// Level 1 can't unlock pilot 2, so it tries others.
+	existing := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
+		{ID: 2, VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5769, PrevChannel: "R4", PrevFreqMHz: 5769},
+		{ID: 3, VideoSystem: "analog", PrevChannel: "R7", PrevFreqMHz: 5880},
+	}
+	newPilot := PilotInput{ID: -1, VideoSystem: "dji_o3", BandwidthMHz: 40}
+
+	result := FindMinimalDisplacement(existing, newPilot)
+
+	// Pilot 2 must stay on 5769 regardless of level.
+	for _, a := range result.Assignments {
+		if a.PilotID == 2 && a.FreqMHz != 5769 {
+			t.Errorf("locked pilot 2 was moved to %d", a.FreqMHz)
+		}
+	}
+}
+
 func TestDetectConflicts_WideBandDanger(t *testing.T) {
 	// Analog (20 MHz) at 5769 (R4), O3 40 MHz at 5795.
 	// Separation = 26, overlap = 10+20=30, 26 < 30 → danger.

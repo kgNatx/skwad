@@ -286,9 +286,64 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) Displac
 		return DisplacementResult{Level: 0, Assignments: assignments}
 	}
 
-	// Levels 1-3 implemented in subsequent tasks.
-	// Placeholder: return Level 0 result even if it has danger.
-	return DisplacementResult{Level: 0, Assignments: assignments}
+	// Level 1: try unlocking one existing pilot at a time.
+	// Sort by flexibility (largest channel pool first = most likely to relocate).
+	flexible := flexiblePilots(existing)
+	var bestResult *DisplacementResult
+	var bestMargin int
+
+	for _, pilot := range flexible {
+		tryLocked := make(map[int]bool, len(allExistingIDs))
+		for id := range allExistingIDs {
+			tryLocked[id] = true
+		}
+		delete(tryLocked, pilot.ID)
+
+		assignments = OptimizeWithLocks(all, tryLocked)
+		movedIDs = movedPilotIDs(existing, assignments)
+		movedIDs[newPilot.ID] = true
+		if !hasDangerInvolving(assignments, movedIDs) {
+			margin := worstMargin(assignments)
+			if bestResult == nil || margin > bestMargin {
+				result := DisplacementResult{Level: 1, Assignments: copyAssignments(assignments)}
+				bestResult = &result
+				bestMargin = margin
+			}
+		}
+	}
+	if bestResult != nil {
+		return *bestResult
+	}
+
+	// Level 2: try unlocking pairs.
+	for i := 0; i < len(flexible); i++ {
+		for j := i + 1; j < len(flexible); j++ {
+			tryLocked := make(map[int]bool, len(allExistingIDs))
+			for id := range allExistingIDs {
+				tryLocked[id] = true
+			}
+			delete(tryLocked, flexible[i].ID)
+			delete(tryLocked, flexible[j].ID)
+
+			assignments = OptimizeWithLocks(all, tryLocked)
+			movedIDs = movedPilotIDs(existing, assignments)
+			movedIDs[newPilot.ID] = true
+			if !hasDangerInvolving(assignments, movedIDs) {
+				margin := worstMargin(assignments)
+				if bestResult == nil || margin > bestMargin {
+					result := DisplacementResult{Level: 2, Assignments: copyAssignments(assignments)}
+					bestResult = &result
+					bestMargin = margin
+				}
+			}
+		}
+	}
+	if bestResult != nil {
+		return *bestResult
+	}
+
+	// Level 3: buddy suggestion (next task).
+	return DisplacementResult{Level: 0, Assignments: OptimizeWithLocks(all, allExistingIDs)}
 }
 
 // hasDangerInvolving returns true if any danger-level conflict involves
@@ -329,4 +384,49 @@ func findChannelName(pool []Channel, freqMHz int) string {
 		}
 	}
 	return ""
+}
+
+// flexiblePilots returns existing pilots that are NOT channel-locked,
+// sorted by channel pool size descending (most flexible first).
+func flexiblePilots(existing []PilotInput) []PilotInput {
+	var flex []PilotInput
+	for _, p := range existing {
+		if !p.ChannelLocked || p.LockedFreqMHz == 0 {
+			flex = append(flex, p)
+		}
+	}
+	sort.SliceStable(flex, func(i, j int) bool {
+		poolI := ChannelPool(flex[i].VideoSystem, flex[i].FCCUnlocked, flex[i].BandwidthMHz, flex[i].RaceMode, flex[i].Goggles)
+		poolJ := ChannelPool(flex[j].VideoSystem, flex[j].FCCUnlocked, flex[j].BandwidthMHz, flex[j].RaceMode, flex[j].Goggles)
+		return len(poolI) > len(poolJ)
+	})
+	return flex
+}
+
+// worstMargin returns the worst effective separation margin across all
+// assignment pairs. Higher is better.
+func worstMargin(assignments []Assignment) int {
+	worst := 1<<31 - 1
+	for i := 0; i < len(assignments); i++ {
+		for j := i + 1; j < len(assignments); j++ {
+			a, b := assignments[i], assignments[j]
+			sep := a.FreqMHz - b.FreqMHz
+			if sep < 0 {
+				sep = -sep
+			}
+			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz)
+			margin := sep - required
+			if margin < worst {
+				worst = margin
+			}
+		}
+	}
+	return worst
+}
+
+// copyAssignments returns a deep copy of an assignment slice.
+func copyAssignments(a []Assignment) []Assignment {
+	out := make([]Assignment, len(a))
+	copy(out, a)
+	return out
 }
