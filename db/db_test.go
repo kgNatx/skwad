@@ -410,6 +410,46 @@ func TestCreateSession_CollisionRetry(t *testing.T) {
 	}
 }
 
+func TestSetAndGetLeader(t *testing.T) {
+	d := newTestDB(t)
+	sess, _ := d.CreateSession()
+
+	// No leader initially.
+	leaderID, err := d.GetLeader(sess.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if leaderID != 0 {
+		t.Errorf("expected no leader (0), got %d", leaderID)
+	}
+
+	// Set leader.
+	if err := d.SetLeader(sess.ID, 42); err != nil {
+		t.Fatal(err)
+	}
+	leaderID, err = d.GetLeader(sess.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if leaderID != 42 {
+		t.Errorf("expected leader 42, got %d", leaderID)
+	}
+}
+
+func TestTransferLeader(t *testing.T) {
+	d := newTestDB(t)
+	sess, _ := d.CreateSession()
+	d.SetLeader(sess.ID, 10)
+
+	if err := d.SetLeader(sess.ID, 20); err != nil {
+		t.Fatal(err)
+	}
+	leaderID, _ := d.GetLeader(sess.ID)
+	if leaderID != 20 {
+		t.Errorf("expected leader 20 after transfer, got %d", leaderID)
+	}
+}
+
 func TestGenerateCode(t *testing.T) {
 	code := generateCode()
 	if len(code) != 6 {

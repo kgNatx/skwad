@@ -18,10 +18,11 @@ type DB struct {
 
 // Session represents a frequency-coordination session.
 type Session struct {
-	ID        string
-	CreatedAt time.Time
-	ExpiresAt time.Time
-	Version   int
+	ID            string
+	CreatedAt     time.Time
+	ExpiresAt     time.Time
+	Version       int
+	LeaderPilotID int
 }
 
 // Pilot represents a pilot within a session.
@@ -89,7 +90,21 @@ func New(path string) (*DB, error) {
 		return nil, fmt.Errorf("create tables: %w", err)
 	}
 
-	return &DB{db: sqlDB}, nil
+	d := &DB{db: sqlDB}
+	if err := d.migrate(); err != nil {
+		sqlDB.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	return d, nil
+}
+
+// migrate runs idempotent schema migrations.
+func (d *DB) migrate() error {
+	_, err := d.db.Exec(`ALTER TABLE sessions ADD COLUMN leader_pilot_id INTEGER DEFAULT 0`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		return fmt.Errorf("migrate leader_pilot_id: %w", err)
+	}
+	return nil
 }
 
 // Close closes the underlying database connection.
@@ -131,9 +146,9 @@ func (d *DB) CreateSession() (*Session, error) {
 func (d *DB) GetSession(id string) (*Session, error) {
 	var s Session
 	err := d.db.QueryRow(
-		`SELECT id, created_at, expires_at, version FROM sessions WHERE id = ? AND expires_at > datetime('now')`,
+		`SELECT id, created_at, expires_at, version, leader_pilot_id FROM sessions WHERE id = ? AND expires_at > datetime('now')`,
 		id,
-	).Scan(&s.ID, &s.CreatedAt, &s.ExpiresAt, &s.Version)
+	).Scan(&s.ID, &s.CreatedAt, &s.ExpiresAt, &s.Version, &s.LeaderPilotID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("session %q not found or expired", id)
@@ -157,6 +172,35 @@ func (d *DB) IncrementVersion(sessionID string) error {
 		return fmt.Errorf("session %q not found", sessionID)
 	}
 	return nil
+}
+
+// SetLeader sets the leader pilot ID for a session.
+func (d *DB) SetLeader(sessionID string, pilotID int) error {
+	res, err := d.db.Exec(
+		`UPDATE sessions SET leader_pilot_id = ? WHERE id = ?`,
+		pilotID, sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("set leader: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("session %q not found", sessionID)
+	}
+	return nil
+}
+
+// GetLeader returns the leader pilot ID for a session (0 = no leader).
+func (d *DB) GetLeader(sessionID string) (int, error) {
+	var leaderID int
+	err := d.db.QueryRow(
+		`SELECT leader_pilot_id FROM sessions WHERE id = ?`,
+		sessionID,
+	).Scan(&leaderID)
+	if err != nil {
+		return 0, fmt.Errorf("get leader: %w", err)
+	}
+	return leaderID, nil
 }
 
 // AddPilot inserts a new pilot into the given session and returns the pilot
