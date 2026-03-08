@@ -849,52 +849,6 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 	json.NewEncoder(w).Encode(added)
 }
 
-// reoptimizeForPilot runs the optimizer but only applies the result for the
-// specified pilot, leaving all other pilots' assignments unchanged.
-func (s *Server) reoptimizeForPilot(sessionCode string, pilotID int) {
-	pilots, err := s.DB.GetActivePilots(sessionCode)
-	if err != nil {
-		log.Printf("reoptimizeForPilot: GetActivePilots error: %v", err)
-		return
-	}
-
-	if len(pilots) == 0 {
-		return
-	}
-
-	inputs := make([]freq.PilotInput, len(pilots))
-	for i, p := range pilots {
-		inputs[i] = freq.PilotInput{
-			ID:            p.ID,
-			VideoSystem:   p.VideoSystem,
-			FCCUnlocked:   p.FCCUnlocked,
-			BandwidthMHz:  p.BandwidthMHz,
-			RaceMode:      p.RaceMode,
-			Goggles:       p.Goggles,
-			ChannelLocked: p.ChannelLocked,
-			LockedFreqMHz: p.LockedFrequencyMHz,
-			PrevChannel:   p.AssignedChannel,
-			PrevFreqMHz:   p.AssignedFreqMHz,
-		}
-	}
-
-	assignments := freq.Optimize(inputs)
-
-	// Only apply the assignment for the target pilot.
-	for _, a := range assignments {
-		if a.PilotID == pilotID {
-			if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
-				log.Printf("reoptimizeForPilot: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
-			}
-			break
-		}
-	}
-
-	if err := s.DB.IncrementVersion(sessionCode); err != nil {
-		log.Printf("reoptimizeForPilot: IncrementVersion error: %v", err)
-	}
-}
-
 // reoptimize gets all active pilots for a session, runs the frequency
 // optimizer, and updates each pilot's assignment in the database.
 func (s *Server) reoptimize(sessionCode string) {
