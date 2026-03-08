@@ -643,6 +643,161 @@ func TestDeactivatePilot_OthersStayPut(t *testing.T) {
 	}
 }
 
+func TestRebalanceAll_LeaderOnly(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "LEADER", "analog")
+	joinTestPilot(t, srv, sess.ID, "PILOT2", "analog")
+
+	pilots := getTestPilots(t, srv, sess.ID)
+	var leaderID, otherID int
+	for _, p := range pilots {
+		if p.Callsign == "LEADER" {
+			leaderID = p.ID
+		} else {
+			otherID = p.ID
+		}
+	}
+
+	// Non-leader should be rejected.
+	req := httptest.NewRequest("POST", "/api/sessions/"+sess.ID+"/rebalance", nil)
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(otherID))
+	w := httptest.NewRecorder()
+	srv.HandleRebalanceAll(w, req, sess.ID)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("non-leader rebalance: expected 403, got %d", w.Code)
+	}
+
+	// Leader should succeed.
+	req = httptest.NewRequest("POST", "/api/sessions/"+sess.ID+"/rebalance", nil)
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
+	w = httptest.NewRecorder()
+	srv.HandleRebalanceAll(w, req, sess.ID)
+	if w.Code != http.StatusNoContent {
+		t.Errorf("leader rebalance: expected 204, got %d", w.Code)
+	}
+}
+
+func TestTransferLeader(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "LEADER", "analog")
+	joinTestPilot(t, srv, sess.ID, "PILOT2", "analog")
+
+	pilots := getTestPilots(t, srv, sess.ID)
+	var leaderID, otherID int
+	for _, p := range pilots {
+		if p.Callsign == "LEADER" {
+			leaderID = p.ID
+		} else {
+			otherID = p.ID
+		}
+	}
+
+	body := fmt.Sprintf(`{"pilot_id":%d}`, otherID)
+	req := httptest.NewRequest("POST", "/api/sessions/"+sess.ID+"/transfer-leader", strings.NewReader(body))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
+	w := httptest.NewRecorder()
+	srv.HandleTransferLeader(w, req, sess.ID)
+
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d: %s", w.Code, w.Body.String())
+	}
+
+	newLeader, _ := srv.DB.GetLeader(sess.ID)
+	if newLeader != otherID {
+		t.Errorf("expected new leader %d, got %d", otherID, newLeader)
+	}
+}
+
+func TestAddPilot_LeaderOnly(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "LEADER", "analog")
+
+	pilots := getTestPilots(t, srv, sess.ID)
+	leaderID := pilots[0].ID
+
+	body := `{"callsign":"PHANTOM","video_system":"analog"}`
+	req := httptest.NewRequest("POST", "/api/sessions/"+sess.ID+"/add-pilot", strings.NewReader(body))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
+	w := httptest.NewRecorder()
+	srv.HandleAddPilot(w, req, sess.ID)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d: %s", w.Code, w.Body.String())
+	}
+
+	updated := getTestPilots(t, srv, sess.ID)
+	var found bool
+	for _, p := range updated {
+		if p.Callsign == "PHANTOM" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("phantom pilot not found")
+	}
+}
+
+func TestRemovePilot_LeaderOnly(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "LEADER", "analog")
+	joinTestPilot(t, srv, sess.ID, "PILOT2", "analog")
+
+	pilots := getTestPilots(t, srv, sess.ID)
+	var leaderID, otherID int
+	for _, p := range pilots {
+		if p.Callsign == "LEADER" {
+			leaderID = p.ID
+		} else {
+			otherID = p.ID
+		}
+	}
+
+	// Non-leader cannot remove others.
+	req := httptest.NewRequest("DELETE", "/api/pilots/"+fmt.Sprint(leaderID)+"?session="+sess.ID, nil)
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(otherID))
+	w := httptest.NewRecorder()
+	srv.HandleDeactivatePilot(w, req, leaderID, sess.ID)
+	if w.Code != http.StatusForbidden {
+		t.Errorf("non-leader remove: expected 403, got %d", w.Code)
+	}
+
+	// Leader can remove others.
+	req = httptest.NewRequest("DELETE", "/api/pilots/"+fmt.Sprint(otherID)+"?session="+sess.ID, nil)
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
+	w = httptest.NewRecorder()
+	srv.HandleDeactivatePilot(w, req, otherID, sess.ID)
+	if w.Code != http.StatusNoContent {
+		t.Errorf("leader remove: expected 204, got %d", w.Code)
+	}
+}
+
+func TestDeactivatePilot_SelfRemovalAlwaysAllowed(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "LEADER", "analog")
+	joinTestPilot(t, srv, sess.ID, "PILOT2", "analog")
+
+	pilots := getTestPilots(t, srv, sess.ID)
+	var otherID int
+	for _, p := range pilots {
+		if p.Callsign == "PILOT2" {
+			otherID = p.ID
+		}
+	}
+
+	req := httptest.NewRequest("DELETE", "/api/pilots/"+fmt.Sprint(otherID)+"?session="+sess.ID, nil)
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(otherID))
+	w := httptest.NewRecorder()
+	srv.HandleDeactivatePilot(w, req, otherID, sess.ID)
+	if w.Code != http.StatusNoContent {
+		t.Errorf("self-removal: expected 204, got %d", w.Code)
+	}
+}
+
 func TestUpdateChannel_NoUnnecessaryDisplacement(t *testing.T) {
 	srv := newTestServer(t)
 	sess := createTestSession(t, srv)

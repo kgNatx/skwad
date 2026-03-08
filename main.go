@@ -153,6 +153,18 @@ func main() {
 		srv.HandleUpdatePilotCallsign(w, r, pilotID, sessionCode)
 	})
 
+	mux.HandleFunc("POST /api/sessions/{code}/rebalance", func(w http.ResponseWriter, r *http.Request) {
+		srv.HandleRebalanceAll(w, r, r.PathValue("code"))
+	})
+
+	mux.HandleFunc("POST /api/sessions/{code}/transfer-leader", func(w http.ResponseWriter, r *http.Request) {
+		srv.HandleTransferLeader(w, r, r.PathValue("code"))
+	})
+
+	mux.HandleFunc("POST /api/sessions/{code}/add-pilot", func(w http.ResponseWriter, r *http.Request) {
+		srv.HandleAddPilot(w, r, r.PathValue("code"))
+	})
+
 	mux.HandleFunc("DELETE /api/pilots/{id}", func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
 		pilotID, err := strconv.Atoi(idStr)
@@ -209,7 +221,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Pilot-ID")
 
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)

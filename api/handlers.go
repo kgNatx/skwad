@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/kyleg/skwad/db"
@@ -18,6 +19,26 @@ type Server struct {
 // NewServer creates a new Server with the given database.
 func NewServer(database *db.DB) *Server {
 	return &Server{DB: database}
+}
+
+// requireLeader checks the X-Pilot-ID header matches the session leader.
+func (s *Server) requireLeader(w http.ResponseWriter, r *http.Request, sessionCode string) (int, bool) {
+	idStr := r.Header.Get("X-Pilot-ID")
+	if idStr == "" {
+		http.Error(w, "X-Pilot-ID header required", http.StatusUnauthorized)
+		return 0, false
+	}
+	pilotID, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid X-Pilot-ID", http.StatusBadRequest)
+		return 0, false
+	}
+	leaderID, err := s.DB.GetLeader(sessionCode)
+	if err != nil || leaderID != pilotID {
+		http.Error(w, "leader access required", http.StatusForbidden)
+		return 0, false
+	}
+	return pilotID, true
 }
 
 // JoinRequest is the JSON body for joining a session.
@@ -612,9 +633,31 @@ func (s *Server) HandleUpdatePilotCallsign(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// HandleDeactivatePilot sets a pilot as inactive and reoptimizes.
+// HandleDeactivatePilot sets a pilot as inactive.
 // DELETE /api/pilots/{id}?session={code}
+//
+// Authorization:
+//   - Self-removal (X-Pilot-ID == pilotID): always allowed
+//   - Removing another pilot: requires leader
+//   - No X-Pilot-ID header: allowed (backwards compatibility)
 func (s *Server) HandleDeactivatePilot(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
+	idStr := r.Header.Get("X-Pilot-ID")
+	if idStr != "" {
+		requestingID, err := strconv.Atoi(idStr)
+		if err != nil {
+			http.Error(w, "invalid X-Pilot-ID", http.StatusBadRequest)
+			return
+		}
+		// If not self-removal, require leader.
+		if requestingID != pilotID {
+			leaderID, err := s.DB.GetLeader(sessionCode)
+			if err != nil || leaderID != requestingID {
+				http.Error(w, "leader access required", http.StatusForbidden)
+				return
+			}
+		}
+	}
+
 	if err := s.DB.DeactivatePilot(pilotID); err != nil {
 		http.Error(w, "pilot not found", http.StatusNotFound)
 		return
@@ -675,6 +718,135 @@ func buildAssignments(pilots []db.Pilot) []freq.Assignment {
 		}
 	}
 	return assignments
+}
+
+// HandleRebalanceAll runs the full optimizer on all pilots (leader-only).
+// POST /api/sessions/{code}/rebalance
+func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code string) {
+	if _, ok := s.requireLeader(w, r, code); !ok {
+		return
+	}
+	s.reoptimize(code)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleTransferLeader designates another pilot as session leader.
+// POST /api/sessions/{code}/transfer-leader
+func (s *Server) HandleTransferLeader(w http.ResponseWriter, r *http.Request, code string) {
+	if _, ok := s.requireLeader(w, r, code); !ok {
+		return
+	}
+	var req struct {
+		PilotID int `json:"pilot_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.PilotID == 0 {
+		http.Error(w, "pilot_id required", http.StatusBadRequest)
+		return
+	}
+	if err := s.DB.SetLeader(code, req.PilotID); err != nil {
+		http.Error(w, "failed to transfer leadership", http.StatusInternalServerError)
+		log.Printf("SetLeader error: %v", err)
+		return
+	}
+	if err := s.DB.IncrementVersion(code); err != nil {
+		log.Printf("IncrementVersion error: %v", err)
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleAddPilot lets the leader add a phantom pilot to the session.
+// POST /api/sessions/{code}/add-pilot
+func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code string) {
+	if _, ok := s.requireLeader(w, r, code); !ok {
+		return
+	}
+
+	// Verify session exists.
+	_, err := s.DB.GetSession(code)
+	if err != nil {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+
+	var req JoinRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	if strings.TrimSpace(req.Callsign) == "" || strings.TrimSpace(req.VideoSystem) == "" {
+		http.Error(w, "callsign and video_system are required", http.StatusBadRequest)
+		return
+	}
+
+	pilot := &db.Pilot{
+		Callsign:           req.Callsign,
+		VideoSystem:        req.VideoSystem,
+		FCCUnlocked:        req.FCCUnlocked,
+		Goggles:            req.Goggles,
+		BandwidthMHz:       req.BandwidthMHz,
+		RaceMode:           req.RaceMode,
+		ChannelLocked:      req.ChannelLocked,
+		LockedFrequencyMHz: req.LockedFreqMHz,
+	}
+
+	added, err := s.DB.AddPilot(code, pilot)
+	if err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") {
+			http.Error(w, "callsign already in session", http.StatusConflict)
+			return
+		}
+		http.Error(w, "failed to add pilot", http.StatusInternalServerError)
+		log.Printf("HandleAddPilot AddPilot error: %v", err)
+		return
+	}
+
+	// Graduated escalation: minimize displacement of existing pilots.
+	pilots, err := s.DB.GetActivePilots(code)
+	if err != nil {
+		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
+		log.Printf("HandleAddPilot GetActivePilots error: %v", err)
+		return
+	}
+
+	inputs := buildPilotInputs(pilots)
+
+	var newPilotInput freq.PilotInput
+	var existingInputs []freq.PilotInput
+	for _, inp := range inputs {
+		if inp.ID == added.ID {
+			newPilotInput = inp
+		} else {
+			existingInputs = append(existingInputs, inp)
+		}
+	}
+
+	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput)
+
+	for _, a := range result.Assignments {
+		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+			log.Printf("HandleAddPilot: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
+		}
+	}
+
+	if err := s.DB.IncrementVersion(code); err != nil {
+		log.Printf("IncrementVersion error: %v", err)
+	}
+
+	// Re-fetch the pilot to get the updated assignment.
+	pilots, err = s.DB.GetActivePilots(code)
+	if err == nil {
+		for _, p := range pilots {
+			if p.ID == added.ID {
+				added = &p
+				break
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(added)
 }
 
 // reoptimizeForPilot runs the optimizer but only applies the result for the
