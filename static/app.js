@@ -1243,11 +1243,17 @@
         card.classList.add('has-conflict-warning');
       }
 
-      // Frequency block
-      var chEl = el('div', { className: 'pilot-channel', textContent: p.AssignedChannel || '\u2014' });
-      var freqText = p.AssignedFreqMHz ? (p.AssignedFreqMHz + ' MHz') : '';
+      // Frequency block — frequency prominent, channel name + bandwidth below
+      var freqText = p.AssignedFreqMHz ? String(p.AssignedFreqMHz) : '\u2014';
       var freqEl = el('div', { className: 'pilot-freq', textContent: freqText });
-      var freqBlock = el('div', { className: 'pilot-freq-block' }, [chEl, freqEl]);
+      var channelLabel = p.AssignedChannel || '';
+      // Disambiguate DJI O3/O4 channel names by appending bandwidth
+      var bw = p.BandwidthMHz || 0;
+      if ((p.VideoSystem === 'dji_o3' || p.VideoSystem === 'dji_o4') && bw > 0) {
+        channelLabel += ' (' + bw + 'M)';
+      }
+      var chEl = el('div', { className: 'pilot-channel', textContent: channelLabel });
+      var freqBlock = el('div', { className: 'pilot-freq-block' }, [freqEl, chEl]);
       card.appendChild(freqBlock);
 
       // Info block

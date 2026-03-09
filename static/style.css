@@ -612,22 +612,22 @@ body {
 }
 
 .pilot-freq-block {
-  width: 100px;
+  width: 115px;
   text-align: center;
   flex-shrink: 0;
 }
 
-.pilot-channel {
-  font-size: 36px;
+.pilot-freq {
+  font-size: 32px;
   font-weight: 900;
   line-height: 1;
 }
 
-.pilot-freq {
-  font-size: 16px;
+.pilot-channel {
+  font-size: 13px;
   font-weight: 700;
   color: #aaaaaa;
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .pilot-info {
