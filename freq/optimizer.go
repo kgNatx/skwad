@@ -14,6 +14,7 @@ type PilotInput struct {
 	LockedFreqMHz int
 	PrevChannel   string // Previous assignment for stability
 	PrevFreqMHz   int
+	AnalogBands   []string // Band codes for analog: "R", "F", "E", "L"
 }
 
 // Assignment is the optimizer's output for one pilot.
@@ -43,7 +44,7 @@ func Optimize(pilots []PilotInput) []Assignment {
 	pools := make(map[int][]Channel, len(pilots))
 	pilotBW := make(map[int]int, len(pilots))
 	for _, p := range pilots {
-		pools[p.ID] = ChannelPool(p.VideoSystem, p.FCCUnlocked, p.BandwidthMHz, p.RaceMode, p.Goggles)
+		pools[p.ID] = ChannelPool(p.VideoSystem, p.FCCUnlocked, p.BandwidthMHz, p.RaceMode, p.Goggles, p.AnalogBands)
 		pilotBW[p.ID] = OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz)
 	}
 
@@ -411,8 +412,8 @@ func flexiblePilots(existing []PilotInput) []PilotInput {
 		}
 	}
 	sort.SliceStable(flex, func(i, j int) bool {
-		poolI := ChannelPool(flex[i].VideoSystem, flex[i].FCCUnlocked, flex[i].BandwidthMHz, flex[i].RaceMode, flex[i].Goggles)
-		poolJ := ChannelPool(flex[j].VideoSystem, flex[j].FCCUnlocked, flex[j].BandwidthMHz, flex[j].RaceMode, flex[j].Goggles)
+		poolI := ChannelPool(flex[i].VideoSystem, flex[i].FCCUnlocked, flex[i].BandwidthMHz, flex[i].RaceMode, flex[i].Goggles, flex[i].AnalogBands)
+		poolJ := ChannelPool(flex[j].VideoSystem, flex[j].FCCUnlocked, flex[j].BandwidthMHz, flex[j].RaceMode, flex[j].Goggles, flex[j].AnalogBands)
 		return len(poolI) > len(poolJ)
 	})
 	return flex
@@ -449,7 +450,7 @@ func copyAssignments(a []Assignment) []Assignment {
 // findBestBuddy picks the best existing pilot to share a frequency with.
 // Prefers: same video system, similar bandwidth, most margin to other pilots.
 func findBestBuddy(existing []PilotInput, newPilot PilotInput) *BuddySuggestion {
-	newPool := ChannelPool(newPilot.VideoSystem, newPilot.FCCUnlocked, newPilot.BandwidthMHz, newPilot.RaceMode, newPilot.Goggles)
+	newPool := ChannelPool(newPilot.VideoSystem, newPilot.FCCUnlocked, newPilot.BandwidthMHz, newPilot.RaceMode, newPilot.Goggles, newPilot.AnalogBands)
 	newPoolFreqs := make(map[int]bool, len(newPool))
 	for _, ch := range newPool {
 		newPoolFreqs[ch.FreqMHz] = true
@@ -496,7 +497,7 @@ func findBestBuddy(existing []PilotInput, newPilot PilotInput) *BuddySuggestion 
 	best := candidates[0]
 
 	chName := findChannelName(
-		ChannelPool(best.pilot.VideoSystem, best.pilot.FCCUnlocked, best.pilot.BandwidthMHz, best.pilot.RaceMode, best.pilot.Goggles),
+		ChannelPool(best.pilot.VideoSystem, best.pilot.FCCUnlocked, best.pilot.BandwidthMHz, best.pilot.RaceMode, best.pilot.Goggles, best.pilot.AnalogBands),
 		best.pilot.PrevFreqMHz,
 	)
 

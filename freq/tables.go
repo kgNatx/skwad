@@ -49,6 +49,56 @@ var RaceBand = []Channel{
 	{"R8", 5917},
 }
 
+// ---------- Fatshark Band ----------
+
+// FatsharkBand contains the 8 Fatshark channels (F1-F8).
+var FatsharkBand = []Channel{
+	{"F1", 5740},
+	{"F2", 5760},
+	{"F3", 5780},
+	{"F4", 5800},
+	{"F5", 5820},
+	{"F6", 5840},
+	{"F7", 5860},
+	{"F8", 5880},
+}
+
+// ---------- Boscam E Band ----------
+
+// BoscamEBand contains the 8 Boscam E channels (E1-E8).
+var BoscamEBand = []Channel{
+	{"E1", 5705},
+	{"E2", 5685},
+	{"E3", 5665},
+	{"E4", 5645},
+	{"E5", 5885},
+	{"E6", 5905},
+	{"E7", 5925},
+	{"E8", 5945},
+}
+
+// ---------- Low Race Band ----------
+
+// LowRaceBand contains the 8 Low Race channels (L1-L8).
+var LowRaceBand = []Channel{
+	{"L1", 5362},
+	{"L2", 5399},
+	{"L3", 5436},
+	{"L4", 5473},
+	{"L5", 5510},
+	{"L6", 5547},
+	{"L7", 5584},
+	{"L8", 5621},
+}
+
+// AnalogBandMap maps single-letter band codes to their channel slices.
+var AnalogBandMap = map[string][]Channel{
+	"R": RaceBand,
+	"F": FatsharkBand,
+	"E": BoscamEBand,
+	"L": LowRaceBand,
+}
+
 // ---------- DJI V1 (Air Unit / Vista) ----------
 
 // DJIV1FCC contains all 8 DJI V1 channels available in FCC-unlocked mode.
@@ -144,11 +194,39 @@ var WalksnailStdStock = DJIV1Stock
 // WalksnailRace uses the standard Race Band channels.
 var WalksnailRace = RaceBand
 
+// MergeAnalogBands returns the union of channels from the given band codes,
+// deduplicating by frequency (keeps the first name encountered).
+func MergeAnalogBands(bands []string) []Channel {
+	if len(bands) == 0 {
+		return RaceBand
+	}
+	seen := make(map[int]bool)
+	var merged []Channel
+	for _, code := range bands {
+		band, ok := AnalogBandMap[code]
+		if !ok {
+			continue
+		}
+		for _, ch := range band {
+			if !seen[ch.FreqMHz] {
+				seen[ch.FreqMHz] = true
+				merged = append(merged, ch)
+			}
+		}
+	}
+	if len(merged) == 0 {
+		return RaceBand
+	}
+	return merged
+}
+
 // ChannelPool returns the available channels for a pilot based on their
 // video system, FCC unlock status, bandwidth, race mode, and goggle model.
-func ChannelPool(videoSystem string, fccUnlocked bool, bandwidthMHz int, raceMode bool, goggles string) []Channel {
+func ChannelPool(videoSystem string, fccUnlocked bool, bandwidthMHz int, raceMode bool, goggles string, analogBands []string) []Channel {
 	switch videoSystem {
-	case "analog", "hdzero":
+	case "analog":
+		return MergeAnalogBands(analogBands)
+	case "hdzero":
 		return RaceBand
 
 	case "dji_v1":
