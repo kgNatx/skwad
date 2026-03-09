@@ -783,10 +783,31 @@ func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code
 		}
 	}
 
+	// Check for remaining danger conflicts.
+	assignments := buildAssignments(pilotsAfter)
+	dangerConflicts := freq.DetectConflicts(assignments)
+	var dangers []PilotConflict
+	pilotCallsigns := make(map[int]string, len(pilotsAfter))
+	for _, p := range pilotsAfter {
+		pilotCallsigns[p.ID] = p.Callsign
+	}
+	for _, c := range dangerConflicts {
+		if c.Level == freq.ConflictDanger {
+			dangers = append(dangers, PilotConflict{
+				OtherPilotID:  c.PilotB,
+				OtherCallsign: pilotCallsigns[c.PilotA] + " / " + pilotCallsigns[c.PilotB],
+				Level:         c.Level,
+				SeparationMHz: c.SeparationMHz,
+				RequiredMHz:   c.RequiredMHz,
+			})
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
-		Moved []DisplacedPilot `json:"moved"`
-	}{Moved: moved})
+		Moved           []DisplacedPilot `json:"moved"`
+		UnresolvedCount int              `json:"unresolved_count"`
+	}{Moved: moved, UnresolvedCount: len(dangers)})
 }
 
 // HandleTransferLeader designates another pilot as session leader.

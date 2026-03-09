@@ -1840,7 +1840,7 @@
       try {
         var result = await apiPost('/api/sessions/' + state.sessionCode + '/rebalance');
         await refreshSession();
-        showRebalanceResult(result.moved || []);
+        showRebalanceResult(result);
       } catch (err) {
         // Silently ignore
       } finally {
@@ -1867,12 +1867,17 @@
     });
   }
 
-  function showRebalanceResult(moved) {
+  function showRebalanceResult(result) {
+    var moved = result.moved || [];
+    var unresolvedCount = result.unresolved_count || 0;
     var list = $('rebalance-result-list');
     clearChildren(list);
 
     if (moved.length === 0) {
-      var msg = el('p', { className: 'rebalance-result-text', textContent: 'ALL CHANNELS ARE ALREADY OPTIMAL. NO CHANGES MADE.' });
+      var text = unresolvedCount > 0
+        ? 'NO CHANGES MADE. THERE ARE ' + unresolvedCount + ' CONFLICT' + (unresolvedCount > 1 ? 'S' : '') + ' THAT CANNOT BE RESOLVED WITH THE CURRENT MIX OF VIDEO SYSTEMS AND LOCKED CHANNELS.'
+        : 'NO CHANGES MADE. ALL CHANNELS ARE ALREADY IN THE BEST POSSIBLE POSITIONS.';
+      var msg = el('p', { className: 'rebalance-result-text', textContent: text });
       list.appendChild(msg);
     } else {
       moved.forEach(function (d) {
@@ -1883,6 +1888,10 @@
         var item = el('div', { className: 'displacement-item' }, [nameEl, moveEl]);
         list.appendChild(item);
       });
+      if (unresolvedCount > 0) {
+        var note = el('p', { className: 'rebalance-result-text', textContent: unresolvedCount + ' CONFLICT' + (unresolvedCount > 1 ? 'S' : '') + ' CANNOT BE RESOLVED WITH THE CURRENT MIX OF VIDEO SYSTEMS AND LOCKED CHANNELS.' });
+        list.appendChild(note);
+      }
     }
 
     $('rebalance-result').classList.remove('hidden');
