@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -783,31 +784,59 @@ func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code
 		}
 	}
 
-	// Check for remaining danger conflicts.
+	// Check for remaining danger conflicts with detail.
 	assignments := buildAssignments(pilotsAfter)
 	dangerConflicts := freq.DetectConflicts(assignments)
-	var dangers []PilotConflict
-	pilotCallsigns := make(map[int]string, len(pilotsAfter))
+
+	// Build lookup maps.
+	pilotMap := make(map[int]db.Pilot, len(pilotsAfter))
 	for _, p := range pilotsAfter {
-		pilotCallsigns[p.ID] = p.Callsign
+		pilotMap[p.ID] = p
 	}
+
+	type UnresolvedConflict struct {
+		PilotA   string `json:"pilot_a"`
+		PilotB   string `json:"pilot_b"`
+		LockedBy string `json:"locked_by"` // which pilot is locked (or "" if neither)
+		Reason   string `json:"reason"`    // human-readable explanation
+	}
+	var unresolved []UnresolvedConflict
 	for _, c := range dangerConflicts {
-		if c.Level == freq.ConflictDanger {
-			dangers = append(dangers, PilotConflict{
-				OtherPilotID:  c.PilotB,
-				OtherCallsign: pilotCallsigns[c.PilotA] + " / " + pilotCallsigns[c.PilotB],
-				Level:         c.Level,
-				SeparationMHz: c.SeparationMHz,
-				RequiredMHz:   c.RequiredMHz,
-			})
+		if c.Level != freq.ConflictDanger {
+			continue
 		}
+		pA, pB := pilotMap[c.PilotA], pilotMap[c.PilotB]
+
+		lockedBy := ""
+		if pA.ChannelLocked && pB.ChannelLocked {
+			lockedBy = pA.Callsign + " and " + pB.Callsign
+		} else if pA.ChannelLocked {
+			lockedBy = pA.Callsign
+		} else if pB.ChannelLocked {
+			lockedBy = pB.Callsign
+		}
+
+		reason := pA.Callsign + " (" + pA.AssignedChannel + ") and " +
+			pB.Callsign + " (" + pB.AssignedChannel + ") are " +
+			fmt.Sprintf("%d", c.SeparationMHz) + " MHz apart but need " +
+			fmt.Sprintf("%d", c.RequiredMHz) + " MHz"
+		if lockedBy != "" {
+			reason += ". " + lockedBy + " is channel-locked"
+		}
+
+		unresolved = append(unresolved, UnresolvedConflict{
+			PilotA:   pA.Callsign,
+			PilotB:   pB.Callsign,
+			LockedBy: lockedBy,
+			Reason:   reason,
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
-		Moved           []DisplacedPilot `json:"moved"`
-		UnresolvedCount int              `json:"unresolved_count"`
-	}{Moved: moved, UnresolvedCount: len(dangers)})
+		Moved      []DisplacedPilot   `json:"moved"`
+		Unresolved []UnresolvedConflict `json:"unresolved"`
+	}{Moved: moved, Unresolved: unresolved})
 }
 
 // HandleTransferLeader designates another pilot as session leader.

@@ -894,14 +894,14 @@ body {
   max-width: 500px;
   background: #1a1a1a;
   border-radius: 16px 16px 0 0;
-  padding: 24px 16px;
+  padding: 28px 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .action-sheet-title {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 900;
   text-align: center;
   letter-spacing: 2px;
@@ -967,13 +967,13 @@ body {
 }
 
 .displacement-move {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   color: #cccccc;
 }
 
 .displacement-note {
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 800;
   color: #ffaa00;
   text-align: center;
@@ -1111,11 +1111,32 @@ body {
 /* ===== REBALANCE CONFIRMATION ===== */
 .rebalance-confirm-text,
 .rebalance-result-text {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #ccc;
   line-height: 1.5;
   padding: 8px 0 12px;
+}
+
+.rebalance-section-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #888;
+  letter-spacing: 1px;
+  padding: 12px 0 8px;
+}
+
+.rebalance-conflict-title {
+  color: #ff5555;
+  padding-top: 20px;
+}
+
+.rebalance-conflict-reason {
+  font-size: 15px;
+  font-weight: 600;
+  color: #ff8888;
+  line-height: 1.5;
+  padding: 6px 0;
 }
 
 /* ===== ADD PILOT OPTIONS ===== */

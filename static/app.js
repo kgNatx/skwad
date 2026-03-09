@@ -1869,17 +1869,13 @@
 
   function showRebalanceResult(result) {
     var moved = result.moved || [];
-    var unresolvedCount = result.unresolved_count || 0;
+    var unresolved = result.unresolved || [];
     var list = $('rebalance-result-list');
     clearChildren(list);
 
-    if (moved.length === 0) {
-      var text = unresolvedCount > 0
-        ? 'NO CHANGES MADE. THERE ARE ' + unresolvedCount + ' CONFLICT' + (unresolvedCount > 1 ? 'S' : '') + ' THAT CANNOT BE RESOLVED WITH THE CURRENT MIX OF VIDEO SYSTEMS AND LOCKED CHANNELS.'
-        : 'NO CHANGES MADE. ALL CHANNELS ARE ALREADY IN THE BEST POSSIBLE POSITIONS.';
-      var msg = el('p', { className: 'rebalance-result-text', textContent: text });
-      list.appendChild(msg);
-    } else {
+    if (moved.length > 0) {
+      var movedTitle = el('div', { className: 'rebalance-section-title', textContent: 'MOVED' });
+      list.appendChild(movedTitle);
       moved.forEach(function (d) {
         var nameEl = el('div', { className: 'displacement-name', textContent: d.callsign });
         var moveText = d.old_channel + ' (' + d.old_freq_mhz + ') \u2192 ' +
@@ -1888,10 +1884,18 @@
         var item = el('div', { className: 'displacement-item' }, [nameEl, moveEl]);
         list.appendChild(item);
       });
-      if (unresolvedCount > 0) {
-        var note = el('p', { className: 'rebalance-result-text', textContent: unresolvedCount + ' CONFLICT' + (unresolvedCount > 1 ? 'S' : '') + ' CANNOT BE RESOLVED WITH THE CURRENT MIX OF VIDEO SYSTEMS AND LOCKED CHANNELS.' });
-        list.appendChild(note);
-      }
+    } else {
+      var noChanges = el('p', { className: 'rebalance-result-text', textContent: 'NO CHANGES MADE. ALL CHANNELS ARE ALREADY IN THE BEST POSSIBLE POSITIONS.' });
+      list.appendChild(noChanges);
+    }
+
+    if (unresolved.length > 0) {
+      var conflictTitle = el('div', { className: 'rebalance-section-title rebalance-conflict-title', textContent: 'UNRESOLVED CONFLICTS' });
+      list.appendChild(conflictTitle);
+      unresolved.forEach(function (c) {
+        var reasonEl = el('div', { className: 'rebalance-conflict-reason', textContent: c.reason });
+        list.appendChild(reasonEl);
+      });
     }
 
     $('rebalance-result').classList.remove('hidden');
