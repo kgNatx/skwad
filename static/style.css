@@ -894,14 +894,14 @@ body {
   max-width: 500px;
   background: #1a1a1a;
   border-radius: 16px 16px 0 0;
-  padding: 28px 20px;
+  padding: 36px 24px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .action-sheet-title {
-  font-size: 22px;
+  font-size: 26px;
   font-weight: 900;
   text-align: center;
   letter-spacing: 2px;
@@ -960,20 +960,20 @@ body {
 }
 
 .displacement-name {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 900;
   color: #ffaa00;
   margin-bottom: 4px;
 }
 
 .displacement-move {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 800;
   color: #cccccc;
 }
 
 .displacement-note {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 800;
   color: #ffaa00;
   text-align: center;
@@ -1111,7 +1111,7 @@ body {
 /* ===== REBALANCE CONFIRMATION ===== */
 .rebalance-confirm-text,
 .rebalance-result-text {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 600;
   color: #ccc;
   line-height: 1.5;
@@ -1119,7 +1119,7 @@ body {
 }
 
 .rebalance-section-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
   color: #888;
   letter-spacing: 1px;
@@ -1132,7 +1132,7 @@ body {
 }
 
 .rebalance-conflict-reason {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 600;
   color: #ff8888;
   line-height: 1.5;
