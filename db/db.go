@@ -41,6 +41,7 @@ type Pilot struct {
 	AssignedFreqMHz    int
 	BuddyGroup        int
 	Active             bool
+	AnalogBands        string // comma-separated band codes: "R", "R,F,E", etc.
 }
 
 const schema = `
@@ -67,6 +68,7 @@ CREATE TABLE IF NOT EXISTS pilots (
 	buddy_group INTEGER DEFAULT 0,
 	joined_at DATETIME,
 	active BOOLEAN DEFAULT TRUE,
+	analog_bands TEXT DEFAULT 'R',
 	FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
 	UNIQUE(session_id, callsign)
 );
@@ -103,6 +105,10 @@ func (d *DB) migrate() error {
 	_, err := d.db.Exec(`ALTER TABLE sessions ADD COLUMN leader_pilot_id INTEGER DEFAULT 0`)
 	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
 		return fmt.Errorf("migrate leader_pilot_id: %w", err)
+	}
+	_, err = d.db.Exec(`ALTER TABLE pilots ADD COLUMN analog_bands TEXT DEFAULT 'R'`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		return fmt.Errorf("migrate analog_bands: %w", err)
 	}
 	return nil
 }
@@ -210,11 +216,12 @@ func (d *DB) AddPilot(sessionID string, p *Pilot) (*Pilot, error) {
 	res, err := d.db.Exec(
 		`INSERT INTO pilots (session_id, callsign, video_system, fcc_unlocked, goggles,
 			bandwidth_mhz, race_mode, channel_locked, locked_frequency_mhz,
-			assigned_channel, assigned_frequency_mhz, buddy_group, joined_at, active)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE)`,
+			assigned_channel, assigned_frequency_mhz, buddy_group, joined_at, active, analog_bands)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
 		sessionID, p.Callsign, p.VideoSystem, p.FCCUnlocked, p.Goggles,
 		p.BandwidthMHz, p.RaceMode, p.ChannelLocked, p.LockedFrequencyMHz,
 		p.AssignedChannel, p.AssignedFreqMHz, p.BuddyGroup, time.Now().UTC(),
+		p.AnalogBands,
 	)
 	if err != nil {
 		// If the callsign already exists but is inactive, reactivate them.
@@ -258,11 +265,11 @@ func (d *DB) reactivatePilot(sessionID string, p *Pilot) (*Pilot, error) {
 		`UPDATE pilots SET video_system = ?, fcc_unlocked = ?, goggles = ?,
 			bandwidth_mhz = ?, race_mode = ?, channel_locked = ?, locked_frequency_mhz = ?,
 			assigned_channel = '', assigned_frequency_mhz = 0, buddy_group = 0,
-			joined_at = ?, active = TRUE
+			joined_at = ?, active = TRUE, analog_bands = ?
 		WHERE id = ?`,
 		p.VideoSystem, p.FCCUnlocked, p.Goggles,
 		p.BandwidthMHz, p.RaceMode, p.ChannelLocked, p.LockedFrequencyMHz,
-		time.Now().UTC(), existingID,
+		time.Now().UTC(), p.AnalogBands, existingID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("reactivate pilot: %w", err)
@@ -280,7 +287,7 @@ func (d *DB) GetActivePilots(sessionID string) ([]Pilot, error) {
 	rows, err := d.db.Query(
 		`SELECT id, session_id, callsign, video_system, fcc_unlocked, goggles,
 			bandwidth_mhz, race_mode, channel_locked, locked_frequency_mhz,
-			assigned_channel, assigned_frequency_mhz, buddy_group, active
+			assigned_channel, assigned_frequency_mhz, buddy_group, active, analog_bands
 		FROM pilots
 		WHERE session_id = ? AND active = TRUE
 		ORDER BY id`,
@@ -298,7 +305,7 @@ func (d *DB) GetActivePilots(sessionID string) ([]Pilot, error) {
 			&p.ID, &p.SessionID, &p.Callsign, &p.VideoSystem, &p.FCCUnlocked,
 			&p.Goggles, &p.BandwidthMHz, &p.RaceMode, &p.ChannelLocked,
 			&p.LockedFrequencyMHz, &p.AssignedChannel, &p.AssignedFreqMHz,
-			&p.BuddyGroup, &p.Active,
+			&p.BuddyGroup, &p.Active, &p.AnalogBands,
 		); err != nil {
 			return nil, fmt.Errorf("scan pilot: %w", err)
 		}
@@ -340,10 +347,10 @@ func (d *DB) UpdatePilotPreferences(pilotID int, channelLocked bool, lockedFreqM
 }
 
 // UpdatePilotVideoSystem changes an active pilot's video system and related settings.
-func (d *DB) UpdatePilotVideoSystem(pilotID int, videoSystem string, fccUnlocked bool, goggles string, bandwidthMHz int, raceMode bool) error {
+func (d *DB) UpdatePilotVideoSystem(pilotID int, videoSystem string, fccUnlocked bool, goggles string, bandwidthMHz int, raceMode bool, analogBands string) error {
 	res, err := d.db.Exec(
-		`UPDATE pilots SET video_system = ?, fcc_unlocked = ?, goggles = ?, bandwidth_mhz = ?, race_mode = ? WHERE id = ? AND active = TRUE`,
-		videoSystem, fccUnlocked, goggles, bandwidthMHz, raceMode, pilotID,
+		`UPDATE pilots SET video_system = ?, fcc_unlocked = ?, goggles = ?, bandwidth_mhz = ?, race_mode = ?, analog_bands = ? WHERE id = ? AND active = TRUE`,
+		videoSystem, fccUnlocked, goggles, bandwidthMHz, raceMode, analogBands, pilotID,
 	)
 	if err != nil {
 		return fmt.Errorf("update pilot video system: %w", err)

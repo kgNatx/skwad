@@ -12,6 +12,23 @@ import (
 	"github.com/kyleg/skwad/freq"
 )
 
+// joinBands converts a slice of band codes to a comma-separated string.
+// Returns "R" if the slice is empty (default to Race Band).
+func joinBands(bands []string) string {
+	if len(bands) == 0 {
+		return "R"
+	}
+	return strings.Join(bands, ",")
+}
+
+// splitBands converts a comma-separated band string to a slice.
+func splitBands(s string) []string {
+	if s == "" {
+		return nil
+	}
+	return strings.Split(s, ",")
+}
+
 // Server holds dependencies for the HTTP handlers.
 type Server struct {
 	DB *db.DB
@@ -50,8 +67,9 @@ type JoinRequest struct {
 	Goggles       string `json:"goggles"`
 	BandwidthMHz  int    `json:"bandwidth_mhz"`
 	RaceMode      bool   `json:"race_mode"`
-	ChannelLocked bool   `json:"channel_locked"`
-	LockedFreqMHz int    `json:"locked_frequency_mhz"`
+	ChannelLocked bool     `json:"channel_locked"`
+	LockedFreqMHz int      `json:"locked_frequency_mhz"`
+	AnalogBands   []string `json:"analog_bands"`
 }
 
 // PilotConflict describes a conflict between the current pilot and another.
@@ -180,6 +198,7 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 		RaceMode:           req.RaceMode,
 		ChannelLocked:      req.ChannelLocked,
 		LockedFrequencyMHz: req.LockedFreqMHz,
+		AnalogBands:        joinBands(req.AnalogBands),
 	}
 
 	added, err := s.DB.AddPilot(code, pilot)
@@ -337,6 +356,7 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		Goggles:       req.Goggles,
 		ChannelLocked: req.ChannelLocked,
 		LockedFreqMHz: req.LockedFreqMHz,
+		AnalogBands:   req.AnalogBands,
 	}
 
 	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput)
@@ -536,8 +556,9 @@ type UpdateVideoSystemRequest struct {
 	VideoSystem  string `json:"video_system"`
 	FCCUnlocked  bool   `json:"fcc_unlocked"`
 	Goggles      string `json:"goggles"`
-	BandwidthMHz int    `json:"bandwidth_mhz"`
-	RaceMode     bool   `json:"race_mode"`
+	BandwidthMHz int      `json:"bandwidth_mhz"`
+	RaceMode     bool     `json:"race_mode"`
+	AnalogBands  []string `json:"analog_bands"`
 }
 
 // HandleUpdatePilotVideoSystem changes a pilot's video system and reoptimizes.
@@ -554,7 +575,7 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := s.DB.UpdatePilotVideoSystem(pilotID, req.VideoSystem, req.FCCUnlocked, req.Goggles, req.BandwidthMHz, req.RaceMode); err != nil {
+	if err := s.DB.UpdatePilotVideoSystem(pilotID, req.VideoSystem, req.FCCUnlocked, req.Goggles, req.BandwidthMHz, req.RaceMode, joinBands(req.AnalogBands)); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			http.Error(w, "pilot not found", http.StatusNotFound)
 			return
@@ -711,6 +732,7 @@ func buildPilotInputs(pilots []db.Pilot) []freq.PilotInput {
 			LockedFreqMHz: p.LockedFrequencyMHz,
 			PrevChannel:   p.AssignedChannel,
 			PrevFreqMHz:   p.AssignedFreqMHz,
+			AnalogBands:   splitBands(p.AnalogBands),
 		}
 	}
 	return inputs
@@ -897,6 +919,7 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 		RaceMode:           req.RaceMode,
 		ChannelLocked:      req.ChannelLocked,
 		LockedFrequencyMHz: req.LockedFreqMHz,
+		AnalogBands:        joinBands(req.AnalogBands),
 	}
 
 	added, err := s.DB.AddPilot(code, pilot)
@@ -985,6 +1008,7 @@ func (s *Server) reoptimize(sessionCode string) {
 			LockedFreqMHz: p.LockedFrequencyMHz,
 			PrevChannel:   p.AssignedChannel,
 			PrevFreqMHz:   p.AssignedFreqMHz,
+			AnalogBands:   splitBands(p.AnalogBands),
 		}
 	}
 
