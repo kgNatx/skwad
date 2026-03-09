@@ -247,9 +247,10 @@ func DetectConflicts(assignments []Assignment) []Conflict {
 
 // BuddySuggestion recommends sharing a frequency with an existing pilot.
 type BuddySuggestion struct {
-	PilotID int    `json:"pilot_id"`
-	Channel string `json:"channel"`
-	FreqMHz int    `json:"freq_mhz"`
+	PilotID  int    `json:"pilot_id"`
+	Callsign string `json:"callsign"`
+	Channel  string `json:"channel"`
+	FreqMHz  int    `json:"freq_mhz"`
 }
 
 // DisplacementResult is the output of FindMinimalDisplacement.
