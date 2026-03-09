@@ -4,6 +4,30 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.2.1] - 2026-03-09
+
+### Added
+- **Expanded analog bands** — analog pilots can now select from 4 VTX bands:
+  - R (Race Band) — 8 channels, 5658–5917 MHz (existing, still the default)
+  - F (Fatshark) — 8 channels, 5740–5880 MHz
+  - E (Boscam E) — 8 channels, 5645–5945 MHz
+  - L (Low Race) — 8 channels, 5362–5621 MHz
+- `FatsharkBand`, `BoscamEBand`, `LowRaceBand` channel tables in `freq/tables.go`
+- `AnalogBandMap` lookup and `MergeAnalogBands()` — unions selected bands with frequency deduplication
+- `ChannelPool()` gains `analogBands []string` parameter; `PilotInput.AnalogBands` field
+- `analog_bands TEXT DEFAULT 'R'` column on pilots table with idempotent migration
+- `joinBands()`/`splitBands()` helpers in API handlers for string↔slice conversion
+- Band selector UI in join wizard follow-up step (4 toggle buttons, R pre-selected)
+- "NOT SURE? JUST USE RACE BAND" helper text for uncertain users
+- Band selector in leader's add-pilot dialog
+- Frontend `mergeAnalogBands()`, `ANALOG_BAND_MAP`, fatshark/boscam_e/lowrace in `CHANNELS`
+- Dynamic spectrum visualization range — expands when pilots use Low Race or upper Boscam E
+
+### Changed
+- Analog separated from HDZero in `ChannelPool()` switch (was shared case)
+- `analog` removed from `SIMPLE_SYSTEMS` and join wizard no-followup skip list
+- Service worker cache bumped to `skwad-v6`
+
 ## [0.2.0] - 2026-03-08
 
 ### Added
