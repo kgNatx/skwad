@@ -1102,7 +1102,8 @@ body {
 }
 
 /* ===== REBALANCE CONFIRMATION ===== */
-.rebalance-confirm-text {
+.rebalance-confirm-text,
+.rebalance-result-text {
   font-size: 14px;
   font-weight: 600;
   color: #ccc;

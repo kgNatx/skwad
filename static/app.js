@@ -1827,8 +1827,9 @@
       var btn = $('btn-rebalance-all');
       setLoading(btn, true);
       try {
-        await apiPost('/api/sessions/' + state.sessionCode + '/rebalance');
+        var result = await apiPost('/api/sessions/' + state.sessionCode + '/rebalance');
         await refreshSession();
+        showRebalanceResult(result.moved || []);
       } catch (err) {
         // Silently ignore
       } finally {
@@ -1843,6 +1844,37 @@
         $('rebalance-confirm').classList.add('hidden');
       }
     });
+
+    // Rebalance result dismiss
+    $('btn-rebalance-result-ok').addEventListener('click', function () {
+      $('rebalance-result').classList.add('hidden');
+    });
+    $('rebalance-result').addEventListener('click', function (e) {
+      if (e.target === $('rebalance-result')) {
+        $('rebalance-result').classList.add('hidden');
+      }
+    });
+  }
+
+  function showRebalanceResult(moved) {
+    var list = $('rebalance-result-list');
+    clearChildren(list);
+
+    if (moved.length === 0) {
+      var msg = el('p', { className: 'rebalance-result-text', textContent: 'ALL CHANNELS ARE ALREADY OPTIMAL. NO CHANGES MADE.' });
+      list.appendChild(msg);
+    } else {
+      moved.forEach(function (d) {
+        var nameEl = el('div', { className: 'displacement-name', textContent: d.callsign });
+        var moveText = d.old_channel + ' (' + d.old_freq_mhz + ') \u2192 ' +
+          d.new_channel + ' (' + d.new_freq_mhz + ')';
+        var moveEl = el('div', { className: 'displacement-move', textContent: moveText });
+        var item = el('div', { className: 'displacement-item' }, [nameEl, moveEl]);
+        list.appendChild(item);
+      });
+    }
+
+    $('rebalance-result').classList.remove('hidden');
   }
 
   async function transferLeadership(pilotId) {

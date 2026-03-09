@@ -673,8 +673,8 @@ func TestRebalanceAll_LeaderOnly(t *testing.T) {
 	req.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
 	w = httptest.NewRecorder()
 	srv.HandleRebalanceAll(w, req, sess.ID)
-	if w.Code != http.StatusNoContent {
-		t.Errorf("leader rebalance: expected 204, got %d", w.Code)
+	if w.Code != http.StatusOK {
+		t.Errorf("leader rebalance: expected 200, got %d", w.Code)
 	}
 }
 

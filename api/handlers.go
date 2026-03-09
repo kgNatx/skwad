@@ -371,6 +371,11 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		}
 	}
 
+	// Enrich buddy suggestion with callsign from pilot data.
+	if result.BuddySuggestion != nil {
+		result.BuddySuggestion.Callsign = pilotCallsigns[result.BuddySuggestion.PilotID]
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(PreviewResponse{
 		Level:           result.Level,
@@ -452,6 +457,11 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 				NewFreqMHz: a.FreqMHz,
 			})
 		}
+	}
+
+	// Enrich buddy suggestion with callsign from pilot data.
+	if result.BuddySuggestion != nil {
+		result.BuddySuggestion.Callsign = pilotCallsigns[result.BuddySuggestion.PilotID]
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -721,13 +731,62 @@ func buildAssignments(pilots []db.Pilot) []freq.Assignment {
 }
 
 // HandleRebalanceAll runs the full optimizer on all pilots (leader-only).
+// Returns which pilots moved and which stayed.
 // POST /api/sessions/{code}/rebalance
 func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code string) {
 	if _, ok := s.requireLeader(w, r, code); !ok {
 		return
 	}
+
+	// Snapshot before assignments.
+	pilots, err := s.DB.GetActivePilots(code)
+	if err != nil {
+		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
+		return
+	}
+	before := make(map[int][2]string) // id -> [channel, callsign]
+	beforeFreq := make(map[int]int)
+	for _, p := range pilots {
+		before[p.ID] = [2]string{p.AssignedChannel, p.Callsign}
+		beforeFreq[p.ID] = p.AssignedFreqMHz
+	}
+
 	s.reoptimize(code)
-	w.WriteHeader(http.StatusNoContent)
+
+	// Snapshot after assignments.
+	pilotsAfter, err := s.DB.GetActivePilots(code)
+	if err != nil {
+		// Rebalance happened but can't read result — return empty.
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(struct {
+			Moved []DisplacedPilot `json:"moved"`
+		}{})
+		return
+	}
+
+	var moved []DisplacedPilot
+	for _, p := range pilotsAfter {
+		old, ok := before[p.ID]
+		if !ok {
+			continue
+		}
+		oldFreq := beforeFreq[p.ID]
+		if p.AssignedChannel != old[0] || p.AssignedFreqMHz != oldFreq {
+			moved = append(moved, DisplacedPilot{
+				PilotID:    p.ID,
+				Callsign:   old[1],
+				OldChannel: old[0],
+				OldFreqMHz: oldFreq,
+				NewChannel: p.AssignedChannel,
+				NewFreqMHz: p.AssignedFreqMHz,
+			})
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(struct {
+		Moved []DisplacedPilot `json:"moved"`
+	}{Moved: moved})
 }
 
 // HandleTransferLeader designates another pilot as session leader.
