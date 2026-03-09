@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>What's New — Skwad</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    .back-link {
+      display: inline-block;
+      color: #33ff33;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 1px;
+      margin-bottom: 32px;
+    }
+
+    .version {
+      margin-bottom: 40px;
+    }
+
+    .version-header {
+      font-size: 22px;
+      font-weight: 800;
+      color: #33ff33;
+      margin-bottom: 4px;
+    }
+
+    .version-date {
+      font-size: 14px;
+      color: #888;
+      font-weight: 600;
+      margin-bottom: 20px;
+    }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+
+    p {
+      margin-bottom: 12px;
+      color: #ccc;
+    }
+
+    ul {
+      list-style: none;
+      margin-bottom: 16px;
+    }
+
+    li {
+      padding: 4px 0 4px 20px;
+      position: relative;
+      color: #ccc;
+    }
+
+    li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 12px;
+      width: 8px;
+      height: 8px;
+      background: #33ff33;
+      border-radius: 50%;
+    }
+
+    strong {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #222;
+      margin: 32px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back-link">&larr; Back to Skwad</a>
+
+    <h1>What's New</h1>
+
+    <div class="version">
+      <div class="version-header">v0.2.0</div>
+      <div class="version-date">March 8, 2026</div>
+
+      <h3>Smarter Channel Assignments</h3>
+      <p>Previously, every time a new pilot joined, the system would reassign everyone's channels from scratch. Now it's much less disruptive:</p>
+      <ul>
+        <li><strong>Your channel stays put.</strong> When someone new joins, Skwad tries to place them without moving anyone else.</li>
+        <li><strong>Minimal disruption.</strong> If there's no clean slot, Skwad finds the smallest possible shuffle — moving just one or two pilots instead of everyone.</li>
+        <li><strong>Buddy system.</strong> When the spectrum is truly full, Skwad suggests sharing a channel with the most compatible pilot instead of forcing a bad assignment.</li>
+        <li><strong>Leaving doesn't shuffle.</strong> When a pilot leaves, everyone else stays where they are. The freed-up channel is available for the next person who joins.</li>
+      </ul>
+
+      <h3>Session Leader</h3>
+      <p>The first pilot to join a session becomes the <strong>session leader</strong>, shown with a LEADER badge. The leader has extra controls that other pilots don't see:</p>
+      <ul>
+        <li><strong>Add Pilot</strong> — Add someone who doesn't have their phone or can't get the app working. Pick their callsign and video system (including bandwidth and FCC settings for DJI/Walksnail), and Skwad assigns them a channel.</li>
+        <li><strong>Change Channel</strong> — Tap any pilot to change their channel assignment. Useful for manually added pilots or coordinating between heats.</li>
+        <li><strong>Remove Pilot</strong> — Remove a pilot who left without hitting Leave, or clean up a manual entry.</li>
+        <li><strong>Rebalance All</strong> — Reassign every pilot's channel from scratch. Use this between heats or when assignments have drifted. Shows you exactly who moved and where, or confirms no changes were needed.</li>
+        <li><strong>Transfer Leadership</strong> — Hand off the leader role to another pilot. Skwad prompts you to do this if you try to leave while you're still the leader.</li>
+      </ul>
+      <p>Non-leaders can still change their own channel, change their callsign, and leave — they just can't affect other pilots.</p>
+    </div>
+
+    <hr class="divider">
+
+    <div class="version">
+      <div class="version-header">v0.1.0</div>
+      <div class="version-date">March 3, 2026</div>
+
+      <h3>Initial Release</h3>
+      <p>The first version of Skwad — a frequency coordinator for FPV pilots flying together.</p>
+      <ul>
+        <li><strong>Start or join a session</strong> using a 6-character code or QR scan. Sessions last 24 hours.</li>
+        <li><strong>Setup wizard</strong> walks you through your video system, FCC unlock status, goggles, bandwidth, and channel preference.</li>
+        <li><strong>Automatic channel assignment</strong> accounts for signal bandwidth, guard bands, and occupied spectrum across all major FPV video systems: Analog, HDZero, DJI V1/O3/O4, Walksnail, and OpenIPC.</li>
+        <li><strong>Spectrum visualization</strong> shows where everyone is on the band with bell-curve waveforms — green for you, red for danger-close overlap, yellow for tight spacing.</li>
+        <li><strong>Buddy groups</strong> — when pilots share a frequency, they're color-coded and labeled so they know to take turns.</li>
+        <li><strong>Real-time updates</strong> — when someone joins, leaves, or changes channels, everyone's view updates automatically.</li>
+        <li><strong>QR code sharing</strong> — tap the session code to show a scannable QR for others to join.</li>
+        <li><strong>Works offline</strong> — installable as a PWA with service worker caching.</li>
+        <li><strong>Recent sessions</strong> — your last sessions are saved so you can quickly rejoin.</li>
+      </ul>
+    </div>
+  </div>
+</body>
+</html>
