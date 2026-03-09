@@ -1,42 +1,72 @@
 # Changelog
 
-What's new in Skwad — the FPV frequency coordinator.
+All notable changes to Skwad are documented in this file.
+
+> **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
 ## [0.2.0] - 2026-03-08
 
-### Smarter Channel Assignments
+### Added
+- **Stability-first optimizer** with graduated escalation (`FindMinimalDisplacement`):
+  - Level 0: Lock all existing pilots, slot new pilot into best available channel
+  - Level 1: Unlock one flexible pilot at a time, pick solution with best worst-case margin
+  - Level 2: Unlock pairs of flexible pilots
+  - Level 3: Buddy suggestion — find most compatible pilot to share a frequency with
+- `OptimizeWithLocks(pilots, lockedIDs)` — wraps `Optimize()` with forced channel locks
+- **Session leader** role (`leader_pilot_id` column on sessions table):
+  - First pilot to join becomes leader
+  - `POST /api/sessions/{code}/rebalance` — leader-only full reoptimize, returns moved pilots
+  - `POST /api/sessions/{code}/transfer-leader` — hand off leadership
+  - `POST /api/sessions/{code}/add-pilot` — leader adds phantom pilot with video system options
+  - `DELETE /api/pilots/{id}` — leader-only for removing others; self-removal always allowed
+- Authorization via `X-Pilot-ID` request header, checked against `leader_pilot_id`
+- Leader UI: badge, rebalance-all with confirmation + result dialog, add-pilot with follow-up options (FCC/bandwidth for DJI/Walksnail), change-channel for other pilots, transfer leadership, slide-to-remove (leader only), leader-leave handoff prompt
+- Buddy suggestion dialog for Level 3 (join and channel change flows)
+- `hasDangerInvolving()` — checks danger conflicts only for moved pilots, ignores pre-existing conflicts
+- `flexiblePilots()`, `worstMargin()`, `copyAssignments()` optimizer helpers
+- Idempotent schema migration via `ALTER TABLE ... ADD COLUMN` with duplicate-column error handling
+- `static/changelog.html` — self-hosted user-facing release notes page
+- "What's New" link in landing page footer
 
-Previously, every time a new pilot joined, the system would reassign everyone's channels from scratch — even if most pilots were already on good channels. Now it works differently:
+### Changed
+- `HandleJoinSession` uses `FindMinimalDisplacement` instead of `reoptimize()`
+- `HandlePreviewJoin` returns `{level, assignment, displaced, buddy_suggestion}` (was `{displaced, has_danger}`)
+- `HandleUpdatePilotChannel` uses graduated escalation, removed `?rebalance` query parameter
+- `HandlePreviewChannelChange` rewritten with graduated escalation and new response shape
+- `HandleUpdatePilotVideoSystem` uses graduated escalation instead of `reoptimize()`
+- `HandleDeactivatePilot` no longer calls `reoptimize()` — remaining pilots keep their channels
+- `HandleRebalanceAll` returns JSON `{moved: [...]}` instead of 204 No Content
+- Displacement preview UI: single "JOIN" + "CANCEL" buttons (was "MOVE EVERYONE" / "JUST MOVE ME" / "CANCEL")
+- Non-leaders cannot tap other pilot cards (no action sheet)
+- Service worker cache bumped to `skwad-v5`
+- `buildPilotInputs()` helper DRYs up `db.Pilot` → `freq.PilotInput` conversion
 
-1. **Your channel stays put.** When someone new joins, Skwad tries to place them without moving anyone else.
-2. **Minimal disruption.** If there's no clean slot, Skwad finds the smallest possible shuffle — moving just one pilot instead of everyone.
-3. **Buddy system.** When the spectrum is truly full, Skwad suggests sharing a channel with the most compatible pilot instead of forcing a bad assignment.
-4. **Leaving doesn't shuffle.** When a pilot leaves, everyone else stays where they are. The freed-up channel is available for the next person who joins.
-
-### Session Leader
-
-The first pilot to join a session becomes the **session leader** (shown with a LEADER badge). The leader has extra controls that other pilots don't see:
-
-- **Add Pilot** — Add someone who doesn't have their phone or can't get the app working. Pick their callsign and video system (including bandwidth and FCC settings for DJI/Walksnail), and Skwad assigns them a channel.
-- **Change Channel** — Tap any pilot to change their channel assignment. Useful for phantom pilots or coordinating manually.
-- **Remove Pilot** — Remove a pilot who left without hitting Leave, or clean up a phantom entry.
-- **Rebalance All** — Reassign every pilot's channel from scratch. Use this between heats or when assignments have drifted. Shows you exactly who moved and where.
-- **Transfer Leadership** — Hand off the leader role to another pilot. Skwad prompts you to do this if you try to leave while you're still the leader.
-
-Non-leaders can still change their own channel, change their callsign, and leave — they just can't affect other pilots.
+### Removed
+- `reoptimizeForPilot()` — replaced by `FindMinimalDisplacement` Level 0
+- `?rebalance` query parameter on join and channel-change endpoints
+- `has_danger` field from preview API responses
 
 ## [0.1.0] - 2026-03-03
 
-### Initial Release
+Initial release of the Skwad FPV frequency coordinator.
 
-The first version of Skwad — a frequency coordinator for FPV pilots flying together.
-
-- **Start or join a session** using a 6-character code or QR scan. Sessions last 24 hours.
-- **Setup wizard** walks you through your video system, FCC unlock status, goggles, bandwidth, and channel preference.
-- **Automatic channel assignment** accounts for signal bandwidth, guard bands, and occupied spectrum across all major FPV video systems: Analog, HDZero, DJI V1/O3/O4, Walksnail, and OpenIPC.
-- **Spectrum visualization** shows where everyone is on the band with bell-curve waveforms — green for you, red for danger-close overlap, yellow for tight spacing.
-- **Buddy groups** — when pilots share a frequency, they're color-coded and labeled so they know to take turns.
-- **Real-time updates** — when someone joins, leaves, or changes channels, everyone's view updates automatically.
-- **QR code sharing** — tap the session code to show a scannable QR for others to join.
-- **Works offline** — installable as a PWA with service worker caching.
-- **Recent sessions** — your last sessions are saved so you can quickly rejoin.
+### Added
+- Session creation with 6-character hex codes (`crypto/rand`) and 24-hour expiry
+- Collision retry (up to 5 attempts) on session ID generation
+- Setup wizard: callsign, video system, FCC unlock, goggles, bandwidth, race mode, channel preference
+- Frequency optimizer: greedy single-pass, most-constrained-first, stability tie-breaker on `PrevFreqMHz`
+- Channel tables for Analog, HDZero, DJI V1/O3/O4, Walksnail (standard + race), OpenIPC
+- Bandwidth-aware spacing: `RequiredSpacing(bwA, bwB) = bwA/2 + bwB/2 + 10 MHz guard`
+- Conflict detection: danger (signal overlap) and warning (guard band violation) levels
+- Buddy group identification for shared frequencies
+- REST API: CRUD for sessions and pilots, preview endpoints for dry-run optimization
+- Spectrum visualization with bell-curve waveforms, devicePixelRatio scaling, label staggering
+- Real-time updates via version polling (`GET /api/sessions/{code}/poll`)
+- QR code generation (built-in alphanumeric/byte mode encoder, Version 1-6)
+- QR code scanner: native `BarcodeDetector` with `jsQR` fallback
+- Recent sessions in localStorage with validation on app load
+- PWA: service worker with network-first strategy, precaching, install prompt
+- Hourly background goroutine for `DeleteExpiredSessions()`
+- Callsign change in-session, video system change via leave-and-rejoin
+- Docker container with multi-stage build, Traefik integration
+- CORS middleware for API endpoints
