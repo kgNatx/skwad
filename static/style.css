@@ -423,6 +423,18 @@ body {
   color: #cccccc;
 }
 
+.followup-helper {
+  font-size: 14px;
+  color: #999;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-top: 8px;
+  text-align: center;
+}
+.followup-helper:active {
+  color: #fff;
+}
+
 /* ===== CHANNEL PREFERENCE ===== */
 .channel-pref {
   display: flex;

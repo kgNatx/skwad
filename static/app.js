@@ -19,6 +19,7 @@
     goggles: '',
     bandwidthMHz: 0,
     raceMode: false,
+    analogBands: ['R'],
     walksnailMode: '', // 'standard' or 'race'
     channelLocked: false,
     lockedFreqMHz: 0,
@@ -55,6 +56,24 @@
       { name: 'R3', freq: 5732 }, { name: 'R4', freq: 5769 },
       { name: 'R5', freq: 5806 }, { name: 'R6', freq: 5843 },
       { name: 'R7', freq: 5880 }, { name: 'R8', freq: 5917 },
+    ],
+    fatshark: [
+      { name: 'F1', freq: 5740 }, { name: 'F2', freq: 5760 },
+      { name: 'F3', freq: 5780 }, { name: 'F4', freq: 5800 },
+      { name: 'F5', freq: 5820 }, { name: 'F6', freq: 5840 },
+      { name: 'F7', freq: 5860 }, { name: 'F8', freq: 5880 },
+    ],
+    boscam_e: [
+      { name: 'E1', freq: 5705 }, { name: 'E2', freq: 5685 },
+      { name: 'E3', freq: 5665 }, { name: 'E4', freq: 5645 },
+      { name: 'E5', freq: 5885 }, { name: 'E6', freq: 5905 },
+      { name: 'E7', freq: 5925 }, { name: 'E8', freq: 5945 },
+    ],
+    lowrace: [
+      { name: 'L1', freq: 5362 }, { name: 'L2', freq: 5399 },
+      { name: 'L3', freq: 5436 }, { name: 'L4', freq: 5473 },
+      { name: 'L5', freq: 5510 }, { name: 'L6', freq: 5547 },
+      { name: 'L7', freq: 5584 }, { name: 'L8', freq: 5621 },
     ],
     dji_v1_fcc: [
       { name: 'DJI-CH1', freq: 5660 }, { name: 'DJI-CH2', freq: 5695 },
@@ -95,6 +114,26 @@
     dji_o4_60: [{ name: 'O4-CH1', freq: 5795 }],
     openipc: [{ name: 'WiFi-165', freq: 5825 }],
   };
+
+  // Maps band code letters to CHANNELS keys
+  const ANALOG_BAND_MAP = { R: 'raceband', F: 'fatshark', E: 'boscam_e', L: 'lowrace' };
+
+  function mergeAnalogBands(bands) {
+    if (!bands || bands.length === 0) return CHANNELS.raceband;
+    var seen = {};
+    var merged = [];
+    bands.forEach(function (code) {
+      var key = ANALOG_BAND_MAP[code];
+      if (!key || !CHANNELS[key]) return;
+      CHANNELS[key].forEach(function (ch) {
+        if (!seen[ch.freq]) {
+          seen[ch.freq] = true;
+          merged.push(ch);
+        }
+      });
+    });
+    return merged.length > 0 ? merged : CHANNELS.raceband;
+  }
 
   // ── DOM references ────────────────────────────────────────────
   const $ = (id) => document.getElementById(id);
@@ -284,6 +323,7 @@
 
     switch (sys) {
       case 'analog':
+        return mergeAnalogBands(state.analogBands);
       case 'hdzero':
         return CHANNELS.raceband;
       case 'dji_v1':
@@ -530,14 +570,22 @@
     resetOptionButtons();
 
     // Systems with no follow-ups go straight to channel pref
-    if (['analog', 'hdzero', 'openipc'].includes(system)) {
+    if (['hdzero', 'openipc'].includes(system)) {
       goToChannelStep();
       return;
     }
 
     showStep('step-followup');
 
-    if (system === 'walksnail') {
+    if (system === 'analog') {
+      $('followup-title').textContent = 'ANALOG SETTINGS';
+      $('followup-analog-bands').classList.remove('hidden');
+      $('btn-followup-next').classList.remove('hidden');
+      state.analogBands = ['R'];
+      document.querySelectorAll('.analog-band-btn').forEach(function (b) {
+        b.classList.toggle('selected', b.dataset.band === 'R');
+      });
+    } else if (system === 'walksnail') {
       $('followup-title').textContent = 'WALKSNAIL SETTINGS';
       $('followup-walksnail-mode').classList.remove('hidden');
     } else if (system === 'dji_v1') {
@@ -595,6 +643,30 @@
         state.walksnailMode = btn.dataset.wsmode;
         handleWalksnailModeSelected();
       });
+    });
+
+    // Analog band toggle buttons
+    document.querySelectorAll('.analog-band-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        btn.classList.toggle('selected');
+        var selected = [];
+        document.querySelectorAll('.analog-band-btn.selected').forEach(function (b) {
+          selected.push(b.dataset.band);
+        });
+        if (selected.length === 0) {
+          btn.classList.add('selected');
+          selected.push(btn.dataset.band);
+        }
+        state.analogBands = selected;
+      });
+    });
+
+    // "Not sure? Just use Race Band" helper
+    $('analog-bands-helper').addEventListener('click', function () {
+      document.querySelectorAll('.analog-band-btn').forEach(function (b) {
+        b.classList.toggle('selected', b.dataset.band === 'R');
+      });
+      state.analogBands = ['R'];
     });
 
     // Next button for follow-up step
@@ -732,6 +804,7 @@
       race_mode: state.raceMode,
       channel_locked: state.channelLocked,
       locked_frequency_mhz: state.lockedFreqMHz,
+      analog_bands: state.analogBands,
     };
   }
 
@@ -1536,6 +1609,7 @@
 
     switch (sys) {
       case 'analog':
+        return mergeAnalogBands(pilot.AnalogBands ? pilot.AnalogBands.split(',') : ['R']);
       case 'hdzero':
         return CHANNELS.raceband;
       case 'dji_v1':
@@ -1913,13 +1987,13 @@
 
   // ── Add Pilot Dialog ────────────────────────────────────────
   // Systems that need no follow-up options.
-  var SIMPLE_SYSTEMS = ['analog', 'hdzero', 'openipc', 'walksnail_race'];
+  var SIMPLE_SYSTEMS = ['hdzero', 'openipc', 'walksnail_race'];
   // Systems that need FCC toggle only.
   var FCC_SYSTEMS = ['dji_v1', 'walksnail_std'];
   // Systems that need FCC + bandwidth.
   var BW_SYSTEMS = { dji_o3: [20, 40], dji_o4: [20, 40, 60] };
 
-  var addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0 };
+  var addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0, analogBands: ['R'] };
 
   function showAddPilotDialog() {
     $('input-add-callsign').value = '';
@@ -1929,7 +2003,7 @@
       b.classList.remove('hidden');
     });
     $('add-pilot-options').classList.add('hidden');
-    addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0 };
+    addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0, analogBands: ['R'] };
     $('add-pilot').classList.remove('hidden');
     $('input-add-callsign').focus();
   }
@@ -1975,6 +2049,17 @@
       $('add-pilot-bw').classList.add('hidden');
     }
 
+    // Analog band buttons
+    if (system === 'analog') {
+      addPilotState.analogBands = ['R'];
+      document.querySelectorAll('.add-band-btn').forEach(function (b) {
+        b.classList.toggle('active', b.dataset.addBand === 'R');
+      });
+      $('add-pilot-bands').classList.remove('hidden');
+    } else {
+      $('add-pilot-bands').classList.add('hidden');
+    }
+
     $('add-pilot-options').classList.remove('hidden');
   }
 
@@ -2004,7 +2089,7 @@
 
         if (SIMPLE_SYSTEMS.indexOf(system) !== -1) {
           // No follow-up needed — add immediately.
-          addPilot(callsign, system, false, 0);
+          addPilot(callsign, system, false, 0, ['R']);
         } else {
           // Show follow-up options below the selected system.
           showAddPilotOptions(system);
@@ -2019,6 +2104,22 @@
       $('btn-add-fcc').classList.toggle('active', addPilotState.fccUnlocked);
     });
 
+    // Analog band toggles for add-pilot
+    document.querySelectorAll('.add-band-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        btn.classList.toggle('active');
+        var selected = [];
+        document.querySelectorAll('.add-band-btn.active').forEach(function (b) {
+          selected.push(b.dataset.addBand);
+        });
+        if (selected.length === 0) {
+          btn.classList.add('active');
+          selected.push(btn.dataset.addBand);
+        }
+        addPilotState.analogBands = selected;
+      });
+    });
+
     // Confirm button
     $('btn-add-pilot-confirm').addEventListener('click', function () {
       var callsign = $('input-add-callsign').value.trim();
@@ -2027,7 +2128,7 @@
         return;
       }
       hideError('add-pilot-error');
-      addPilot(callsign, addPilotState.system, addPilotState.fccUnlocked, addPilotState.bandwidthMHz);
+      addPilot(callsign, addPilotState.system, addPilotState.fccUnlocked, addPilotState.bandwidthMHz, addPilotState.analogBands);
     });
 
     $('btn-add-pilot-cancel').addEventListener('click', hideAddPilotDialog);
@@ -2036,13 +2137,14 @@
     });
   }
 
-  async function addPilot(callsign, videoSystem, fccUnlocked, bandwidthMHz) {
+  async function addPilot(callsign, videoSystem, fccUnlocked, bandwidthMHz, analogBands) {
     try {
       await apiPost('/api/sessions/' + state.sessionCode + '/add-pilot', {
         callsign: callsign,
         video_system: videoSystem,
         fcc_unlocked: fccUnlocked || false,
         bandwidth_mhz: bandwidthMHz || 0,
+        analog_bands: analogBands || ['R'],
       });
       hideAddPilotDialog();
       refreshSession();

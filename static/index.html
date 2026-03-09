@@ -146,6 +146,17 @@
         </div>
       </div>
 
+      <div id="followup-analog-bands" class="followup-group hidden">
+        <p class="followup-label">VTX BANDS</p>
+        <div class="btn-row" id="analog-band-buttons">
+          <button class="btn btn-option analog-band-btn selected" data-band="R">R (RACE)</button>
+          <button class="btn btn-option analog-band-btn" data-band="F">F (FATSHARK)</button>
+          <button class="btn btn-option analog-band-btn" data-band="E">E (BOSCAM)</button>
+          <button class="btn btn-option analog-band-btn" data-band="L">L (LOW RACE)</button>
+        </div>
+        <p class="followup-helper" id="analog-bands-helper">NOT SURE? JUST USE RACE BAND</p>
+      </div>
+
       <button id="btn-followup-next" class="btn btn-primary btn-large hidden">NEXT</button>
       <button id="btn-followup-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>
@@ -304,6 +315,15 @@
         <div id="add-pilot-bw" class="add-pilot-option-row hidden">
           <label class="toggle-label">BANDWIDTH</label>
           <div id="add-pilot-bw-buttons" class="bw-buttons"></div>
+        </div>
+        <div id="add-pilot-bands" class="add-pilot-option-row hidden">
+          <label class="toggle-label">VTX BANDS</label>
+          <div id="add-pilot-band-buttons" class="btn-row">
+            <button class="btn btn-toggle add-band-btn active" data-add-band="R">R</button>
+            <button class="btn btn-toggle add-band-btn" data-add-band="F">F</button>
+            <button class="btn btn-toggle add-band-btn" data-add-band="E">E</button>
+            <button class="btn btn-toggle add-band-btn" data-add-band="L">L</button>
+          </div>
         </div>
         <button id="btn-add-pilot-confirm" class="btn btn-primary btn-large">ADD TO SESSION</button>
       </div>
