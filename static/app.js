@@ -1244,8 +1244,13 @@
       }
 
       // Frequency block — frequency prominent, channel name + bandwidth below
-      var freqText = p.AssignedFreqMHz ? String(p.AssignedFreqMHz) : '\u2014';
-      var freqEl = el('div', { className: 'pilot-freq', textContent: freqText });
+      var freqEl = el('div', { className: 'pilot-freq' });
+      if (p.AssignedFreqMHz) {
+        freqEl.appendChild(document.createTextNode(String(p.AssignedFreqMHz)));
+        freqEl.appendChild(el('span', { className: 'pilot-freq-unit', textContent: ' MHz' }));
+      } else {
+        freqEl.textContent = '\u2014';
+      }
       var channelLabel = p.AssignedChannel || '';
       // Disambiguate DJI O3/O4 channel names by appending bandwidth
       var bw = p.BandwidthMHz || 0;

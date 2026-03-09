@@ -623,8 +623,14 @@ body {
   line-height: 1;
 }
 
+.pilot-freq-unit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #888;
+}
+
 .pilot-channel {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: #aaaaaa;
   margin-top: 4px;
