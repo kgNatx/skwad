@@ -1032,6 +1032,7 @@
             state.bandwidthMHz = data.pilots[j].BandwidthMHz || 0;
             state.goggles = data.pilots[j].Goggles || '';
             state.raceMode = data.pilots[j].RaceMode || false;
+            state.analogBands = data.pilots[j].AnalogBands ? data.pilots[j].AnalogBands.split(',') : ['R'];
             break;
           }
         }
@@ -1096,9 +1097,20 @@
     var cw = rect.width;
     var ch = 120;
 
-    // Frequency range
+    // Frequency range — dynamically expand beyond Race Band if any pilot
+    // is assigned to Fatshark, Boscam E, or Low Race frequencies.
     var fMin = 5640;
     var fMax = 5930;
+    if (pilots && pilots.length > 0) {
+      pilots.forEach(function (p) {
+        if (!p.AssignedFreqMHz) return;
+        var bw = occupiedBandwidth(p.VideoSystem, p.BandwidthMHz);
+        var lo = p.AssignedFreqMHz - bw / 2 - 20;
+        var hi = p.AssignedFreqMHz + bw / 2 + 20;
+        if (lo < fMin) fMin = lo;
+        if (hi > fMax) fMax = hi;
+      });
+    }
     var fSpan = fMax - fMin;
 
     // Background track
