@@ -268,21 +268,24 @@ type BuddySuggestion struct {
 	FreqMHz  int    `json:"freq_mhz"`
 }
 
-// DisplacementResult is the output of FindMinimalDisplacement.
-type DisplacementResult struct {
-	Level           int              // 0-3
-	Assignments     []Assignment     // full assignment set
-	BuddySuggestion *BuddySuggestion // non-nil only at Level 3
+// RebalanceOption describes a partial rebalance that would resolve conflicts.
+type RebalanceOption struct {
+	Assignments   []Assignment // full assignment set after rebalance
+	MovedPilotIDs []int        // IDs of pilots that would be displaced
 }
 
-// FindMinimalDisplacement tries progressively more disruptive strategies to
-// place newPilot into an existing session. Stops at the first level that
-// produces no danger-level conflicts involving any moved pilot.
+// DisplacementResult is the output of FindMinimalDisplacement.
+type DisplacementResult struct {
+	Level           int              // 0 or 1
+	Assignments     []Assignment     // Level 0 assignment set
+	BuddyOption     *BuddySuggestion // Level 1: buddy up option
+	RebalanceOption *RebalanceOption  // Level 1: partial rebalance option
+}
+
+// FindMinimalDisplacement tries to place newPilot into an existing session.
 //
-//	Level 0: lock all existing, slot new pilot only
-//	Level 1: unlock one existing pilot at a time
-//	Level 2: unlock pairs of existing pilots
-//	Level 3: suggest buddying up with an existing pilot
+//	Level 0: lock all existing, slot new pilot. If clean, done.
+//	Level 1: no clean placement. Build buddy and rebalance options for pilot choice.
 func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) DisplacementResult {
 	all := make([]PilotInput, len(existing)+1)
 	copy(all, existing)
@@ -297,16 +300,20 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) Displac
 	// Level 0: lock all existing pilots, only new pilot is flexible.
 	assignments := OptimizeWithLocks(all, allExistingIDs)
 	movedIDs := movedPilotIDs(existing, assignments)
-	movedIDs[newPilot.ID] = true // new pilot is always "moved"
+	movedIDs[newPilot.ID] = true
 	if !hasDangerInvolving(assignments, movedIDs) {
 		return DisplacementResult{Level: 0, Assignments: assignments}
 	}
 
-	// Level 1: try unlocking one existing pilot at a time.
-	// Sort by flexibility (largest channel pool first = most likely to relocate).
+	// Level 1: build options for pilot choice.
+	level0Assignments := copyAssignments(assignments)
+
+	// Option A: buddy suggestion.
+	buddyOption := findBestBuddy(existing, newPilot)
+
+	// Option B: partial rebalance -- try unlocking one flexible pilot at a time.
 	flexible := flexiblePilots(existing)
-	var bestResult *DisplacementResult
-	var bestMargin int
+	var rebalanceOption *RebalanceOption
 
 	for _, pilot := range flexible {
 		tryLocked := make(map[int]bool, len(allExistingIDs))
@@ -319,61 +326,60 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) Displac
 		movedIDs = movedPilotIDs(existing, assignments)
 		movedIDs[newPilot.ID] = true
 		if !hasDangerInvolving(assignments, movedIDs) {
-			margin := worstMargin(assignments)
-			if bestResult == nil || margin > bestMargin {
-				result := DisplacementResult{Level: 1, Assignments: copyAssignments(assignments)}
-				bestResult = &result
-				bestMargin = margin
-			}
-		}
-	}
-	if bestResult != nil {
-		return *bestResult
-	}
-
-	// Level 2: try unlocking pairs.
-	for i := 0; i < len(flexible); i++ {
-		for j := i + 1; j < len(flexible); j++ {
-			tryLocked := make(map[int]bool, len(allExistingIDs))
-			for id := range allExistingIDs {
-				tryLocked[id] = true
-			}
-			delete(tryLocked, flexible[i].ID)
-			delete(tryLocked, flexible[j].ID)
-
-			assignments = OptimizeWithLocks(all, tryLocked)
-			movedIDs = movedPilotIDs(existing, assignments)
-			movedIDs[newPilot.ID] = true
-			if !hasDangerInvolving(assignments, movedIDs) {
-				margin := worstMargin(assignments)
-				if bestResult == nil || margin > bestMargin {
-					result := DisplacementResult{Level: 2, Assignments: copyAssignments(assignments)}
-					bestResult = &result
-					bestMargin = margin
+			var moved []int
+			for id := range movedIDs {
+				if id != newPilot.ID {
+					moved = append(moved, id)
 				}
 			}
+			rebalanceOption = &RebalanceOption{
+				Assignments:   copyAssignments(assignments),
+				MovedPilotIDs: moved,
+			}
+			break // take the first clean solution (most flexible pilot)
 		}
 	}
-	if bestResult != nil {
-		return *bestResult
+
+	// If no single-pilot rebalance worked, try pairs.
+	if rebalanceOption == nil {
+		for i := 0; i < len(flexible); i++ {
+			for j := i + 1; j < len(flexible); j++ {
+				tryLocked := make(map[int]bool, len(allExistingIDs))
+				for id := range allExistingIDs {
+					tryLocked[id] = true
+				}
+				delete(tryLocked, flexible[i].ID)
+				delete(tryLocked, flexible[j].ID)
+
+				assignments = OptimizeWithLocks(all, tryLocked)
+				movedIDs = movedPilotIDs(existing, assignments)
+				movedIDs[newPilot.ID] = true
+				if !hasDangerInvolving(assignments, movedIDs) {
+					var moved []int
+					for id := range movedIDs {
+						if id != newPilot.ID {
+							moved = append(moved, id)
+						}
+					}
+					rebalanceOption = &RebalanceOption{
+						Assignments:   copyAssignments(assignments),
+						MovedPilotIDs: moved,
+					}
+					break
+				}
+			}
+			if rebalanceOption != nil {
+				break
+			}
+		}
 	}
 
-	// Level 3: buddy suggestion.
-	buddy := findBestBuddy(existing, newPilot)
-	if buddy != nil {
-		// Place new pilot at buddy's frequency.
-		buddiedPilot := newPilot
-		buddiedPilot.ChannelLocked = true
-		buddiedPilot.LockedFreqMHz = buddy.FreqMHz
-		allBuddy := make([]PilotInput, len(existing)+1)
-		copy(allBuddy, existing)
-		allBuddy[len(existing)] = buddiedPilot
-		assignments = OptimizeWithLocks(allBuddy, allExistingIDs)
-		return DisplacementResult{Level: 3, Assignments: assignments, BuddySuggestion: buddy}
+	return DisplacementResult{
+		Level:           1,
+		Assignments:     level0Assignments,
+		BuddyOption:     buddyOption,
+		RebalanceOption: rebalanceOption,
 	}
-
-	// Fallback: return Level 0 result (shouldn't happen if there are any existing pilots).
-	return DisplacementResult{Level: 0, Assignments: OptimizeWithLocks(all, allExistingIDs)}
 }
 
 // hasDangerInvolving returns true if any danger-level conflict involves
@@ -416,21 +422,39 @@ func findChannelName(pool []Channel, freqMHz int) string {
 	return ""
 }
 
-// flexiblePilots returns existing pilots that are NOT channel-locked,
-// sorted by channel pool size descending (most flexible first).
+// flexiblePilots returns ALL existing pilots ranked by displacement flexibility.
+// Most flexible (best displacement candidates) first:
+//   - Auto-assign pilots (no preference) with large channel pools
+//   - Preference pilots with large pools not on their preferred channel
+//   - Preference pilots on their preferred channel with tenure (least flexible)
 func flexiblePilots(existing []PilotInput) []PilotInput {
-	var flex []PilotInput
-	for _, p := range existing {
-		if !p.ChannelLocked || p.LockedFreqMHz == 0 {
-			flex = append(flex, p)
-		}
-	}
+	flex := make([]PilotInput, len(existing))
+	copy(flex, existing)
+
 	sort.SliceStable(flex, func(i, j int) bool {
+		scoreI := flexibilityScore(flex[i])
+		scoreJ := flexibilityScore(flex[j])
+		if scoreI != scoreJ {
+			return scoreI > scoreJ // higher score = more flexible = first
+		}
+		// Tie-break: larger pool = more flexible.
 		poolI := ChannelPool(flex[i].VideoSystem, flex[i].FCCUnlocked, flex[i].BandwidthMHz, flex[i].RaceMode, flex[i].Goggles, flex[i].AnalogBands)
 		poolJ := ChannelPool(flex[j].VideoSystem, flex[j].FCCUnlocked, flex[j].BandwidthMHz, flex[j].RaceMode, flex[j].Goggles, flex[j].AnalogBands)
 		return len(poolI) > len(poolJ)
 	})
 	return flex
+}
+
+// flexibilityScore returns a score indicating how flexible a pilot is for displacement.
+// Higher = more flexible (better candidate to move).
+func flexibilityScore(p PilotInput) int {
+	if p.PreferredFreqMHz == 0 {
+		return 3 // auto-assign: most flexible
+	}
+	if p.PrevFreqMHz != p.PreferredFreqMHz {
+		return 2 // has preference but not currently on it
+	}
+	return 1 // on their preferred channel with tenure: least flexible
 }
 
 // worstMargin returns the worst effective separation margin across all

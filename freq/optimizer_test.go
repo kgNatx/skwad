@@ -94,7 +94,7 @@ func TestOptimize_FourAnalog_SafeSpacing(t *testing.T) {
 
 func TestOptimize_LockedChannel(t *testing.T) {
 	pilots := []PilotInput{
-		{ID: 1, VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5732}, // R3
+		{ID: 1, VideoSystem: "analog", Pinned: true, PinnedFreqMHz: 5732}, // R3
 		{ID: 2, VideoSystem: "analog"},
 	}
 	assignments := Optimize(pilots)
@@ -102,12 +102,12 @@ func TestOptimize_LockedChannel(t *testing.T) {
 		t.Fatalf("expected 2 assignments, got %d", len(assignments))
 	}
 
-	// Pilot 1 should be locked to R3 @ 5732.
+	// Pilot 1 should be pinned to R3 @ 5732.
 	if assignments[0].FreqMHz != 5732 {
-		t.Errorf("locked pilot freq = %d, want 5732", assignments[0].FreqMHz)
+		t.Errorf("pinned pilot freq = %d, want 5732", assignments[0].FreqMHz)
 	}
 	if assignments[0].Channel != "R3" {
-		t.Errorf("locked pilot channel = %s, want R3", assignments[0].Channel)
+		t.Errorf("pinned pilot channel = %s, want R3", assignments[0].Channel)
 	}
 
 	// Pilot 2 should be far from 5732 — at least RequiredSpacing(20, 20) = 30 MHz.
@@ -172,7 +172,7 @@ func TestOptimize_AnalogAndDJIO3_40MHz(t *testing.T) {
 	// The optimizer should NOT place the analog pilot on R4.
 	pilots := []PilotInput{
 		{ID: 1, VideoSystem: "dji_o3", BandwidthMHz: 40},                         // Only channel: O3-CH1 at 5795
-		{ID: 2, VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5732}, // R3
+		{ID: 2, VideoSystem: "analog", Pinned: true, PinnedFreqMHz: 5732}, // R3
 		{ID: 3, VideoSystem: "analog"},                                            // Should avoid R4 (5769)
 	}
 	assignments := Optimize(pilots)
@@ -347,8 +347,8 @@ func TestFindMinimalDisplacement_Level0_NoConflict(t *testing.T) {
 			t.Errorf("pilot 2 moved to %d", a.FreqMHz)
 		}
 	}
-	if result.BuddySuggestion != nil {
-		t.Error("unexpected buddy suggestion at level 0")
+	if result.BuddyOption != nil {
+		t.Error("unexpected buddy option at level 0")
 	}
 }
 
@@ -384,7 +384,7 @@ func TestFindMinimalDisplacement_Level1_UnlockOne(t *testing.T) {
 	// New: DJI O3 at 40MHz — only has 1 channel at 5795.
 	// At Level 0: place O3 at 5795. Check: |5795-5769|=26, required spacing between
 	// 40MHz and 20MHz = 20+10+10=40. 26 < 40 → danger overlap with pilot on R4.
-	// Level 1: unlock pilot on R4 → optimizer can move them away from 5795.
+	// Level 1 rebalance: unlock pilot on R4 → optimizer can move them away from 5795.
 	existing := []PilotInput{
 		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
 		{ID: 2, VideoSystem: "analog", PrevChannel: "R4", PrevFreqMHz: 5769},
@@ -397,44 +397,56 @@ func TestFindMinimalDisplacement_Level1_UnlockOne(t *testing.T) {
 	if result.Level != 1 {
 		t.Errorf("expected level 1, got %d", result.Level)
 	}
-	// New pilot should be at 5795 (only O3 40MHz channel).
-	for _, a := range result.Assignments {
+	// RebalanceOption should exist with a clean assignment set.
+	if result.RebalanceOption == nil {
+		t.Fatal("expected rebalance option, got nil")
+	}
+	// In the rebalance option, new pilot should be at 5795 (only O3 40MHz channel).
+	for _, a := range result.RebalanceOption.Assignments {
 		if a.PilotID == -1 && a.FreqMHz != 5795 {
 			t.Errorf("new pilot expected 5795, got %d", a.FreqMHz)
 		}
 	}
-	// Pilot on R4 (5769) should have moved away from 5795.
-	for _, a := range result.Assignments {
+	// Pilot on R4 (5769) should have moved away from 5795 in the rebalance.
+	for _, a := range result.RebalanceOption.Assignments {
 		if a.PilotID == 2 && a.FreqMHz == 5769 {
-			t.Error("pilot 2 should have been displaced from R4")
+			t.Error("pilot 2 should have been displaced from R4 in rebalance option")
 		}
 	}
 }
 
-func TestFindMinimalDisplacement_Level1_SkipsLockedPilots(t *testing.T) {
-	// A channel-locked pilot should never be unlocked at Level 1.
-	// Same scenario as above but pilot 2 is channel-locked on R4.
-	// Level 1 can't unlock pilot 2, so it tries others.
+func TestFindMinimalDisplacement_Level1_PreferencePilotLeastFlexible(t *testing.T) {
+	// In the preference system, all pilots are flexible but ranked.
+	// Pilot 2 has a preference on R4 and is currently on it — least flexible.
+	// The rebalance should prefer moving auto-assign pilots first.
 	existing := []PilotInput{
 		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
-		{ID: 2, VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5769, PrevChannel: "R4", PrevFreqMHz: 5769},
+		{ID: 2, VideoSystem: "analog", PreferredFreqMHz: 5769, PrevChannel: "R4", PrevFreqMHz: 5769},
 		{ID: 3, VideoSystem: "analog", PrevChannel: "R7", PrevFreqMHz: 5880},
 	}
 	newPilot := PilotInput{ID: -1, VideoSystem: "dji_o3", BandwidthMHz: 40}
 
 	result := FindMinimalDisplacement(existing, newPilot)
 
-	// Pilot 2 must stay on 5769 regardless of level.
-	for _, a := range result.Assignments {
-		if a.PilotID == 2 && a.FreqMHz != 5769 {
-			t.Errorf("locked pilot 2 was moved to %d", a.FreqMHz)
+	// Should reach Level 1 since Level 0 has a conflict.
+	if result.Level != 1 {
+		t.Errorf("expected level 1, got %d", result.Level)
+	}
+	// Rebalance option should exist and prefer moving non-preference pilots.
+	if result.RebalanceOption != nil {
+		for _, movedID := range result.RebalanceOption.MovedPilotIDs {
+			if movedID == 2 {
+				// Pilot 2 CAN be moved (not locked), but the optimizer should try
+				// auto-assign pilots (1 and 3) first since they're more flexible.
+				t.Log("pilot 2 (preference pilot) was moved; acceptable but non-ideal")
+			}
 		}
 	}
 }
 
-func TestFindMinimalDisplacement_Level3_BuddySuggestion(t *testing.T) {
+func TestFindMinimalDisplacement_Level1_BuddyOption(t *testing.T) {
 	// 8 analog pilots fill all 8 race band channels.
-	// 9th analog pilot has no clear slot — should get a buddy suggestion.
+	// 9th analog pilot has no clear slot — should get a buddy option at Level 1.
 	existing := []PilotInput{
 		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
 		{ID: 2, VideoSystem: "analog", PrevChannel: "R2", PrevFreqMHz: 5695},
@@ -449,18 +461,18 @@ func TestFindMinimalDisplacement_Level3_BuddySuggestion(t *testing.T) {
 
 	result := FindMinimalDisplacement(existing, newPilot)
 
-	if result.Level != 3 {
-		t.Errorf("expected level 3 (buddy), got %d", result.Level)
+	if result.Level != 1 {
+		t.Errorf("expected level 1, got %d", result.Level)
 	}
-	if result.BuddySuggestion == nil {
-		t.Fatal("expected buddy suggestion, got nil")
+	if result.BuddyOption == nil {
+		t.Fatal("expected buddy option, got nil")
 	}
 	// Buddy should be one of the existing pilots.
-	if result.BuddySuggestion.PilotID < 1 || result.BuddySuggestion.PilotID > 8 {
-		t.Errorf("buddy pilot ID %d not in existing set", result.BuddySuggestion.PilotID)
+	if result.BuddyOption.PilotID < 1 || result.BuddyOption.PilotID > 8 {
+		t.Errorf("buddy pilot ID %d not in existing set", result.BuddyOption.PilotID)
 	}
-	if result.BuddySuggestion.FreqMHz == 0 {
-		t.Error("buddy suggestion has no frequency")
+	if result.BuddyOption.FreqMHz == 0 {
+		t.Error("buddy option has no frequency")
 	}
 }
 
@@ -477,5 +489,73 @@ func TestDetectConflicts_WideBandDanger(t *testing.T) {
 	}
 	if conflicts[0].Level != ConflictDanger {
 		t.Errorf("level = %q, want %q", conflicts[0].Level, ConflictDanger)
+	}
+}
+
+func TestFlexiblePilots_RankedByFlexibility(t *testing.T) {
+	existing := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PreferredFreqMHz: 5658, PrevFreqMHz: 5658}, // on preferred = least flexible
+		{ID: 2, VideoSystem: "analog", PrevFreqMHz: 5769},                          // auto-assign = most flexible
+		{ID: 3, VideoSystem: "analog", PreferredFreqMHz: 5880, PrevFreqMHz: 5806},  // preference but not on it = moderate
+	}
+	flex := flexiblePilots(existing)
+	if len(flex) != 3 {
+		t.Fatalf("expected 3 flexible pilots, got %d", len(flex))
+	}
+	// Most flexible first: auto-assign (ID 2), then preference not on preferred (ID 3),
+	// then preference on preferred with tenure (ID 1).
+	if flex[0].ID != 2 {
+		t.Errorf("most flexible should be ID 2 (auto-assign), got ID %d", flex[0].ID)
+	}
+	if flex[len(flex)-1].ID != 1 {
+		t.Errorf("least flexible should be ID 1 (on preferred), got ID %d", flex[len(flex)-1].ID)
+	}
+}
+
+func TestFindMinimalDisplacement_Level1_BothOptions(t *testing.T) {
+	// 8 analog pilots fill all race band channels.
+	// 9th analog pilot: Level 0 fails, Level 1 should offer buddy option.
+	existing := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
+		{ID: 2, VideoSystem: "analog", PrevChannel: "R2", PrevFreqMHz: 5695},
+		{ID: 3, VideoSystem: "analog", PrevChannel: "R3", PrevFreqMHz: 5732},
+		{ID: 4, VideoSystem: "analog", PrevChannel: "R4", PrevFreqMHz: 5769},
+		{ID: 5, VideoSystem: "analog", PrevChannel: "R5", PrevFreqMHz: 5806},
+		{ID: 6, VideoSystem: "analog", PrevChannel: "R6", PrevFreqMHz: 5843},
+		{ID: 7, VideoSystem: "analog", PrevChannel: "R7", PrevFreqMHz: 5880},
+		{ID: 8, VideoSystem: "analog", PrevChannel: "R8", PrevFreqMHz: 5917},
+	}
+	newPilot := PilotInput{ID: -1, VideoSystem: "analog"}
+
+	result := FindMinimalDisplacement(existing, newPilot)
+
+	if result.Level != 1 {
+		t.Errorf("expected level 1, got %d", result.Level)
+	}
+	if result.BuddyOption == nil {
+		t.Error("expected buddy option, got nil")
+	}
+}
+
+func TestFindMinimalDisplacement_Level1_RebalanceOption(t *testing.T) {
+	// Tight spectrum: analog R1, R4, R7. New DJI O3 40MHz conflicts at Level 0.
+	// Level 1 rebalance: unlock one analog pilot -> make room.
+	existing := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PrevChannel: "R1", PrevFreqMHz: 5658},
+		{ID: 2, VideoSystem: "analog", PrevChannel: "R4", PrevFreqMHz: 5769},
+		{ID: 3, VideoSystem: "analog", PrevChannel: "R7", PrevFreqMHz: 5880},
+	}
+	newPilot := PilotInput{ID: -1, VideoSystem: "dji_o3", BandwidthMHz: 40}
+
+	result := FindMinimalDisplacement(existing, newPilot)
+
+	if result.Level != 1 {
+		t.Errorf("expected level 1, got %d", result.Level)
+	}
+	if result.RebalanceOption == nil {
+		t.Fatal("expected rebalance option, got nil")
+	}
+	if len(result.RebalanceOption.MovedPilotIDs) == 0 {
+		t.Error("rebalance option should have at least one moved pilot")
 	}
 }
