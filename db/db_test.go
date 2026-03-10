@@ -450,6 +450,22 @@ func TestTransferLeader(t *testing.T) {
 	}
 }
 
+func TestMigration_PreferredFrequency(t *testing.T) {
+	d := newTestDB(t)
+
+	// Verify the preferred_frequency_mhz column exists.
+	var count int
+	err := d.db.QueryRow(
+		`SELECT COUNT(*) FROM pragma_table_info('pilots') WHERE name='preferred_frequency_mhz'`,
+	).Scan(&count)
+	if err != nil {
+		t.Fatalf("checking column: %v", err)
+	}
+	if count != 1 {
+		t.Error("preferred_frequency_mhz column should exist after migration")
+	}
+}
+
 func TestGenerateCode(t *testing.T) {
 	code := generateCode()
 	if len(code) != 6 {

@@ -27,22 +27,21 @@ type Session struct {
 
 // Pilot represents a pilot within a session.
 type Pilot struct {
-	ID                 int
-	SessionID          string
-	Callsign           string
-	VideoSystem        string
-	FCCUnlocked        bool
-	Goggles            string
-	BandwidthMHz       int
-	RaceMode           bool
-	ChannelLocked      bool
-	LockedFrequencyMHz int
-	AssignedChannel    string
-	AssignedFreqMHz    int
-	BuddyGroup        int
-	Active             bool
-	AnalogBands        string // comma-separated band codes: "R", "R,F,E", etc.
-	AddedByLeader      bool
+	ID               int
+	SessionID        string
+	Callsign         string
+	VideoSystem      string
+	FCCUnlocked      bool
+	Goggles          string
+	BandwidthMHz     int
+	RaceMode         bool
+	PreferredFreqMHz int // 0 = auto-assign, >0 = preferred frequency
+	AssignedChannel  string
+	AssignedFreqMHz  int
+	BuddyGroup       int
+	Active           bool
+	AnalogBands      string // comma-separated band codes: "R", "R,F,E", etc.
+	AddedByLeader    bool
 }
 
 const schema = `
@@ -114,6 +113,15 @@ func (d *DB) migrate() error {
 	_, err = d.db.Exec(`ALTER TABLE pilots ADD COLUMN added_by_leader BOOLEAN DEFAULT FALSE`)
 	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
 		return fmt.Errorf("migrate added_by_leader: %w", err)
+	}
+	_, err = d.db.Exec(`ALTER TABLE pilots ADD COLUMN preferred_frequency_mhz INTEGER DEFAULT 0`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		return fmt.Errorf("migrate preferred_frequency_mhz: %w", err)
+	}
+	// Copy locked_frequency_mhz -> preferred_frequency_mhz for existing locked pilots.
+	_, err = d.db.Exec(`UPDATE pilots SET preferred_frequency_mhz = locked_frequency_mhz WHERE channel_locked = TRUE AND preferred_frequency_mhz = 0`)
+	if err != nil {
+		return fmt.Errorf("migrate lock to preference: %w", err)
 	}
 	return nil
 }
@@ -220,11 +228,11 @@ func (d *DB) GetLeader(sessionID string) (int, error) {
 func (d *DB) AddPilot(sessionID string, p *Pilot) (*Pilot, error) {
 	res, err := d.db.Exec(
 		`INSERT INTO pilots (session_id, callsign, video_system, fcc_unlocked, goggles,
-			bandwidth_mhz, race_mode, channel_locked, locked_frequency_mhz,
+			bandwidth_mhz, race_mode, preferred_frequency_mhz,
 			assigned_channel, assigned_frequency_mhz, buddy_group, joined_at, active, analog_bands, added_by_leader)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)`,
 		sessionID, p.Callsign, p.VideoSystem, p.FCCUnlocked, p.Goggles,
-		p.BandwidthMHz, p.RaceMode, p.ChannelLocked, p.LockedFrequencyMHz,
+		p.BandwidthMHz, p.RaceMode, p.PreferredFreqMHz,
 		p.AssignedChannel, p.AssignedFreqMHz, p.BuddyGroup, time.Now().UTC(),
 		p.AnalogBands, p.AddedByLeader,
 	)
@@ -268,12 +276,12 @@ func (d *DB) reactivatePilot(sessionID string, p *Pilot) (*Pilot, error) {
 	// Reactivate with updated settings.
 	_, err = d.db.Exec(
 		`UPDATE pilots SET video_system = ?, fcc_unlocked = ?, goggles = ?,
-			bandwidth_mhz = ?, race_mode = ?, channel_locked = ?, locked_frequency_mhz = ?,
+			bandwidth_mhz = ?, race_mode = ?, preferred_frequency_mhz = ?,
 			assigned_channel = '', assigned_frequency_mhz = 0, buddy_group = 0,
 			joined_at = ?, active = TRUE, analog_bands = ?
 		WHERE id = ?`,
 		p.VideoSystem, p.FCCUnlocked, p.Goggles,
-		p.BandwidthMHz, p.RaceMode, p.ChannelLocked, p.LockedFrequencyMHz,
+		p.BandwidthMHz, p.RaceMode, p.PreferredFreqMHz,
 		time.Now().UTC(), p.AnalogBands, existingID,
 	)
 	if err != nil {
@@ -291,7 +299,7 @@ func (d *DB) reactivatePilot(sessionID string, p *Pilot) (*Pilot, error) {
 func (d *DB) GetActivePilots(sessionID string) ([]Pilot, error) {
 	rows, err := d.db.Query(
 		`SELECT id, session_id, callsign, video_system, fcc_unlocked, goggles,
-			bandwidth_mhz, race_mode, channel_locked, locked_frequency_mhz,
+			bandwidth_mhz, race_mode, preferred_frequency_mhz,
 			assigned_channel, assigned_frequency_mhz, buddy_group, active, analog_bands,
 			added_by_leader
 		FROM pilots
@@ -309,8 +317,8 @@ func (d *DB) GetActivePilots(sessionID string) ([]Pilot, error) {
 		var p Pilot
 		if err := rows.Scan(
 			&p.ID, &p.SessionID, &p.Callsign, &p.VideoSystem, &p.FCCUnlocked,
-			&p.Goggles, &p.BandwidthMHz, &p.RaceMode, &p.ChannelLocked,
-			&p.LockedFrequencyMHz, &p.AssignedChannel, &p.AssignedFreqMHz,
+			&p.Goggles, &p.BandwidthMHz, &p.RaceMode, &p.PreferredFreqMHz,
+			&p.AssignedChannel, &p.AssignedFreqMHz,
 			&p.BuddyGroup, &p.Active, &p.AnalogBands, &p.AddedByLeader,
 		); err != nil {
 			return nil, fmt.Errorf("scan pilot: %w", err)
@@ -336,14 +344,14 @@ func (d *DB) UpdatePilotAssignment(pilotID int, channel string, freqMHz int, bud
 	return nil
 }
 
-// UpdatePilotPreferences updates a pilot's channel lock and locked frequency.
-func (d *DB) UpdatePilotPreferences(pilotID int, channelLocked bool, lockedFreqMHz int) error {
+// UpdatePilotPreference updates a pilot's preferred frequency (0 = auto-assign).
+func (d *DB) UpdatePilotPreference(pilotID int, preferredFreqMHz int) error {
 	res, err := d.db.Exec(
-		`UPDATE pilots SET channel_locked = ?, locked_frequency_mhz = ? WHERE id = ? AND active = TRUE`,
-		channelLocked, lockedFreqMHz, pilotID,
+		`UPDATE pilots SET preferred_frequency_mhz = ? WHERE id = ? AND active = TRUE`,
+		preferredFreqMHz, pilotID,
 	)
 	if err != nil {
-		return fmt.Errorf("update pilot preferences: %w", err)
+		return fmt.Errorf("update pilot preference: %w", err)
 	}
 	n, _ := res.RowsAffected()
 	if n == 0 {
