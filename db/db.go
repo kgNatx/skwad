@@ -131,11 +131,11 @@ func (d *DB) Close() error {
 	return d.db.Close()
 }
 
-// CreateSession generates a new session with a 6-char hex code that expires in 24 hours.
+// CreateSession generates a new session with a 6-char hex code that expires in 12 hours.
 // Retries with a new code if a collision occurs (primary key conflict).
 func (d *DB) CreateSession() (*Session, error) {
 	now := time.Now().UTC()
-	expires := now.Add(24 * time.Hour)
+	expires := now.Add(12 * time.Hour)
 
 	const maxRetries = 5
 	for i := 0; i < maxRetries; i++ {

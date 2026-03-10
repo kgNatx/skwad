@@ -31,6 +31,7 @@ All notable changes to Skwad are documented in this file.
 - **Buddy confirmation z-index.** Channel-change sheet now hides before showing buddy confirmation, preventing it from covering the dialog.
 - **Cancel from buddy confirmation.** Returns to channel picker instead of dead end.
 - **DJI O4 wizard step ordering.** Goggles step now appears before bandwidth step in HTML, matching the actual O4 flow (FCC → Goggles → Bandwidth → Race Mode).
+- **Callsign change cancel button.** Fixed duplicate `btn-callsign-cancel` ID — rename to `btn-callsign-change-cancel`.
 
 ### Changed
 - **Action sheets tightened.** Padding 36px→20px, gap 18px→12px, title 26px→22px for more usable space.
@@ -39,6 +40,10 @@ All notable changes to Skwad are documented in this file.
 - Non-leader channel picker filters out conflicting channels instead of showing them grayed.
 - `white-space: nowrap` on system badges, channel names, and leader buttons to prevent wrapping.
 - Leader button padding and letter-spacing reduced to prevent overflow on narrow screens.
+- **Session expiry reduced from 24 hours to 12 hours.** `CreateSession()` now uses `12 * time.Hour`.
+- **Shrink-to-fit callsigns.** `fitText()` scales long callsigns down (28px→14px min) instead of wrapping.
+- **Landing page leader hint.** Explains session leader role and transfer-leadership reminder under START SESSION.
+- **Spectrum canvases 10% shorter.** Main 120→108px, action sheets 90→80px. Renderer reads height from CSS.
 
 ### Removed
 - `channel_locked` and `locked_frequency_mhz` no longer used (columns kept for SQLite compatibility).
@@ -116,7 +121,7 @@ All notable changes to Skwad are documented in this file.
 Initial release of the Skwad FPV frequency coordinator.
 
 ### Added
-- Session creation with 6-character hex codes (`crypto/rand`) and 24-hour expiry
+- Session creation with 6-character hex codes (`crypto/rand`) and 12-hour expiry
 - Collision retry (up to 5 attempts) on session ID generation
 - Setup wizard: callsign, video system, FCC unlock, goggles, bandwidth, race mode, channel preference
 - Frequency optimizer: greedy single-pass, most-constrained-first, stability tie-breaker on `PrevFreqMHz`
