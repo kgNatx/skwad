@@ -61,15 +61,14 @@ func (s *Server) requireLeader(w http.ResponseWriter, r *http.Request, sessionCo
 
 // JoinRequest is the JSON body for joining a session.
 type JoinRequest struct {
-	Callsign      string `json:"callsign"`
-	VideoSystem   string `json:"video_system"`
-	FCCUnlocked   bool   `json:"fcc_unlocked"`
-	Goggles       string `json:"goggles"`
-	BandwidthMHz  int    `json:"bandwidth_mhz"`
-	RaceMode      bool   `json:"race_mode"`
-	ChannelLocked bool     `json:"channel_locked"`
-	LockedFreqMHz int      `json:"locked_frequency_mhz"`
-	AnalogBands   []string `json:"analog_bands"`
+	Callsign         string   `json:"callsign"`
+	VideoSystem      string   `json:"video_system"`
+	FCCUnlocked      bool     `json:"fcc_unlocked"`
+	Goggles          string   `json:"goggles"`
+	BandwidthMHz     int      `json:"bandwidth_mhz"`
+	RaceMode         bool     `json:"race_mode"`
+	PreferredFreqMHz int      `json:"preferred_frequency_mhz"`
+	AnalogBands      []string `json:"analog_bands"`
 }
 
 // PilotConflict describes a conflict between the current pilot and another.
@@ -197,15 +196,14 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 	}
 
 	pilot := &db.Pilot{
-		Callsign:           req.Callsign,
-		VideoSystem:        req.VideoSystem,
-		FCCUnlocked:        req.FCCUnlocked,
-		Goggles:            req.Goggles,
-		BandwidthMHz:       req.BandwidthMHz,
-		RaceMode:           req.RaceMode,
-		ChannelLocked:      req.ChannelLocked,
-		LockedFrequencyMHz: req.LockedFreqMHz,
-		AnalogBands:        joinBands(req.AnalogBands),
+		Callsign:         req.Callsign,
+		VideoSystem:      req.VideoSystem,
+		FCCUnlocked:      req.FCCUnlocked,
+		Goggles:          req.Goggles,
+		BandwidthMHz:     req.BandwidthMHz,
+		RaceMode:         req.RaceMode,
+		PreferredFreqMHz: req.PreferredFreqMHz,
+		AnalogBands:      joinBands(req.AnalogBands),
 	}
 
 	added, err := s.DB.AddPilot(code, pilot)
@@ -302,12 +300,20 @@ type DisplacedPilot struct {
 	NewFreqMHz int    `json:"new_freq_mhz"`
 }
 
+// RebalancePreview describes the partial rebalance option for Level 1.
+type RebalancePreview struct {
+	Assignment freq.Assignment  `json:"assignment"`
+	Displaced  []DisplacedPilot `json:"displaced"`
+}
+
 // PreviewResponse is the JSON response shape for preview-join and preview-channel.
 type PreviewResponse struct {
 	Level           int                   `json:"level"`
 	Assignment      freq.Assignment       `json:"assignment"`
 	Displaced       []DisplacedPilot      `json:"displaced"`
-	BuddySuggestion *freq.BuddySuggestion `json:"buddy_suggestion"`
+	OverrideReason  string                `json:"override_reason,omitempty"`
+	BuddyOption     *freq.BuddySuggestion `json:"buddy_option,omitempty"`
+	RebalanceOption *RebalancePreview      `json:"rebalance_option,omitempty"`
 }
 
 // HandlePreviewJoin dry-runs graduated escalation with a hypothetical new pilot
@@ -355,15 +361,14 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 	// Build the hypothetical new pilot with a temporary ID.
 	tempID := -1
 	newPilotInput := freq.PilotInput{
-		ID:            tempID,
-		VideoSystem:   req.VideoSystem,
-		FCCUnlocked:   req.FCCUnlocked,
-		BandwidthMHz:  req.BandwidthMHz,
-		RaceMode:      req.RaceMode,
-		Goggles:       req.Goggles,
-		ChannelLocked: req.ChannelLocked,
-		LockedFreqMHz: req.LockedFreqMHz,
-		AnalogBands:   req.AnalogBands,
+		ID:               tempID,
+		VideoSystem:      req.VideoSystem,
+		FCCUnlocked:      req.FCCUnlocked,
+		BandwidthMHz:     req.BandwidthMHz,
+		RaceMode:         req.RaceMode,
+		Goggles:          req.Goggles,
+		PreferredFreqMHz: req.PreferredFreqMHz,
+		AnalogBands:      req.AnalogBands,
 	}
 
 	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput)
@@ -399,9 +404,55 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		}
 	}
 
-	// Enrich buddy suggestion with callsign from pilot data.
-	if result.BuddySuggestion != nil {
-		result.BuddySuggestion.Callsign = pilotCallsigns[result.BuddySuggestion.PilotID]
+	// Build override reason when Level 0 but preference was overridden.
+	overrideReason := ""
+	if result.Level == 0 && req.PreferredFreqMHz > 0 && newAssignment.FreqMHz != req.PreferredFreqMHz {
+		for _, p := range pilots {
+			if p.AssignedFreqMHz == req.PreferredFreqMHz {
+				overrideReason = fmt.Sprintf("%s is on %s (%d MHz). You've been placed on %s (%d MHz).",
+					p.Callsign, p.AssignedChannel, p.AssignedFreqMHz,
+					newAssignment.Channel, newAssignment.FreqMHz)
+				break
+			}
+		}
+		if overrideReason == "" {
+			overrideReason = fmt.Sprintf("Your preferred channel conflicts. You've been placed on %s (%d MHz).",
+				newAssignment.Channel, newAssignment.FreqMHz)
+		}
+	}
+
+	// Enrich buddy option with callsign from pilot data.
+	if result.BuddyOption != nil {
+		result.BuddyOption.Callsign = pilotCallsigns[result.BuddyOption.PilotID]
+	}
+
+	// Build rebalance preview.
+	var rebalancePreview *RebalancePreview
+	if result.RebalanceOption != nil {
+		var rebalAssignment freq.Assignment
+		var rebalDisplaced []DisplacedPilot
+		for _, a := range result.RebalanceOption.Assignments {
+			if a.PilotID == tempID {
+				rebalAssignment = a
+				continue
+			}
+			oldCh := pilotOldChannels[a.PilotID]
+			oldFreq := pilotOldFreqs[a.PilotID]
+			if oldCh != "" && (a.Channel != oldCh || a.FreqMHz != oldFreq) {
+				rebalDisplaced = append(rebalDisplaced, DisplacedPilot{
+					PilotID:    a.PilotID,
+					Callsign:   pilotCallsigns[a.PilotID],
+					OldChannel: oldCh,
+					OldFreqMHz: oldFreq,
+					NewChannel: a.Channel,
+					NewFreqMHz: a.FreqMHz,
+				})
+			}
+		}
+		rebalancePreview = &RebalancePreview{
+			Assignment: rebalAssignment,
+			Displaced:  rebalDisplaced,
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -409,14 +460,16 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		Level:           result.Level,
 		Assignment:      newAssignment,
 		Displaced:       displaced,
-		BuddySuggestion: result.BuddySuggestion,
+		OverrideReason:  overrideReason,
+		BuddyOption:     result.BuddyOption,
+		RebalanceOption: rebalancePreview,
 	})
 }
 
 // UpdateChannelRequest is the JSON body for changing a pilot's channel preference.
 type UpdateChannelRequest struct {
-	ChannelLocked bool `json:"channel_locked"`
-	LockedFreqMHz int  `json:"locked_frequency_mhz"`
+	PreferredFreqMHz int  `json:"preferred_frequency_mhz"`
+	Force            bool `json:"force"` // leader-only: accept conflicting placement
 }
 
 // HandlePreviewChannelChange dry-runs graduated escalation for a pilot changing
@@ -444,8 +497,12 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 	for _, inp := range inputs {
 		if inp.ID == pilotID {
 			changingPilotInput = inp
-			changingPilotInput.ChannelLocked = req.ChannelLocked
-			changingPilotInput.LockedFreqMHz = req.LockedFreqMHz
+			changingPilotInput.PreferredFreqMHz = req.PreferredFreqMHz
+			// If force flag (leader), pin the pilot at the requested frequency.
+			if req.Force && req.PreferredFreqMHz > 0 {
+				changingPilotInput.Pinned = true
+				changingPilotInput.PinnedFreqMHz = req.PreferredFreqMHz
+			}
 			// Clear prev assignment since preferences changed.
 			changingPilotInput.PrevChannel = ""
 			changingPilotInput.PrevFreqMHz = 0
@@ -487,9 +544,55 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	// Enrich buddy suggestion with callsign from pilot data.
-	if result.BuddySuggestion != nil {
-		result.BuddySuggestion.Callsign = pilotCallsigns[result.BuddySuggestion.PilotID]
+	// Build override reason when Level 0 but preference was overridden.
+	overrideReason := ""
+	if result.Level == 0 && req.PreferredFreqMHz > 0 && myAssignment.FreqMHz != req.PreferredFreqMHz {
+		for _, p := range pilots {
+			if p.AssignedFreqMHz == req.PreferredFreqMHz {
+				overrideReason = fmt.Sprintf("%s is on %s (%d MHz). You've been placed on %s (%d MHz).",
+					p.Callsign, p.AssignedChannel, p.AssignedFreqMHz,
+					myAssignment.Channel, myAssignment.FreqMHz)
+				break
+			}
+		}
+		if overrideReason == "" {
+			overrideReason = fmt.Sprintf("Your preferred channel conflicts. You've been placed on %s (%d MHz).",
+				myAssignment.Channel, myAssignment.FreqMHz)
+		}
+	}
+
+	// Enrich buddy option with callsign from pilot data.
+	if result.BuddyOption != nil {
+		result.BuddyOption.Callsign = pilotCallsigns[result.BuddyOption.PilotID]
+	}
+
+	// Build rebalance preview.
+	var rebalancePreview *RebalancePreview
+	if result.RebalanceOption != nil {
+		var rebalAssignment freq.Assignment
+		var rebalDisplaced []DisplacedPilot
+		for _, a := range result.RebalanceOption.Assignments {
+			if a.PilotID == pilotID {
+				rebalAssignment = a
+				continue
+			}
+			oldCh := pilotOldChannels[a.PilotID]
+			oldFreq := pilotOldFreqs[a.PilotID]
+			if oldCh != "" && (a.Channel != oldCh || a.FreqMHz != oldFreq) {
+				rebalDisplaced = append(rebalDisplaced, DisplacedPilot{
+					PilotID:    a.PilotID,
+					Callsign:   pilotCallsigns[a.PilotID],
+					OldChannel: oldCh,
+					OldFreqMHz: oldFreq,
+					NewChannel: a.Channel,
+					NewFreqMHz: a.FreqMHz,
+				})
+			}
+		}
+		rebalancePreview = &RebalancePreview{
+			Assignment: rebalAssignment,
+			Displaced:  rebalDisplaced,
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -497,7 +600,9 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 		Level:           result.Level,
 		Assignment:      myAssignment,
 		Displaced:       displaced,
-		BuddySuggestion: result.BuddySuggestion,
+		OverrideReason:  overrideReason,
+		BuddyOption:     result.BuddyOption,
+		RebalanceOption: rebalancePreview,
 	})
 }
 
@@ -510,13 +615,13 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := s.DB.UpdatePilotPreferences(pilotID, req.ChannelLocked, req.LockedFreqMHz); err != nil {
+	if err := s.DB.UpdatePilotPreference(pilotID, req.PreferredFreqMHz); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			http.Error(w, "pilot not found", http.StatusNotFound)
 			return
 		}
 		http.Error(w, "failed to update pilot", http.StatusInternalServerError)
-		log.Printf("UpdatePilotPreferences error: %v", err)
+		log.Printf("UpdatePilotPreference error: %v", err)
 		return
 	}
 
@@ -535,9 +640,13 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 	for _, inp := range inputs {
 		if inp.ID == pilotID {
 			changingPilotInput = inp
-			// Clear prev assignment since preferences changed.
+			changingPilotInput.PreferredFreqMHz = req.PreferredFreqMHz
 			changingPilotInput.PrevChannel = ""
 			changingPilotInput.PrevFreqMHz = 0
+			if req.Force && req.PreferredFreqMHz > 0 {
+				changingPilotInput.Pinned = true
+				changingPilotInput.PinnedFreqMHz = req.PreferredFreqMHz
+			}
 		} else {
 			existingInputs = append(existingInputs, inp)
 		}
@@ -729,17 +838,16 @@ func buildPilotInputs(pilots []db.Pilot) []freq.PilotInput {
 	inputs := make([]freq.PilotInput, len(pilots))
 	for i, p := range pilots {
 		inputs[i] = freq.PilotInput{
-			ID:            p.ID,
-			VideoSystem:   p.VideoSystem,
-			FCCUnlocked:   p.FCCUnlocked,
-			BandwidthMHz:  p.BandwidthMHz,
-			RaceMode:      p.RaceMode,
-			Goggles:       p.Goggles,
-			ChannelLocked: p.ChannelLocked,
-			LockedFreqMHz: p.LockedFrequencyMHz,
-			PrevChannel:   p.AssignedChannel,
-			PrevFreqMHz:   p.AssignedFreqMHz,
-			AnalogBands:   splitBands(p.AnalogBands),
+			ID:               p.ID,
+			VideoSystem:      p.VideoSystem,
+			FCCUnlocked:      p.FCCUnlocked,
+			BandwidthMHz:     p.BandwidthMHz,
+			RaceMode:         p.RaceMode,
+			Goggles:          p.Goggles,
+			PreferredFreqMHz: p.PreferredFreqMHz,
+			PrevChannel:      p.AssignedChannel,
+			PrevFreqMHz:      p.AssignedFreqMHz,
+			AnalogBands:      splitBands(p.AnalogBands),
 		}
 	}
 	return inputs
@@ -824,10 +932,10 @@ func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code
 	}
 
 	type UnresolvedConflict struct {
-		PilotA   string `json:"pilot_a"`
-		PilotB   string `json:"pilot_b"`
-		LockedBy string `json:"locked_by"` // which pilot is locked (or "" if neither)
-		Reason   string `json:"reason"`    // human-readable explanation
+		PilotA      string `json:"pilot_a"`
+		PilotB      string `json:"pilot_b"`
+		PreferredBy string `json:"preferred_by"`
+		Reason      string `json:"reason"`
 	}
 	var unresolved []UnresolvedConflict
 	for _, c := range dangerConflicts {
@@ -836,28 +944,37 @@ func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code
 		}
 		pA, pB := pilotMap[c.PilotA], pilotMap[c.PilotB]
 
-		lockedBy := ""
-		if pA.ChannelLocked && pB.ChannelLocked {
-			lockedBy = pA.Callsign + " and " + pB.Callsign
-		} else if pA.ChannelLocked {
-			lockedBy = pA.Callsign
-		} else if pB.ChannelLocked {
-			lockedBy = pB.Callsign
+		preferenceNote := ""
+		if pA.PreferredFreqMHz > 0 && pB.PreferredFreqMHz > 0 {
+			preferenceNote = pA.Callsign + " and " + pB.Callsign + " both have channel preferences"
+		} else if pA.PreferredFreqMHz > 0 {
+			preferenceNote = pA.Callsign + " has a channel preference"
+		} else if pB.PreferredFreqMHz > 0 {
+			preferenceNote = pB.Callsign + " has a channel preference"
 		}
 
 		reason := pA.Callsign + " (" + pA.AssignedChannel + ") and " +
 			pB.Callsign + " (" + pB.AssignedChannel + ") are " +
 			fmt.Sprintf("%d", c.SeparationMHz) + " MHz apart but need " +
 			fmt.Sprintf("%d", c.RequiredMHz) + " MHz"
-		if lockedBy != "" {
-			reason += ". " + lockedBy + " is channel-locked"
+		if preferenceNote != "" {
+			reason += ". " + preferenceNote
+		}
+
+		preferredBy := ""
+		if pA.PreferredFreqMHz > 0 && pB.PreferredFreqMHz > 0 {
+			preferredBy = pA.Callsign + " and " + pB.Callsign
+		} else if pA.PreferredFreqMHz > 0 {
+			preferredBy = pA.Callsign
+		} else if pB.PreferredFreqMHz > 0 {
+			preferredBy = pB.Callsign
 		}
 
 		unresolved = append(unresolved, UnresolvedConflict{
-			PilotA:   pA.Callsign,
-			PilotB:   pB.Callsign,
-			LockedBy: lockedBy,
-			Reason:   reason,
+			PilotA:      pA.Callsign,
+			PilotB:      pB.Callsign,
+			PreferredBy: preferredBy,
+			Reason:      reason,
 		})
 	}
 
@@ -918,16 +1035,15 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 	}
 
 	pilot := &db.Pilot{
-		Callsign:           req.Callsign,
-		VideoSystem:        req.VideoSystem,
-		FCCUnlocked:        req.FCCUnlocked,
-		Goggles:            req.Goggles,
-		BandwidthMHz:       req.BandwidthMHz,
-		RaceMode:           req.RaceMode,
-		ChannelLocked:      req.ChannelLocked,
-		LockedFrequencyMHz: req.LockedFreqMHz,
-		AnalogBands:        joinBands(req.AnalogBands),
-		AddedByLeader:      true,
+		Callsign:         req.Callsign,
+		VideoSystem:      req.VideoSystem,
+		FCCUnlocked:      req.FCCUnlocked,
+		Goggles:          req.Goggles,
+		BandwidthMHz:     req.BandwidthMHz,
+		RaceMode:         req.RaceMode,
+		PreferredFreqMHz: req.PreferredFreqMHz,
+		AnalogBands:      joinBands(req.AnalogBands),
+		AddedByLeader:    true,
 	}
 
 	added, err := s.DB.AddPilot(code, pilot)
@@ -997,40 +1113,46 @@ func (s *Server) reoptimize(sessionCode string) {
 		log.Printf("reoptimize: GetActivePilots error: %v", err)
 		return
 	}
-
 	if len(pilots) == 0 {
 		return
 	}
 
-	// Convert DB pilots to optimizer inputs.
-	inputs := make([]freq.PilotInput, len(pilots))
-	for i, p := range pilots {
-		inputs[i] = freq.PilotInput{
-			ID:            p.ID,
-			VideoSystem:   p.VideoSystem,
-			FCCUnlocked:   p.FCCUnlocked,
-			BandwidthMHz:  p.BandwidthMHz,
-			RaceMode:      p.RaceMode,
-			Goggles:       p.Goggles,
-			ChannelLocked: p.ChannelLocked,
-			LockedFreqMHz: p.LockedFrequencyMHz,
-			PrevChannel:   p.AssignedChannel,
-			PrevFreqMHz:   p.AssignedFreqMHz,
-			AnalogBands:   splitBands(p.AnalogBands),
+	inputs := buildPilotInputs(pilots)
+
+	// Phase 1: surgical -- only move pilots involved in conflicts.
+	assignments := freq.Optimize(inputs)
+	conflicts := freq.DetectConflicts(assignments)
+
+	if len(conflicts) > 0 {
+		// Identify pilots involved in conflicts.
+		conflictPilots := make(map[int]bool)
+		for _, c := range conflicts {
+			conflictPilots[c.PilotA] = true
+			conflictPilots[c.PilotB] = true
+		}
+
+		// Pin everyone except conflicted pilots.
+		cleanIDs := make(map[int]bool)
+		for _, p := range inputs {
+			if !conflictPilots[p.ID] {
+				cleanIDs[p.ID] = true
+			}
+		}
+
+		surgical := freq.OptimizeWithLocks(inputs, cleanIDs)
+		surgicalConflicts := freq.DetectConflicts(surgical)
+
+		if len(surgicalConflicts) < len(conflicts) {
+			assignments = surgical
 		}
 	}
 
-	// Run the optimizer.
-	assignments := freq.Optimize(inputs)
-
-	// Update each pilot's assignment in the database.
 	for _, a := range assignments {
 		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
 			log.Printf("reoptimize: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
 		}
 	}
 
-	// Increment the session version so polling clients detect the change.
 	if err := s.DB.IncrementVersion(sessionCode); err != nil {
 		log.Printf("reoptimize: IncrementVersion error: %v", err)
 	}
