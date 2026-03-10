@@ -161,12 +161,16 @@ func (s *Server) HandleGetSession(w http.ResponseWriter, r *http.Request, code s
 		}
 	}
 
+	rebalanceRecommended := len(pilotConflicts) > 0
+
 	resp := struct {
-		Session *db.Session         `json:"session"`
-		Pilots  []PilotWithConflicts `json:"pilots"`
+		Session              *db.Session          `json:"session"`
+		Pilots               []PilotWithConflicts  `json:"pilots"`
+		RebalanceRecommended bool                  `json:"rebalance_recommended"`
 	}{
-		Session: sess,
-		Pilots:  pilotsWithConflicts,
+		Session:              sess,
+		Pilots:               pilotsWithConflicts,
+		RebalanceRecommended: rebalanceRecommended,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

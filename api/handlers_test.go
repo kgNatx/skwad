@@ -230,7 +230,7 @@ func TestPreviewJoin_ShowsDisplacement(t *testing.T) {
 	pilots, _ := s.DB.GetActivePilots(sess.ID)
 	firstFreq := pilots[0].AssignedFreqMHz
 
-	preview := JoinRequest{Callsign: "SECOND", VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: firstFreq}
+	preview := JoinRequest{Callsign: "SECOND", VideoSystem: "analog", PreferredFreqMHz: firstFreq}
 	previewBody, _ := json.Marshal(preview)
 	previewW := httptest.NewRecorder()
 	s.HandlePreviewJoin(previewW, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(previewBody)), sess.ID)
@@ -239,21 +239,15 @@ func TestPreviewJoin_ShowsDisplacement(t *testing.T) {
 		t.Fatalf("preview status = %d, want 200", previewW.Result().StatusCode)
 	}
 
-	var result struct {
-		Displaced []struct {
-			Callsign   string `json:"callsign"`
-			OldChannel string `json:"old_channel"`
-			NewChannel string `json:"new_channel"`
-		} `json:"displaced"`
-	}
+	var result PreviewResponse
 	json.NewDecoder(previewW.Result().Body).Decode(&result)
 
-	// FIRST should be displaced since SECOND is locked to their channel.
-	if len(result.Displaced) != 1 {
-		t.Fatalf("expected 1 displaced pilot, got %d", len(result.Displaced))
-	}
-	if result.Displaced[0].Callsign != "FIRST" {
-		t.Errorf("displaced callsign = %q, want FIRST", result.Displaced[0].Callsign)
+	// In the preference system, preferences are soft — the optimizer may place the new
+	// pilot on a different channel rather than displacing FIRST. Either the new pilot
+	// gets the preferred channel (displacing FIRST) or gets an override reason explaining
+	// the alternative placement. Both are valid outcomes.
+	if len(result.Displaced) == 0 && result.OverrideReason == "" && result.Assignment.FreqMHz == firstFreq {
+		t.Error("expected either displacement of FIRST or override reason or different assignment")
 	}
 
 	// Verify the session is unchanged (preview should not commit).
@@ -349,15 +343,30 @@ func TestGetSession_WithConflicts(t *testing.T) {
 	var sess db.Session
 	json.NewDecoder(createW.Result().Body).Decode(&sess)
 
-	// Add DJI O3 at 40 MHz (will be on 5795).
+	// Add a DJI O3 pilot (40 MHz bandwidth) and an analog pilot.
 	join1 := JoinRequest{Callsign: "DJIPILOT", VideoSystem: "dji_o3", BandwidthMHz: 40}
 	body1, _ := json.Marshal(join1)
 	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body1)), sess.ID)
 
-	// Add analog pilot locked to R4 (5769) — close to O3@5795.
-	join2 := JoinRequest{Callsign: "ANALOGPILOT", VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5769}
+	join2 := JoinRequest{Callsign: "ANALOGPILOT", VideoSystem: "analog"}
 	body2, _ := json.Marshal(join2)
 	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body2)), sess.ID)
+
+	// Force conflicting placement via DB: place analog pilot near the DJI O3 pilot.
+	pilots, _ := s.DB.GetActivePilots(sess.ID)
+	var djiPilot, analogPilot db.Pilot
+	for _, p := range pilots {
+		if p.Callsign == "DJIPILOT" {
+			djiPilot = p
+		}
+		if p.Callsign == "ANALOGPILOT" {
+			analogPilot = p
+		}
+	}
+	// Place analog on R4 (5769) which is within 30 MHz of O3-CH1 (5795) — conflicts.
+	// Use BuddyGroup 0 so this is NOT a buddy pair.
+	s.DB.UpdatePilotAssignment(djiPilot.ID, "O3-CH1", 5795, 0)
+	s.DB.UpdatePilotAssignment(analogPilot.ID, "R4", 5769, 0)
 
 	// GET session and check for conflicts.
 	getW := httptest.NewRecorder()
@@ -397,14 +406,23 @@ func TestGetSession_BuddyPairsNoConflict(t *testing.T) {
 	var sess db.Session
 	json.NewDecoder(createW.Result().Body).Decode(&sess)
 
-	// Add two analog pilots both locked to the same frequency — simulates buddy-up.
-	join1 := JoinRequest{Callsign: "PILOT1", VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5658}
+	// Add two analog pilots.
+	join1 := JoinRequest{Callsign: "PILOT1", VideoSystem: "analog"}
 	body1, _ := json.Marshal(join1)
 	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body1)), sess.ID)
 
-	join2 := JoinRequest{Callsign: "PILOT2", VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5658}
+	join2 := JoinRequest{Callsign: "PILOT2", VideoSystem: "analog"}
 	body2, _ := json.Marshal(join2)
 	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body2)), sess.ID)
+
+	// Manually buddy them up on the same frequency via DB (simulates accepting buddy option).
+	pilots, _ := s.DB.GetActivePilots(sess.ID)
+	sharedFreq := pilots[0].AssignedFreqMHz
+	sharedChannel := pilots[0].AssignedChannel
+	buddyGroup := 1
+	for _, p := range pilots {
+		s.DB.UpdatePilotAssignment(p.ID, sharedChannel, sharedFreq, buddyGroup)
+	}
 
 	// GET session — buddy pairs should NOT show conflicts.
 	getW := httptest.NewRecorder()
@@ -870,8 +888,8 @@ func TestUpdateChannel_NoUnnecessaryDisplacement(t *testing.T) {
 		}
 	}
 
-	// Change pilot 2's channel preference (unlock).
-	body := `{"channel_locked":false,"locked_frequency_mhz":0}`
+	// Change pilot 2's channel preference (clear preference = auto-assign).
+	body := `{"preferred_frequency_mhz":0}`
 	req := httptest.NewRequest("PUT", "/api/pilots/"+fmt.Sprint(pilot2.ID)+"/channel?session="+sess.ID, strings.NewReader(body))
 	w := httptest.NewRecorder()
 	srv.HandleUpdatePilotChannel(w, req, pilot2.ID, sess.ID)
@@ -886,5 +904,85 @@ func TestUpdateChannel_NoUnnecessaryDisplacement(t *testing.T) {
 		if p.Callsign == "PILOT1" && p.AssignedFreqMHz != pilot1Freq {
 			t.Errorf("PILOT1 moved from %d to %d", pilot1Freq, p.AssignedFreqMHz)
 		}
+	}
+}
+
+func TestGetSession_RebalanceRecommended(t *testing.T) {
+	s := newTestServer(t)
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/sessions", nil)
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, createReq)
+	var sess struct {
+		ID string `json:"id"`
+	}
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Add a DJI O3 pilot and an analog pilot.
+	join1 := JoinRequest{Callsign: "DJI1", VideoSystem: "dji_o3", BandwidthMHz: 40}
+	body1, _ := json.Marshal(join1)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body1)), sess.ID)
+
+	join2 := JoinRequest{Callsign: "ANALOG1", VideoSystem: "analog"}
+	body2, _ := json.Marshal(join2)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body2)), sess.ID)
+
+	// Force conflicting placement via DB (not buddy-grouped).
+	pilots, _ := s.DB.GetActivePilots(sess.ID)
+	for _, p := range pilots {
+		if p.Callsign == "DJI1" {
+			s.DB.UpdatePilotAssignment(p.ID, "O3-CH1", 5795, 0)
+		}
+		if p.Callsign == "ANALOG1" {
+			s.DB.UpdatePilotAssignment(p.ID, "R4", 5769, 0)
+		}
+	}
+
+	// GET session should include rebalance_recommended = true.
+	getReq := httptest.NewRequest(http.MethodGet, "/api/sessions/"+sess.ID, nil)
+	getW := httptest.NewRecorder()
+	s.HandleGetSession(getW, getReq, sess.ID)
+
+	var resp struct {
+		RebalanceRecommended bool `json:"rebalance_recommended"`
+	}
+	json.NewDecoder(getW.Result().Body).Decode(&resp)
+
+	if !resp.RebalanceRecommended {
+		t.Error("expected rebalance_recommended = true when non-buddy pilots have frequency conflicts")
+	}
+}
+
+func TestGetSession_RebalanceRecommended_FalseWhenClean(t *testing.T) {
+	s := newTestServer(t)
+
+	createReq := httptest.NewRequest(http.MethodPost, "/api/sessions", nil)
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, createReq)
+	var sess struct {
+		ID string `json:"id"`
+	}
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Add two analog pilots — plenty of channels, no conflicts.
+	join1 := JoinRequest{Callsign: "PILOT1", VideoSystem: "analog"}
+	body1, _ := json.Marshal(join1)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body1)), sess.ID)
+
+	join2 := JoinRequest{Callsign: "PILOT2", VideoSystem: "analog"}
+	body2, _ := json.Marshal(join2)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body2)), sess.ID)
+
+	getReq := httptest.NewRequest(http.MethodGet, "/api/sessions/"+sess.ID, nil)
+	getW := httptest.NewRecorder()
+	s.HandleGetSession(getW, getReq, sess.ID)
+
+	var resp struct {
+		RebalanceRecommended bool `json:"rebalance_recommended"`
+	}
+	json.NewDecoder(getW.Result().Body).Decode(&resp)
+
+	if resp.RebalanceRecommended {
+		t.Error("expected rebalance_recommended = false when no conflicts exist")
 	}
 }
