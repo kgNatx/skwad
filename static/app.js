@@ -803,6 +803,18 @@
     });
   }
 
+  function fitText(elem, maxPx, minPx) {
+    // After insertion, shrink font until text fits on one line.
+    requestAnimationFrame(function () {
+      var size = maxPx;
+      elem.style.fontSize = size + 'px';
+      while (elem.scrollWidth > elem.clientWidth && size > minPx) {
+        size -= 1;
+        elem.style.fontSize = size + 'px';
+      }
+    });
+  }
+
   function adaptPickerGrid(picker) {
     var count = picker.children.length;
     var cols = count <= 3 ? count : 4;
@@ -1115,12 +1127,12 @@
     var dpr = window.devicePixelRatio || 1;
     var rect = canvas.getBoundingClientRect();
     var w = rect.width * dpr;
-    var h = 120 * dpr;
+    var ch = rect.height || 120;
+    var h = ch * dpr;
     canvas.width = w;
     canvas.height = h;
     ctx.scale(dpr, dpr);
     var cw = rect.width;
-    var ch = 120;
 
     // Frequency range — dynamically expand beyond Race Band if any pilot
     // is assigned to Fatshark, Boscam E, or Low Race frequencies.
@@ -1423,6 +1435,7 @@
       info.className = 'pilot-info';
 
       var nameEl = el('div', { className: 'pilot-callsign', textContent: p.Callsign });
+      fitText(nameEl, 28, 14);
       info.appendChild(nameEl);
 
       // Badge row: system badge + YOU badge
@@ -2021,7 +2034,7 @@
       e.target.value = e.target.value.toUpperCase();
     });
     $('btn-callsign-save').addEventListener('click', submitCallsignChange);
-    $('btn-callsign-cancel').addEventListener('click', hideCallsignChange);
+    $('btn-callsign-change-cancel').addEventListener('click', hideCallsignChange);
     $('callsign-change').addEventListener('click', function (e) {
       if (e.target === $('callsign-change')) hideCallsignChange();
     });

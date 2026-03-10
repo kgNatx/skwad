@@ -513,8 +513,8 @@ body {
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
-  padding-top: 24px;
-  padding-top: calc(24px + env(safe-area-inset-top, 0px));
+  padding-top: 12px;
+  padding-top: calc(12px + env(safe-area-inset-top, 0px));
   padding-bottom: 0px;
   padding-bottom: env(safe-area-inset-bottom, 0px);
   padding-left: 16px;
@@ -526,7 +526,7 @@ body {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0;
-  padding-bottom: 16px;
+  padding-bottom: 10px;
   border-bottom: 2px solid #222222;
   background: #0a0a0a;
   flex-shrink: 0;
@@ -670,7 +670,8 @@ body {
   font-size: 28px;
   font-weight: 900;
   line-height: 1.1;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .pilot-badge-row {
@@ -733,7 +734,7 @@ body {
 #spectrum-rebalance-before,
 #spectrum-rebalance-after {
   width: 100%;
-  height: 120px;
+  height: 108px;
   display: block;
 }
 
@@ -756,11 +757,11 @@ body {
 
 #spectrum-rebalance-before,
 #spectrum-rebalance-after {
-  height: 90px;
+  height: 80px;
 }
 
 #spectrum-change {
-  height: 90px;
+  height: 80px;
   flex-shrink: 0;
 }
 
@@ -1181,15 +1182,15 @@ body {
 /* ===== LEADER CONTROLS ===== */
 .leader-controls {
   display: flex;
-  gap: 10px;
-  padding: 12px 0;
+  gap: 8px;
+  padding: 8px 0;
   flex-shrink: 0;
 }
 
 .btn-leader {
   flex: 1;
-  min-height: 44px;
-  padding: 10px 12px;
+  min-height: 38px;
+  padding: 8px 12px;
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.5px;
