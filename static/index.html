@@ -220,6 +220,7 @@
       <button id="btn-rebalance-all" class="btn btn-secondary btn-leader">REBALANCE ALL</button>
       <button id="btn-add-pilot" class="btn btn-secondary btn-leader">ADD PILOT</button>
     </div>
+    <p id="rebalance-hint" class="rebalance-hint" style="display:none">Rebalance recommended</p>
 
     <div id="pilot-list" class="pilot-list"></div>
 
@@ -371,6 +372,26 @@
       <h3 class="action-sheet-title">REBALANCE COMPLETE</h3>
       <div id="rebalance-result-list" class="displacement-list"></div>
       <button id="btn-rebalance-result-ok" class="btn btn-primary btn-large">GOT IT</button>
+    </div>
+  </div>
+
+  <!-- Channel Change Options (self) -->
+  <div id="channel-change-options" class="action-sheet" style="display:none">
+    <div class="action-sheet-content">
+      <h3 class="action-sheet-title">CHANGE CHANNEL</h3>
+      <button id="btn-cco-video-system" class="btn btn-secondary btn-large">CHANGE VIDEO SYSTEM</button>
+      <button id="btn-cco-auto-assign" class="btn btn-secondary btn-large">AUTO-ASSIGN NEW</button>
+      <button id="btn-cco-preference" class="btn btn-secondary btn-large">I HAVE A PREFERENCE</button>
+      <button id="btn-cco-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Moved-by-rebalance Notification -->
+  <div id="moved-dialog" class="action-sheet" style="display:none">
+    <div class="action-sheet-content">
+      <h3 id="moved-dialog-title">YOU'VE BEEN MOVED</h3>
+      <p id="moved-dialog-message"></p>
+      <button id="moved-dialog-ok" class="btn btn-primary btn-large">GOT IT</button>
     </div>
   </div>
 

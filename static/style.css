@@ -1306,6 +1306,25 @@ body {
   font-size: 16px;
 }
 
+/* ===== REBALANCE HINT ===== */
+.rebalance-hint {
+  color: #ffaa00;
+  font-size: 13px;
+  text-align: center;
+  margin: 4px 0 8px;
+  font-style: italic;
+}
+
+/* ===== CHANNEL CONFLICT (leader mode) ===== */
+.btn-channel.channel-conflict {
+  opacity: 0.5;
+  border-color: #ff4444;
+}
+
+.btn-channel.channel-conflict:active {
+  opacity: 0.8;
+}
+
 /* ===== SAFE AREA (notch phones) ===== */
 @supports (padding-top: env(safe-area-inset-top)) {
   .screen {

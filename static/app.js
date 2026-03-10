@@ -28,6 +28,8 @@
     // Leader state
     isLeader: false,
     leaderPilotId: null,
+    // Track whether we initiated the current assignment change
+    expectingAssignmentChange: false,
   };
 
   // ── Buddy group colors ────────────────────────────────────────
@@ -277,6 +279,7 @@
     state.myFreqMHz = null;
     state.isLeader = false;
     state.leaderPilotId = null;
+    state.expectingAssignmentChange = false;
     localStorage.removeItem('skwad_session');
     localStorage.removeItem('skwad_pilot');
   }
@@ -997,22 +1000,6 @@
       state.leaderPilotId = data.session.LeaderPilotID || null;
       state.isLeader = (state.pilotId && state.leaderPilotId === state.pilotId);
 
-      // Detect if our channel was changed by the optimizer.
-      if (state.pilotId && state.myChannel !== null) {
-        var me = null;
-        if (data.pilots) {
-          for (var i = 0; i < data.pilots.length; i++) {
-            if (data.pilots[i].ID === state.pilotId) {
-              me = data.pilots[i];
-              break;
-            }
-          }
-        }
-        if (me && me.AssignedChannel && me.AssignedChannel !== state.myChannel) {
-          showChannelChangeBanner(state.myChannel, state.myFreqMHz, me.AssignedChannel, me.AssignedFreqMHz);
-        }
-      }
-
       // If session has no pilots or our pilot isn't in it, abandon it.
       if (!data.pilots || data.pilots.length === 0) {
         clearState();
@@ -1026,8 +1013,23 @@
         for (var j = 0; j < data.pilots.length; j++) {
           if (data.pilots[j].ID === state.pilotId) {
             foundSelf = true;
+
+            // Detect externally-caused assignment change (partial rebalance moved us)
+            if (state.myFreqMHz && state.myFreqMHz !== data.pilots[j].AssignedFreqMHz) {
+              if (!state.expectingAssignmentChange) {
+                showMovedDialog(
+                  data.pilots[j].AssignedChannel,
+                  data.pilots[j].AssignedFreqMHz,
+                  data.session.LeaderPilotID,
+                  data.pilots
+                );
+              }
+            }
+            state.expectingAssignmentChange = false;
+
             state.myChannel = data.pilots[j].AssignedChannel;
             state.myFreqMHz = data.pilots[j].AssignedFreqMHz;
+            state.preferredFreqMHz = data.pilots[j].PreferredFreqMHz || 0;
             if (!state.callsign) state.callsign = data.pilots[j].Callsign;
             if (!state.videoSystem) state.videoSystem = data.pilots[j].VideoSystem;
             // Sync gear settings so channel picker works after page refresh.
@@ -1051,6 +1053,16 @@
       state.cachedPilots = data.pilots;
       renderPilotList(data.pilots);
       updateLeaderControls();
+
+      // Rebalance recommended indicator (Task 20)
+      var rebalHint = $('rebalance-hint');
+      if (rebalHint) {
+        if (data.rebalance_recommended && state.pilotId === data.session.LeaderPilotID) {
+          rebalHint.style.display = '';
+        } else {
+          rebalHint.style.display = 'none';
+        }
+      }
     } catch (err) {
       // Session may have expired or been deleted
       if (err.message && err.message.includes('not found')) {
@@ -1545,7 +1557,7 @@
     });
     $('btn-change-channel').addEventListener('click', function () {
       hidePilotActions();
-      showChannelChange();
+      showChannelChangeOptions();
     });
     $('btn-change-callsign').addEventListener('click', function () {
       hidePilotActions();
@@ -1555,6 +1567,87 @@
     // Close on backdrop tap
     $('pilot-actions').addEventListener('click', function (e) {
       if (e.target === $('pilot-actions')) hidePilotActions();
+    });
+  }
+
+  // ── Channel Change Options (self) ──────────────────────────
+  function showChannelChangeOptions() {
+    $('channel-change-options').style.display = '';
+  }
+
+  function hideChannelChangeOptions() {
+    $('channel-change-options').style.display = 'none';
+  }
+
+  function initChannelChangeOptions() {
+    $('btn-cco-auto-assign').addEventListener('click', function () {
+      hideChannelChangeOptions();
+      submitChannelChange(0);
+    });
+
+    $('btn-cco-preference').addEventListener('click', function () {
+      hideChannelChangeOptions();
+      showChannelChange();
+    });
+
+    $('btn-cco-video-system').addEventListener('click', async function () {
+      hideChannelChangeOptions();
+      // Self: remove from session, keep callsign + session code, go to wizard
+      state.expectingAssignmentChange = true;
+      var savedCallsign = state.callsign;
+      var savedCode = state.sessionCode;
+      try {
+        await apiDelete('/api/pilots/' + state.pilotId + '?session=' + state.sessionCode);
+      } catch (err) {
+        // Continue even if delete fails
+      }
+      stopPolling();
+      clearState();
+      state.sessionCode = savedCode;
+      state.callsign = savedCallsign;
+      state.videoSystem = '';
+      $('input-callsign').value = savedCallsign;
+      showScreen('setup');
+      showStep('step-video');
+    });
+
+    $('btn-cco-cancel').addEventListener('click', hideChannelChangeOptions);
+
+    $('channel-change-options').addEventListener('click', function (e) {
+      if (e.target === $('channel-change-options')) hideChannelChangeOptions();
+    });
+  }
+
+  // ── Moved-by-rebalance Dialog ──────────────────────────────
+  function showMovedDialog(channel, freqMHz, leaderPilotId, pilots) {
+    var leaderName = '';
+    for (var i = 0; i < pilots.length; i++) {
+      if (pilots[i].ID === leaderPilotId) {
+        leaderName = pilots[i].Callsign;
+        break;
+      }
+    }
+
+    var msg = $('moved-dialog-message');
+    while (msg.firstChild) msg.removeChild(msg.firstChild);
+
+    var text = 'You\'ve been moved to ' + channel + ' (' + freqMHz + ' MHz) to make room.';
+    if (leaderName) {
+      text += ' Talk to ' + leaderName + ', the session leader, if you have questions.';
+    }
+    msg.appendChild(document.createTextNode(text));
+
+    $('moved-dialog').style.display = '';
+  }
+
+  function dismissMovedDialog() {
+    $('moved-dialog').style.display = 'none';
+  }
+
+  function initMovedDialog() {
+    $('moved-dialog-ok').addEventListener('click', dismissMovedDialog);
+    $('moved-dialog').addEventListener('click', function (e) {
+      if (e.target === $('moved-dialog')) dismissMovedDialog();
     });
   }
 
@@ -1596,7 +1689,8 @@
     $('channel-change-title').textContent = 'SELECT CHANNEL';
     $('btn-auto-reassign').className = 'btn btn-primary btn-large';
     $('btn-auto-reassign').classList.remove('hidden');
-    $('btn-change-video-system').classList.remove('hidden');
+    // Video system change is now in the options dialog, hide it from picker
+    $('btn-change-video-system').classList.add('hidden');
     $('btn-confirm-channel-change').classList.add('hidden');
     state._channelChangeForPilot = null;
     state._changeVideoSystemPilot = null;
@@ -1636,6 +1730,7 @@
         return;
       }
       // Self: remove from session, keep callsign + session code, go to wizard
+      state.expectingAssignmentChange = true;
       var savedCallsign = state.callsign;
       var savedCode = state.sessionCode;
       try {
@@ -1698,6 +1793,7 @@
 
   async function commitChannelChange(body) {
     try {
+      state.expectingAssignmentChange = true;
       await apiPut(
         '/api/pilots/' + state.pilotId + '/channel?session=' + state.sessionCode,
         body
@@ -1705,6 +1801,7 @@
       state.preferredFreqMHz = body.preferred_frequency_mhz;
       refreshSession();
     } catch (err) {
+      state.expectingAssignmentChange = false;
       refreshSession();
     }
   }
@@ -1744,16 +1841,47 @@
     }
   }
 
+  // Check if a frequency conflicts with existing pilots (excluding targetPilotId)
+  function findConflicts(freqMHz, targetPilotId, targetVideoSystem, targetBwMHz) {
+    var conflicts = [];
+    var targetBw = occupiedBandwidth(targetVideoSystem, targetBwMHz);
+    var others = (state.cachedPilots || []).filter(function (p) {
+      return p.ID !== targetPilotId && p.Active !== false;
+    });
+    others.forEach(function (p) {
+      if (!p.AssignedFreqMHz) return;
+      var otherBw = occupiedBandwidth(p.VideoSystem, p.BandwidthMHz);
+      var separation = Math.abs(freqMHz - p.AssignedFreqMHz);
+      var required = (targetBw + otherBw) / 2;
+      if (separation < required) {
+        conflicts.push({
+          pilotId: p.ID,
+          callsign: p.Callsign,
+          freq: p.AssignedFreqMHz,
+          separation: separation,
+          required: required,
+          exact: separation === 0
+        });
+      }
+    });
+    return conflicts;
+  }
+
   function showChannelChangeForPilot(pilot) {
     var picker = $('channel-change-picker');
     clearChildren(picker);
     channelChangeSelectedFreq = 0;
 
     var pool = getChannelPoolForPilot(pilot);
+    var pilotBw = pilot.BandwidthMHz || 0;
+
     pool.forEach(function (ch) {
       var nameSpan = el('span', { className: 'ch-name', textContent: ch.name });
       var freqSpan = el('span', { className: 'ch-freq', textContent: String(ch.freq) });
-      var btn = el('button', { className: 'btn-channel' }, [nameSpan, freqSpan]);
+      var conflicts = findConflicts(ch.freq, pilot.ID, pilot.VideoSystem, pilotBw);
+      var isConflict = conflicts.length > 0;
+      var btnClass = 'btn-channel' + (isConflict ? ' channel-conflict' : '');
+      var btn = el('button', { className: btnClass }, [nameSpan, freqSpan]);
       btn.addEventListener('click', function () {
         picker.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
@@ -1762,9 +1890,15 @@
         var others = (state.cachedPilots || []).filter(function (p) { return p.ID !== pilot.ID; });
         var bw = occupiedBandwidth(pilot.VideoSystem, pilot.BandwidthMHz);
         renderSpectrum(others, 'spectrum-change', ch.freq, bw);
-        $('btn-confirm-channel-change').classList.remove('hidden');
-        $('btn-confirm-channel-change').className = 'btn btn-primary btn-large';
-        $('btn-confirm-channel-change').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        if (isConflict) {
+          // Leader tapped a conflicting channel — show confirmation
+          showLeaderConflictConfirm(pilot, ch, conflicts);
+        } else {
+          $('btn-confirm-channel-change').classList.remove('hidden');
+          $('btn-confirm-channel-change').className = 'btn btn-primary btn-large';
+          $('btn-confirm-channel-change').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
       });
       picker.appendChild(btn);
     });
@@ -1786,6 +1920,43 @@
     var others = (state.cachedPilots || []).filter(function (p) { return p.ID !== pilot.ID; });
     var bw = occupiedBandwidth(pilot.VideoSystem, pilot.BandwidthMHz);
     renderSpectrum(others, 'spectrum-change', 0, bw);
+  }
+
+  function showLeaderConflictConfirm(pilot, channel, conflicts) {
+    // Determine if any conflict is exact-frequency (buddy) vs adjacent overlap
+    var hasExact = conflicts.some(function (c) { return c.exact; });
+    var conflictNames = conflicts.map(function (c) { return c.callsign; }).join(', ');
+
+    // Reuse the buddy-suggestion dialog for conflict confirmation
+    var textEl = $('buddy-suggestion-text');
+    while (textEl.firstChild) textEl.removeChild(textEl.firstChild);
+
+    if (hasExact) {
+      textEl.appendChild(document.createTextNode(
+        pilot.Callsign + ' will share ' + channel.name + ' (' + channel.freq + ' MHz) with ' +
+        conflictNames + '. They will be buddied up.'
+      ));
+      $('buddy-suggestion').querySelector('.action-sheet-title').textContent = 'BUDDY CONFIRMATION';
+    } else {
+      textEl.appendChild(document.createTextNode(
+        channel.name + ' (' + channel.freq + ' MHz) overlaps with ' + conflictNames +
+        '. Force this channel for ' + pilot.Callsign + '?'
+      ));
+      $('buddy-suggestion').querySelector('.action-sheet-title').textContent = 'OVERLAP WARNING';
+    }
+
+    $('btn-buddy-up').textContent = 'FORCE';
+    $('btn-buddy-up').onclick = function () {
+      $('buddy-suggestion').classList.add('hidden');
+      $('btn-buddy-up').textContent = 'BUDDY UP';
+      hideChannelChange();
+      submitChannelChangeForPilot(pilot.ID, channel.freq, true);
+    };
+    $('btn-buddy-cancel').onclick = function () {
+      $('buddy-suggestion').classList.add('hidden');
+      $('btn-buddy-up').textContent = 'BUDDY UP';
+    };
+    $('buddy-suggestion').classList.remove('hidden');
   }
 
   async function submitChannelChangeForPilot(pilotId, freqMHz, force) {
@@ -2059,10 +2230,13 @@
       var btn = $('btn-rebalance-all');
       setLoading(btn, true);
       try {
+        state.expectingAssignmentChange = true;
         var result = await apiPost('/api/sessions/' + state.sessionCode + '/rebalance');
+        if ($('rebalance-hint')) $('rebalance-hint').style.display = 'none';
         await refreshSession();
         showRebalanceResult(result);
       } catch (err) {
+        state.expectingAssignmentChange = false;
         // Silently ignore
       } finally {
         setLoading(btn, false);
@@ -3113,7 +3287,9 @@
     initChannelStep();
     initSessionView();
     initPilotActions();
+    initChannelChangeOptions();
     initChannelChange();
+    initMovedDialog();
     initCallsignChange();
     initOtherPilotActions();
     initChannelChangeBanner();
