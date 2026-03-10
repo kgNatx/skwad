@@ -19,13 +19,31 @@ All notable changes to Skwad are documented in this file.
 - **Moved-by-rebalance notification.** When a partial rebalance moves you, you see a "You've been moved" dialog with GOT IT button on your next poll.
 - **Rebalance recommended indicator.** Subtle nudge on leader's screen when conflicts exist.
 - **Force placement for leaders.** Leader can place a pilot on a conflicting channel (buddy-up or overlap accepted).
+- **Rebalance preview spectrums.** REBALANCE ALL confirmation now shows before/after spectrum visualizations so the leader can see what will change.
+- `POST /api/sessions/{code}/preview-rebalance` — dry-run optimizer endpoint, returns proposed assignments without committing.
 - `preferred_frequency_mhz` column in pilots table.
 - `rebalance_recommended` flag in GET session response.
 - `force` flag on channel change request (leader-only).
 
+### Fixed
+- **Leader force-move simplified.** `submitChannelChangeForPilot` always sends `force: true` and commits directly — no more preview/override/choice dialogs that were meant for the pilot, not the leader.
+- **Leader force-move to free channel.** Without `force: true`, the optimizer was treating leader's explicit choice as a soft preference and overriding it.
+- **Buddy confirmation z-index.** Channel-change sheet now hides before showing buddy confirmation, preventing it from covering the dialog.
+- **Cancel from buddy confirmation.** Returns to channel picker instead of dead end.
+- **DJI O4 wizard step ordering.** Goggles step now appears before bandwidth step in HTML, matching the actual O4 flow (FCC → Goggles → Bandwidth → Race Mode).
+
+### Changed
+- **Action sheets tightened.** Padding 36px→20px, gap 18px→12px, title 26px→22px for more usable space.
+- **Full-screen channel picker.** Channel change sheet uses 100dvh with no border radius.
+- **Adaptive channel grid.** `adaptPickerGrid()` sets grid columns dynamically (≤3 channels = N cols, 4+ = 4 cols).
+- Non-leader channel picker filters out conflicting channels instead of showing them grayed.
+- `white-space: nowrap` on system badges, channel names, and leader buttons to prevent wrapping.
+- Leader button padding and letter-spacing reduced to prevent overflow on narrow screens.
+
 ### Removed
 - `channel_locked` and `locked_frequency_mhz` no longer used (columns kept for SQLite compatibility).
 - Level 2 (pair unlocking) and Level 3 (buddy-only) escalation -- replaced by Level 1 choice dialog.
+- Preview/override/choice dialog flow from leader force-move path (was `submitChannelChangeForPilot`, ~35 lines → 5 lines).
 
 ## [0.2.1] - 2026-03-09
 
