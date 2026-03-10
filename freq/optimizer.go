@@ -49,43 +49,48 @@ func Optimize(pilots []PilotInput) []Assignment {
 		pilotBW[p.ID] = OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz)
 	}
 
-	// Separate locked vs flexible pilots.
-	var locked, flexible []PilotInput
+	// Separate pinned vs flexible pilots.
+	var pinned, flexible []PilotInput
 	for _, p := range pilots {
-		if p.ChannelLocked && p.LockedFreqMHz > 0 {
-			locked = append(locked, p)
+		if p.Pinned && p.PinnedFreqMHz > 0 {
+			pinned = append(pinned, p)
 		} else {
 			flexible = append(flexible, p)
 		}
 	}
 
-	// Sort flexible pilots by pool size ascending (most constrained first).
+	// Sort flexible pilots: preference pilots with small pools first (most constrained),
+	// then auto-assign pilots by pool size ascending.
 	sort.SliceStable(flexible, func(i, j int) bool {
+		iHasPref := flexible[i].PreferredFreqMHz > 0
+		jHasPref := flexible[j].PreferredFreqMHz > 0
+		if iHasPref != jHasPref {
+			return iHasPref // preference pilots first
+		}
 		return len(pools[flexible[i].ID]) < len(pools[flexible[j].ID])
 	})
 
 	// used tracks all assigned frequencies with their bandwidths.
 	var used []usedEntry
 
-	// Step 1: Lock in fixed-channel pilots.
-	for _, p := range locked {
+	// Step 1: Pin immovable pilots.
+	for _, p := range pinned {
 		bw := pilotBW[p.ID]
-		chName := findChannelName(pools[p.ID], p.LockedFreqMHz)
+		chName := findChannelName(pools[p.ID], p.PinnedFreqMHz)
 		if chName == "" {
-			// Locked frequency not in pool; use it anyway with a generic name.
-			chName = "LOCKED"
+			chName = "PINNED"
 		}
 		results[p.ID] = Assignment{
 			PilotID:      p.ID,
 			Channel:      chName,
-			FreqMHz:      p.LockedFreqMHz,
+			FreqMHz:      p.PinnedFreqMHz,
 			BandwidthMHz: bw,
 		}
-		used = append(used, usedEntry{freqMHz: p.LockedFreqMHz, bandwidthMHz: bw, pilotID: p.ID})
+		used = append(used, usedEntry{freqMHz: p.PinnedFreqMHz, bandwidthMHz: bw, pilotID: p.ID})
 	}
 
-	// Step 2: Assign each flexible pilot the channel that maximizes
-	// the effective separation margin from all already-used frequencies.
+	// Step 2: Assign each flexible pilot. Prefer their preference, then previous
+	// frequency for stability, then best available by margin.
 	for _, p := range flexible {
 		pool := pools[p.ID]
 		bw := pilotBW[p.ID]
@@ -94,6 +99,15 @@ func Optimize(pilots []PilotInput) []Assignment {
 
 		for _, ch := range pool {
 			margin := effectiveSeparation(ch.FreqMHz, bw, used)
+
+			// Prefer preferred frequency when margin >= 0 (no conflict).
+			if p.PreferredFreqMHz > 0 && ch.FreqMHz == p.PreferredFreqMHz && margin >= 0 {
+				if margin >= bestMargin {
+					bestCh = ch
+					bestMargin = margin
+					continue
+				}
+			}
 
 			// Prefer previous frequency for stability when margin >= 0.
 			if ch.FreqMHz == p.PrevFreqMHz && margin >= 0 {
@@ -150,15 +164,14 @@ func Optimize(pilots []PilotInput) []Assignment {
 }
 
 // OptimizeWithLocks runs the optimizer but forces pilots in lockedIDs to be
-// channel-locked at their PrevFreqMHz, regardless of their actual preference.
-// This preserves existing assignments while allowing unlocked pilots to move.
+// pinned at their PrevFreqMHz, regardless of their preference.
 func OptimizeWithLocks(pilots []PilotInput, lockedIDs map[int]bool) []Assignment {
 	modified := make([]PilotInput, len(pilots))
 	for i, p := range pilots {
 		modified[i] = p
 		if lockedIDs[p.ID] {
-			modified[i].ChannelLocked = true
-			modified[i].LockedFreqMHz = p.PrevFreqMHz
+			modified[i].Pinned = true
+			modified[i].PinnedFreqMHz = p.PrevFreqMHz
 		}
 	}
 	return Optimize(modified)
