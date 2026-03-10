@@ -21,8 +21,7 @@
     raceMode: false,
     analogBands: ['R'],
     walksnailMode: '', // 'standard' or 'race'
-    channelLocked: false,
-    lockedFreqMHz: 0,
+    preferredFreqMHz: 0,
     // Tracked assignment for change detection
     myChannel: null,
     myFreqMHz: null,
@@ -746,13 +745,14 @@
   var previewPilots = []; // Cached pilots for spectrum preview on channel step
 
   function goToChannelStep() {
-    state.channelLocked = false;
-    state.lockedFreqMHz = 0;
+    state.preferredFreqMHz = 0;
     showStep('step-channel');
-    $('btn-auto-channel').classList.add('active');
-    $('btn-lock-channel').classList.remove('active');
+    $('btn-auto-assign').classList.add('active');
+    $('btn-have-preference').classList.remove('active');
     $('channel-picker').classList.add('hidden');
     $('spectrum-preview').classList.add('hidden');
+    var hint = $('preference-hint');
+    if (hint) hint.style.display = 'none';
     renderChannelPicker();
     // Pre-fetch existing pilots for spectrum preview
     fetchPreviewPilots();
@@ -768,27 +768,29 @@
   function renderSpectrumPreview() {
     var sys = getEffectiveVideoSystem();
     var bw = occupiedBandwidth(sys, state.bandwidthMHz);
-    renderSpectrum(previewPilots, 'spectrum-preview', state.lockedFreqMHz || 0, bw);
+    renderSpectrum(previewPilots, 'spectrum-preview', state.preferredFreqMHz || 0, bw);
   }
 
   function initChannelStep() {
-    $('btn-auto-channel').addEventListener('click', function () {
-      state.channelLocked = false;
-      state.lockedFreqMHz = 0;
-      $('btn-auto-channel').classList.add('active');
-      $('btn-lock-channel').classList.remove('active');
-      $('channel-picker').classList.add('hidden');
-      $('spectrum-preview').classList.add('hidden');
+    $('btn-auto-assign').addEventListener('click', function () {
+      state.preferredFreqMHz = 0;
+      $('btn-auto-assign').classList.add('active');
+      $('btn-have-preference').classList.remove('active');
+      $('channel-picker').style.display = 'none';
+      $('spectrum-preview').style.display = 'none';
+      var hint = $('preference-hint');
+      if (hint) hint.style.display = 'none';
       // Deselect any selected channel
       document.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });
     });
 
-    $('btn-lock-channel').addEventListener('click', function () {
-      $('btn-lock-channel').classList.add('active');
-      $('btn-auto-channel').classList.remove('active');
-      $('channel-picker').classList.remove('hidden');
-      $('spectrum-preview').classList.remove('hidden');
-      state.channelLocked = true;
+    $('btn-have-preference').addEventListener('click', function () {
+      $('btn-have-preference').classList.add('active');
+      $('btn-auto-assign').classList.remove('active');
+      $('channel-picker').style.display = '';
+      $('spectrum-preview').style.display = '';
+      var hint = $('preference-hint');
+      if (hint) hint.style.display = '';
       renderSpectrumPreview();
     });
 
@@ -809,7 +811,7 @@
       btn.addEventListener('click', function () {
         picker.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
-        state.lockedFreqMHz = ch.freq;
+        state.preferredFreqMHz = ch.freq;
         renderSpectrumPreview();
       });
       picker.appendChild(btn);
@@ -824,17 +826,12 @@
       goggles: state.goggles,
       bandwidth_mhz: state.bandwidthMHz,
       race_mode: state.raceMode,
-      channel_locked: state.channelLocked,
-      locked_frequency_mhz: state.lockedFreqMHz,
+      preferred_frequency_mhz: state.preferredFreqMHz,
       analog_bands: state.analogBands,
     };
   }
 
   async function handleJoinSession() {
-    if (state.channelLocked && !state.lockedFreqMHz) {
-      showError('join-error', 'SELECT A CHANNEL');
-      return;
-    }
     hideError('join-error');
 
     var btn = $('btn-join-session');
@@ -845,24 +842,36 @@
     try {
       // Preview first to check for displacements.
       var preview = await apiPost('/api/sessions/' + state.sessionCode + '/preview-join', body);
-      var displaced = preview.displaced || [];
       var level = preview.level || 0;
 
-      if (level === 3 && preview.buddy_suggestion) {
-        // Level 3 — no clear channel, offer buddy suggestion.
+      if (level === 0 && preview.override_reason) {
+        // Preference was overridden — show GOT IT dialog.
         setLoading(btn, false);
-        showBuddySuggestion(preview.buddy_suggestion);
+        showOverrideDialog(preview.override_reason, preview.assignment, function () {
+          commitJoin(body);
+        });
         return;
       }
 
-      if (displaced.length > 0) {
-        // Show displacement preview — confirm or cancel.
+      if (level === 1) {
+        // No clean channel — show buddy/rebalance choice.
         setLoading(btn, false);
-        showDisplacementPreview(displaced);
+        showChoiceDialog(preview,
+          function onBuddy(buddy) {
+            body.preferred_frequency_mhz = buddy.freq_mhz;
+            commitJoin(body);
+          },
+          function onRebalance() {
+            commitJoin(body);
+          },
+          function onCancel() {
+            // Do nothing, user stays on wizard.
+          }
+        );
         return;
       }
 
-      // No displacements — join immediately.
+      // Level 0, no override — join immediately.
       await commitJoin(body);
     } catch (err) {
       var msg = err.message || '';
@@ -897,115 +906,79 @@
     }
   }
 
-  // ── Displacement Preview ──────────────────────────────────
-  function showDisplacementPreview(displaced) {
-    var list = $('displacement-list');
-    clearChildren(list);
+  // ── Override Dialog (preference overridden, GOT IT) ──────────
+  function showOverrideDialog(overrideReason, assignment, onConfirm) {
+    $('override-reason').textContent = overrideReason;
+    $('override-dialog').style.display = '';
 
-    displaced.forEach(function (d) {
-      var nameEl = el('div', { className: 'displacement-name', textContent: d.callsign });
-      var moveText = d.old_channel + ' (' + d.old_freq_mhz + ') \u2192 ' +
-        d.new_channel + ' (' + d.new_freq_mhz + ')';
-      var moveEl = el('div', { className: 'displacement-move', textContent: moveText });
-      var item = el('div', { className: 'displacement-item' }, [nameEl, moveEl]);
-      list.appendChild(item);
-    });
+    if (assignment) {
+      var bw = assignment.bandwidth_mhz || 20;
+      renderSpectrum([], 'override-spectrum', assignment.freq_mhz, bw);
+    }
 
-    $('displacement-confirm').classList.remove('hidden');
+    $('btn-override-ok').onclick = function () {
+      $('override-dialog').style.display = 'none';
+      if (onConfirm) onConfirm();
+    };
   }
 
-  function hideDisplacementConfirm() {
-    $('displacement-confirm').classList.add('hidden');
+  // ── Choice Dialog (Level 1 — buddy or rebalance) ──────────
+  function showChoiceDialog(preview, onBuddy, onRebalance, onCancel) {
+    var options = $('choice-options');
+    while (options.firstChild) {
+      options.removeChild(options.firstChild);
+    }
+
+    if (preview.buddy_option) {
+      var buddyBtn = document.createElement('button');
+      buddyBtn.className = 'btn btn-secondary btn-large buddy-choice-btn';
+      var strong1 = document.createElement('strong');
+      strong1.textContent = 'BUDDY UP';
+      buddyBtn.appendChild(strong1);
+      buddyBtn.appendChild(document.createElement('br'));
+      buddyBtn.appendChild(document.createTextNode(
+        'Share ' + preview.buddy_option.channel +
+        ' (' + preview.buddy_option.freq_mhz + ' MHz) with ' +
+        preview.buddy_option.callsign
+      ));
+      buddyBtn.onclick = function () {
+        $('choice-dialog').style.display = 'none';
+        onBuddy(preview.buddy_option);
+      };
+      options.appendChild(buddyBtn);
+    }
+
+    if (preview.rebalance_option) {
+      var rebalBtn = document.createElement('button');
+      rebalBtn.className = 'btn btn-secondary btn-large rebalance-choice-btn';
+      var strong2 = document.createElement('strong');
+      strong2.textContent = 'PARTIAL REBALANCE';
+      rebalBtn.appendChild(strong2);
+      rebalBtn.appendChild(document.createElement('br'));
+      var movedText = preview.rebalance_option.displaced.map(function (d) {
+        return 'Move ' + d.callsign + ' from ' + d.old_channel + ' to ' + d.new_channel;
+      }).join(', ');
+      rebalBtn.appendChild(document.createTextNode(
+        movedText + '. You get ' + preview.rebalance_option.assignment.channel +
+        ' (' + preview.rebalance_option.assignment.freq_mhz + ' MHz)'
+      ));
+      rebalBtn.onclick = function () {
+        $('choice-dialog').style.display = 'none';
+        onRebalance();
+      };
+      options.appendChild(rebalBtn);
+    }
+
+    $('btn-choice-cancel').onclick = function () {
+      $('choice-dialog').style.display = 'none';
+      if (onCancel) onCancel();
+    };
+
+    $('choice-dialog').style.display = '';
   }
 
-  function initDisplacementConfirm() {
-    // "JOIN" — confirm with displacements
-    $('btn-displacement-confirm').addEventListener('click', function () {
-      hideDisplacementConfirm();
-      if (state.pendingChannelChangeForPilot) {
-        var pending = state.pendingChannelChangeForPilot;
-        state.pendingChannelChangeForPilot = null;
-        commitChannelChangeForPilot(pending.pilotId, pending.body);
-      } else if (state.pendingChannelChange) {
-        var body = state.pendingChannelChange;
-        state.pendingChannelChange = null;
-        commitChannelChange(body);
-      } else {
-        commitJoin(buildJoinBody());
-      }
-    });
-    $('btn-displacement-cancel').addEventListener('click', function () {
-      state.pendingChannelChange = null;
-      state.pendingChannelChangeForPilot = null;
-      hideDisplacementConfirm();
-    });
-    $('displacement-confirm').addEventListener('click', function (e) {
-      if (e.target === $('displacement-confirm')) {
-        state.pendingChannelChange = null;
-        state.pendingChannelChangeForPilot = null;
-        hideDisplacementConfirm();
-      }
-    });
-  }
 
-  // ── Buddy Suggestion (Level 3) ──────────────────────────────
-  function showBuddySuggestion(suggestion) {
-    state.pendingBuddySuggestion = suggestion;
-    var text = 'You could share ' + suggestion.channel + ' (' + suggestion.freq_mhz + ' MHz) with ' + suggestion.callsign + '.';
-    $('buddy-suggestion-text').textContent = text;
-    $('buddy-suggestion').classList.remove('hidden');
-  }
 
-  function hideBuddySuggestion() {
-    $('buddy-suggestion').classList.add('hidden');
-    state.pendingBuddySuggestion = null;
-  }
-
-  function initBuddySuggestion() {
-    $('btn-buddy-up').addEventListener('click', function () {
-      if (state._buddyUpForChange) {
-        // Channel change context
-        var suggestion = state.pendingBuddySuggestionForChange;
-        var pendingForPilot = state.pendingChannelChangeForPilot;
-        state._buddyUpForChange = false;
-        state.pendingBuddySuggestionForChange = null;
-        state.pendingChannelChangeForPilot = null;
-        hideBuddySuggestion();
-        if (suggestion) {
-          var body = { channel_locked: true, locked_frequency_mhz: suggestion.freq_mhz };
-          if (pendingForPilot) {
-            commitChannelChangeForPilot(pendingForPilot.pilotId, body);
-          } else {
-            commitChannelChange(body);
-          }
-        }
-      } else {
-        // Join context
-        var suggestion = state.pendingBuddySuggestion;
-        hideBuddySuggestion();
-        if (suggestion) {
-          var body = buildJoinBody();
-          body.channel_locked = true;
-          body.locked_frequency_mhz = suggestion.freq_mhz;
-          commitJoin(body);
-        }
-      }
-    });
-    $('btn-buddy-cancel').addEventListener('click', function () {
-      state._buddyUpForChange = false;
-      state.pendingBuddySuggestionForChange = null;
-      state.pendingChannelChangeForPilot = null;
-      hideBuddySuggestion();
-    });
-    $('buddy-suggestion').addEventListener('click', function (e) {
-      if (e.target === $('buddy-suggestion')) {
-        state._buddyUpForChange = false;
-        state.pendingBuddySuggestionForChange = null;
-        state.pendingChannelChangeForPilot = null;
-        hideBuddySuggestion();
-      }
-    });
-  }
 
   // ── Session View ──────────────────────────────────────────────
   function enterSessionView() {
@@ -1638,13 +1611,13 @@
   function initChannelChange() {
     $('btn-confirm-channel-change').addEventListener('click', function () {
       if (state._channelChangeForPilot) {
-        submitChannelChangeForPilot(state._channelChangeForPilot, true, channelChangeSelectedFreq);
+        submitChannelChangeForPilot(state._channelChangeForPilot, channelChangeSelectedFreq);
       } else {
-        submitChannelChange(true, channelChangeSelectedFreq);
+        submitChannelChange(channelChangeSelectedFreq);
       }
     });
     $('btn-auto-reassign').addEventListener('click', function () {
-      submitChannelChange(false, 0);
+      submitChannelChange(0);
     });
     $('btn-change-video-system').addEventListener('click', async function () {
       hideChannelChange();
@@ -1685,45 +1658,42 @@
     });
   }
 
-  async function submitChannelChange(locked, freqMHz) {
+  async function submitChannelChange(freqMHz) {
     hideChannelChange();
-    var body = { channel_locked: locked, locked_frequency_mhz: freqMHz };
+    var body = { preferred_frequency_mhz: freqMHz };
     try {
-      // Preview first to check for displacements.
+      // Preview first to check for conflicts.
       var preview = await apiPost(
         '/api/pilots/' + state.pilotId + '/preview-channel?session=' + state.sessionCode,
         body
       );
-      var displaced = preview.displaced || [];
       var level = preview.level || 0;
 
-      if (level === 3 && preview.buddy_suggestion) {
-        // Level 3 — offer buddy suggestion for channel change.
-        state.pendingChannelChange = body;
-        showBuddySuggestionForChange(preview.buddy_suggestion);
+      if (level === 0 && preview.override_reason) {
+        showOverrideDialog(preview.override_reason, preview.assignment, function () {
+          commitChannelChange(body);
+        });
         return;
       }
 
-      if (displaced.length > 0) {
-        // Stash pending change so displacement confirm can commit it.
-        state.pendingChannelChange = body;
-        showDisplacementPreview(displaced);
+      if (level === 1) {
+        showChoiceDialog(preview,
+          function onBuddy(buddy) {
+            commitChannelChange({ preferred_frequency_mhz: buddy.freq_mhz });
+          },
+          function onRebalance() {
+            commitChannelChange(body);
+          },
+          null
+        );
         return;
       }
-      // No displacements — apply immediately.
+
+      // Level 0, no override — apply immediately.
       await commitChannelChange(body);
     } catch (err) {
       refreshSession();
     }
-  }
-
-  function showBuddySuggestionForChange(suggestion) {
-    state.pendingBuddySuggestionForChange = suggestion;
-    var text = 'You could share ' + suggestion.channel + ' (' + suggestion.freq_mhz + ' MHz) with ' + suggestion.callsign + '.';
-    $('buddy-suggestion-text').textContent = text;
-    $('buddy-suggestion').classList.remove('hidden');
-    // Override buddy-up handler for channel change context
-    state._buddyUpForChange = true;
   }
 
   async function commitChannelChange(body) {
@@ -1732,8 +1702,7 @@
         '/api/pilots/' + state.pilotId + '/channel?session=' + state.sessionCode,
         body
       );
-      state.channelLocked = body.channel_locked;
-      state.lockedFreqMHz = body.locked_frequency_mhz;
+      state.preferredFreqMHz = body.preferred_frequency_mhz;
       refreshSession();
     } catch (err) {
       refreshSession();
@@ -1819,30 +1788,36 @@
     renderSpectrum(others, 'spectrum-change', 0, bw);
   }
 
-  async function submitChannelChangeForPilot(pilotId, locked, freqMHz) {
+  async function submitChannelChangeForPilot(pilotId, freqMHz, force) {
     hideChannelChange();
-    var body = { channel_locked: locked, locked_frequency_mhz: freqMHz };
+    var body = { preferred_frequency_mhz: freqMHz, force: !!force };
     try {
       var preview = await apiPost(
         '/api/pilots/' + pilotId + '/preview-channel?session=' + state.sessionCode,
         body
       );
-      var displaced = preview.displaced || [];
       var level = preview.level || 0;
 
-      if (level === 3 && preview.buddy_suggestion) {
-        // Can't place at requested freq — show buddy suggestion.
-        state.pendingChannelChangeForPilot = { pilotId: pilotId, body: body };
-        state._buddyUpForChange = true;
-        showBuddySuggestionForChange(preview.buddy_suggestion);
+      if (level === 0 && preview.override_reason) {
+        showOverrideDialog(preview.override_reason, preview.assignment, function () {
+          commitChannelChangeForPilot(pilotId, body);
+        });
         return;
       }
 
-      if (displaced.length > 0) {
-        state.pendingChannelChangeForPilot = { pilotId: pilotId, body: body };
-        showDisplacementPreview(displaced);
+      if (level === 1) {
+        showChoiceDialog(preview,
+          function onBuddy(buddy) {
+            commitChannelChangeForPilot(pilotId, { preferred_frequency_mhz: buddy.freq_mhz });
+          },
+          function onRebalance() {
+            commitChannelChangeForPilot(pilotId, body);
+          },
+          null
+        );
         return;
       }
+
       await commitChannelChangeForPilot(pilotId, body);
     } catch (err) {
       refreshSession();
@@ -3142,8 +3117,6 @@
     initCallsignChange();
     initOtherPilotActions();
     initChannelChangeBanner();
-    initDisplacementConfirm();
-    initBuddySuggestion();
     initLeaderControls();
     initAddPilotDialog();
     initLeaderLeaveDialog();

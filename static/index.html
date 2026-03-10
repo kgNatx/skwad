@@ -166,9 +166,10 @@
     <div id="step-channel" class="setup-step hidden">
       <h2 class="step-title">CHANNEL PREFERENCE</h2>
       <div class="channel-pref">
-        <button id="btn-auto-channel" class="btn btn-secondary btn-large channel-pref-btn active">ASSIGN ME THE BEST CHANNEL</button>
-        <button id="btn-lock-channel" class="btn btn-secondary btn-large channel-pref-btn">LOCK ME TO A CHANNEL</button>
+        <button id="btn-auto-assign" class="btn btn-secondary btn-large channel-pref-btn active">AUTO-ASSIGN</button>
+        <button id="btn-have-preference" class="btn btn-secondary btn-large channel-pref-btn">I HAVE A PREFERENCE</button>
       </div>
+      <p id="preference-hint" class="preference-hint" style="display:none">This is just a preference -- sometimes we shuffle to fit everyone.</p>
       <canvas id="spectrum-preview" class="spectrum-canvas hidden"></canvas>
       <div id="channel-picker" class="channel-picker hidden"></div>
       <button id="btn-join-session" class="btn btn-primary btn-large btn-join-final">JOIN</button>
@@ -260,6 +261,26 @@
         <span class="slide-remove-label">SLIDE TO REMOVE</span>
       </div>
       <button id="btn-other-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Preference Override Dialog -->
+  <div id="override-dialog" class="action-sheet" style="display:none">
+    <div class="action-sheet-content">
+      <h3 id="override-title">PREFERENCE OVERRIDDEN</h3>
+      <p id="override-reason" class="override-reason-text"></p>
+      <canvas id="override-spectrum" width="600" height="100"></canvas>
+      <button id="btn-override-ok" class="btn btn-primary btn-large">GOT IT</button>
+    </div>
+  </div>
+
+  <!-- Level 1 Choice Dialog -->
+  <div id="choice-dialog" class="action-sheet" style="display:none">
+    <div class="action-sheet-content">
+      <h3>NO CLEAN CHANNEL AVAILABLE</h3>
+      <p class="choice-subtitle">Pick an option:</p>
+      <div id="choice-options"></div>
+      <button id="btn-choice-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>
   </div>
 
@@ -360,7 +381,7 @@
       <canvas id="spectrum-change" class="spectrum-canvas"></canvas>
       <button id="btn-auto-reassign" class="btn btn-primary btn-large">AUTO-ASSIGN BEST</button>
       <div id="channel-change-picker" class="channel-picker"></div>
-      <button id="btn-confirm-channel-change" class="btn btn-primary btn-large hidden">LOCK TO THIS CHANNEL</button>
+      <button id="btn-confirm-channel-change" class="btn btn-primary btn-large hidden">USE THIS CHANNEL</button>
       <button id="btn-change-video-system" class="btn btn-secondary btn-large">CHANGE VIDEO SYSTEM</button>
       <button id="btn-channel-change-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>

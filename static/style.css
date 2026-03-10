@@ -726,14 +726,16 @@ body {
 
 #spectrum-canvas,
 #spectrum-preview,
-#spectrum-change {
+#spectrum-change,
+#override-spectrum {
   width: 100%;
   height: 120px;
   display: block;
 }
 
 #spectrum-preview,
-#spectrum-change {
+#spectrum-change,
+#override-spectrum {
   margin-top: 16px;
   border-radius: 8px;
 }
@@ -1264,6 +1266,44 @@ body {
   margin-bottom: 12px;
   max-height: 40vh;
   overflow-y: auto;
+}
+
+/* ===== PREFERENCE HINT ===== */
+.preference-hint {
+  font-size: 15px;
+  font-weight: 600;
+  color: #999;
+  text-align: center;
+  line-height: 1.4;
+  margin: 4px 0 8px;
+}
+
+/* ===== OVERRIDE DIALOG ===== */
+.override-reason-text {
+  font-size: 16px;
+  color: #ccc;
+  margin: 12px 0;
+  line-height: 1.4;
+}
+
+/* ===== CHOICE DIALOG ===== */
+.choice-subtitle {
+  font-size: 15px;
+  color: #aaa;
+  margin: 8px 0 16px;
+}
+
+.buddy-choice-btn,
+.rebalance-choice-btn {
+  text-align: left;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.buddy-choice-btn strong,
+.rebalance-choice-btn strong {
+  font-size: 16px;
 }
 
 /* ===== SAFE AREA (notch phones) ===== */
