@@ -663,7 +663,7 @@ body {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #555555;
+  background: #ffaa00;
 }
 
 .pilot-freq-block {
@@ -690,6 +690,8 @@ body {
   font-weight: 700;
   color: #aaaaaa;
   margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .pilot-info {

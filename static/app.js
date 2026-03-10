@@ -1437,6 +1437,7 @@
         channelLabel += ' (' + bw + 'M)';
       }
       var chEl = el('div', { className: 'pilot-channel', textContent: channelLabel });
+      if (channelLabel) fitText(chEl, 15, 10);
       var freqBlockChildren = [freqEl, chEl];
       if (buddyIdx > 0) {
         freqBlockChildren.push(el('span', { className: 'pilot-buddy-badge buddy-badge-' + buddyIdx, textContent: 'BUDDIES' }));
