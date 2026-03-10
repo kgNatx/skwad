@@ -116,11 +116,6 @@
         </div>
       </div>
 
-      <div id="followup-bandwidth" class="followup-group hidden">
-        <p class="followup-label">BANDWIDTH</p>
-        <div id="bandwidth-buttons" class="btn-row"></div>
-      </div>
-
       <div id="followup-goggles" class="followup-group hidden">
         <p class="followup-label">WHICH GOGGLES?</p>
         <div class="system-grid">
@@ -129,6 +124,11 @@
           <button class="btn btn-option" data-goggles="goggles_2">GOGGLES 2</button>
           <button class="btn btn-option" data-goggles="integra">INTEGRA</button>
         </div>
+      </div>
+
+      <div id="followup-bandwidth" class="followup-group hidden">
+        <p class="followup-label">BANDWIDTH</p>
+        <div id="bandwidth-buttons" class="btn-row"></div>
       </div>
 
       <div id="followup-racemode" class="followup-group hidden">
@@ -360,7 +360,11 @@
   <div id="rebalance-confirm" class="action-sheet hidden">
     <div class="action-sheet-content">
       <h3 class="action-sheet-title">REBALANCE ALL</h3>
-      <p class="rebalance-confirm-text">THIS WILL REASSIGN ALL CHANNELS FROM SCRATCH. PILOTS MAY NEED TO CHANGE THEIR VTX CHANNEL.</p>
+      <div class="spectrum-label">CURRENT</div>
+      <canvas id="spectrum-rebalance-before" class="spectrum-canvas"></canvas>
+      <div class="spectrum-label">PROPOSED</div>
+      <canvas id="spectrum-rebalance-after" class="spectrum-canvas"></canvas>
+      <p class="rebalance-confirm-text">PILOTS MAY NEED TO CHANGE THEIR VTX CHANNEL.</p>
       <button id="btn-rebalance-confirm" class="btn btn-primary btn-large">REBALANCE</button>
       <button id="btn-rebalance-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>

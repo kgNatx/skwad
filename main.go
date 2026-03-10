@@ -153,6 +153,10 @@ func main() {
 		srv.HandleUpdatePilotCallsign(w, r, pilotID, sessionCode)
 	})
 
+	mux.HandleFunc("POST /api/sessions/{code}/preview-rebalance", func(w http.ResponseWriter, r *http.Request) {
+		srv.HandlePreviewRebalance(w, r, r.PathValue("code"))
+	})
+
 	mux.HandleFunc("POST /api/sessions/{code}/rebalance", func(w http.ResponseWriter, r *http.Request) {
 		srv.HandleRebalanceAll(w, r, r.PathValue("code"))
 	})

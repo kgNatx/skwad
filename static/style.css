@@ -485,6 +485,7 @@ body {
 .btn-channel .ch-name {
   display: block;
   font-size: 18px;
+  white-space: nowrap;
 }
 
 .btn-channel .ch-freq {
@@ -688,6 +689,7 @@ body {
   letter-spacing: 0.5px;
   background: #2a2a2a;
   color: #cccccc;
+  white-space: nowrap;
 }
 
 .pilot-buddy-info {
@@ -727,7 +729,9 @@ body {
 #spectrum-canvas,
 #spectrum-preview,
 #spectrum-change,
-#override-spectrum {
+#override-spectrum,
+#spectrum-rebalance-before,
+#spectrum-rebalance-after {
   width: 100%;
   height: 120px;
   display: block;
@@ -735,9 +739,29 @@ body {
 
 #spectrum-preview,
 #spectrum-change,
-#override-spectrum {
-  margin-top: 16px;
+#override-spectrum,
+#spectrum-rebalance-before,
+#spectrum-rebalance-after {
+  margin-top: 4px;
   border-radius: 8px;
+}
+
+.spectrum-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #888;
+  margin-top: 8px;
+}
+
+#spectrum-rebalance-before,
+#spectrum-rebalance-after {
+  height: 90px;
+}
+
+#spectrum-change {
+  height: 90px;
+  flex-shrink: 0;
 }
 
 /* ===== QR OVERLAY ===== */
@@ -947,23 +971,33 @@ body {
   overflow-y: auto;
   background: #1a1a1a;
   border-radius: 16px 16px 0 0;
-  padding: 36px 24px;
+  padding: 20px 16px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
 
 .action-sheet-title {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 900;
   text-align: center;
   letter-spacing: 2px;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 
 .action-sheet .channel-picker {
-  max-height: 50vh;
   overflow-y: auto;
+}
+
+/* Channel change sheet uses full screen height */
+#channel-change {
+  align-items: stretch;
+}
+
+#channel-change .action-sheet-content {
+  max-height: 100dvh;
+  height: 100dvh;
+  border-radius: 0;
 }
 
 /* ===== CHANNEL CHANGE BANNER ===== */
@@ -1155,10 +1189,11 @@ body {
 .btn-leader {
   flex: 1;
   min-height: 44px;
-  padding: 10px 16px;
+  padding: 10px 12px;
   font-size: 14px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 /* ===== REBALANCE CONFIRMATION ===== */
@@ -1334,6 +1369,6 @@ body {
     padding-right: calc(16px + env(safe-area-inset-right));
   }
   .action-sheet-content {
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
   }
 }

@@ -803,6 +803,12 @@
     });
   }
 
+  function adaptPickerGrid(picker) {
+    var count = picker.children.length;
+    var cols = count <= 3 ? count : 4;
+    picker.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
+  }
+
   function renderChannelPicker() {
     var pool = getChannelPool();
     var picker = $('channel-picker');
@@ -819,6 +825,7 @@
       });
       picker.appendChild(btn);
     });
+    adaptPickerGrid(picker);
   }
 
   function buildJoinBody() {
@@ -1694,6 +1701,7 @@
       });
       picker.appendChild(btn);
     });
+    adaptPickerGrid(picker);
 
     $('channel-change-title').textContent = 'SELECT CHANNEL';
     $('btn-auto-reassign').className = 'btn btn-primary btn-large';
@@ -1905,7 +1913,8 @@
         renderSpectrum(others, 'spectrum-change', ch.freq, bw);
 
         if (isConflict) {
-          // Leader tapped a conflicting channel — show confirmation
+          // Leader tapped a conflicting channel — hide picker, show confirmation
+          hideChannelChange();
           showLeaderConflictConfirm(pilot, ch, conflicts);
         } else {
           $('btn-confirm-channel-change').classList.remove('hidden');
@@ -1915,6 +1924,7 @@
       });
       picker.appendChild(btn);
     });
+    adaptPickerGrid(picker);
 
     // Update the title and hide self-only buttons.
     $('channel-change-title').textContent = 'CHANGE CHANNEL: ' + pilot.Callsign;
@@ -1962,51 +1972,23 @@
     $('btn-buddy-up').onclick = function () {
       $('buddy-suggestion').classList.add('hidden');
       $('btn-buddy-up').textContent = 'BUDDY UP';
-      hideChannelChange();
-      submitChannelChangeForPilot(pilot.ID, channel.freq, true);
+      submitChannelChangeForPilot(pilot.ID, channel.freq);
     };
     $('btn-buddy-cancel').onclick = function () {
       $('buddy-suggestion').classList.add('hidden');
       $('btn-buddy-up').textContent = 'BUDDY UP';
+      // Re-show the channel picker so leader can pick a different channel
+      showChannelChangeForPilot(pilot);
     };
     $('buddy-suggestion').classList.remove('hidden');
   }
 
-  async function submitChannelChangeForPilot(pilotId, freqMHz, force) {
+  async function submitChannelChangeForPilot(pilotId, freqMHz) {
     hideChannelChange();
-    var body = { preferred_frequency_mhz: freqMHz, force: !!force };
-    try {
-      var preview = await apiPost(
-        '/api/pilots/' + pilotId + '/preview-channel?session=' + state.sessionCode,
-        body
-      );
-      var level = preview.level || 0;
-
-      if (level === 0 && preview.override_reason) {
-        showOverrideDialog(preview.override_reason, preview.assignment, function () {
-          commitChannelChangeForPilot(pilotId, body);
-        });
-        return;
-      }
-
-      if (level === 1) {
-        showChoiceDialog(preview,
-          function onBuddy(buddy) {
-            commitChannelChangeForPilot(pilotId, { preferred_frequency_mhz: buddy.freq_mhz, choice: 'buddy' });
-          },
-          function onRebalance() {
-            body.choice = 'rebalance';
-            commitChannelChangeForPilot(pilotId, body);
-          },
-          null
-        );
-        return;
-      }
-
-      await commitChannelChangeForPilot(pilotId, body);
-    } catch (err) {
-      refreshSession();
-    }
+    // Leader moving another pilot — always force (leader's choice is authoritative)
+    // and commit directly (no preview dialogs).
+    var body = { preferred_frequency_mhz: freqMHz, force: true };
+    await commitChannelChangeForPilot(pilotId, body);
   }
 
   async function commitChannelChangeForPilot(pilotId, body) {
@@ -2225,8 +2207,22 @@
   }
 
   function initLeaderControls() {
-    $('btn-rebalance-all').addEventListener('click', function () {
+    $('btn-rebalance-all').addEventListener('click', async function () {
+      // Show dialog first so canvases have layout dimensions
       $('rebalance-confirm').classList.remove('hidden');
+
+      // Render current spectrum
+      var pilots = state.cachedPilots || [];
+      renderSpectrum(pilots, 'spectrum-rebalance-before', 0, 0);
+
+      // Fetch proposed assignments and render proposed spectrum
+      try {
+        var proposed = await apiPost('/api/sessions/' + state.sessionCode + '/preview-rebalance');
+        renderSpectrum(proposed, 'spectrum-rebalance-after', 0, 0);
+      } catch (err) {
+        // If preview fails, just show empty
+        renderSpectrum([], 'spectrum-rebalance-after', 0, 0);
+      }
     });
 
     $('btn-add-pilot').addEventListener('click', function () {

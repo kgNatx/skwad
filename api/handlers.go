@@ -957,6 +957,77 @@ func buildAssignments(pilots []db.Pilot) []freq.Assignment {
 	return assignments
 }
 
+// HandlePreviewRebalance runs the optimizer dry-run (leader-only).
+// Returns proposed assignments without committing.
+// POST /api/sessions/{code}/preview-rebalance
+func (s *Server) HandlePreviewRebalance(w http.ResponseWriter, r *http.Request, code string) {
+	if _, ok := s.requireLeader(w, r, code); !ok {
+		return
+	}
+
+	pilots, err := s.DB.GetActivePilots(code)
+	if err != nil {
+		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
+		return
+	}
+
+	inputs := buildPilotInputs(pilots)
+
+	// Run same two-phase logic as reoptimize but don't save.
+	assignments := freq.Optimize(inputs)
+	conflicts := freq.DetectConflicts(assignments)
+
+	if len(conflicts) > 0 {
+		conflictPilots := make(map[int]bool)
+		for _, c := range conflicts {
+			conflictPilots[c.PilotA] = true
+			conflictPilots[c.PilotB] = true
+		}
+		cleanIDs := make(map[int]bool)
+		for _, p := range inputs {
+			if !conflictPilots[p.ID] {
+				cleanIDs[p.ID] = true
+			}
+		}
+		surgical := freq.OptimizeWithLocks(inputs, cleanIDs)
+		surgicalConflicts := freq.DetectConflicts(surgical)
+		if len(surgicalConflicts) < len(conflicts) {
+			assignments = surgical
+		}
+	}
+
+	// Build response with pilot info needed for spectrum rendering.
+	type ProposedPilot struct {
+		ID             int    `json:"ID"`
+		Callsign       string `json:"Callsign"`
+		VideoSystem    string `json:"VideoSystem"`
+		BandwidthMHz   int    `json:"BandwidthMHz"`
+		AssignedFreqMHz int   `json:"AssignedFreqMHz"`
+		AssignedChannel string `json:"AssignedChannel"`
+	}
+
+	pilotMap := make(map[int]db.Pilot, len(pilots))
+	for _, p := range pilots {
+		pilotMap[p.ID] = p
+	}
+
+	proposed := make([]ProposedPilot, 0, len(assignments))
+	for _, a := range assignments {
+		p := pilotMap[a.PilotID]
+		proposed = append(proposed, ProposedPilot{
+			ID:              p.ID,
+			Callsign:        p.Callsign,
+			VideoSystem:     p.VideoSystem,
+			BandwidthMHz:    p.BandwidthMHz,
+			AssignedFreqMHz: a.FreqMHz,
+			AssignedChannel: a.Channel,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(proposed)
+}
+
 // HandleRebalanceAll runs the full optimizer on all pilots (leader-only).
 // Returns which pilots moved and which stayed.
 // POST /api/sessions/{code}/rebalance
