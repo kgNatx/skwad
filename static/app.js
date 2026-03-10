@@ -743,6 +743,8 @@
   }
 
   // ── Setup: Step 4 — Channel Preference ────────────────────────
+  var previewPilots = []; // Cached pilots for spectrum preview on channel step
+
   function goToChannelStep() {
     state.channelLocked = false;
     state.lockedFreqMHz = 0;
@@ -750,7 +752,23 @@
     $('btn-auto-channel').classList.add('active');
     $('btn-lock-channel').classList.remove('active');
     $('channel-picker').classList.add('hidden');
+    $('spectrum-preview').classList.add('hidden');
     renderChannelPicker();
+    // Pre-fetch existing pilots for spectrum preview
+    fetchPreviewPilots();
+  }
+
+  function fetchPreviewPilots() {
+    if (!state.sessionCode) { previewPilots = []; return; }
+    apiGet('/api/sessions/' + state.sessionCode).then(function (data) {
+      previewPilots = (data.pilots || []).filter(function (p) { return p.Active; });
+    }).catch(function () { previewPilots = []; });
+  }
+
+  function renderSpectrumPreview() {
+    var sys = getEffectiveVideoSystem();
+    var bw = occupiedBandwidth(sys, state.bandwidthMHz);
+    renderSpectrum(previewPilots, 'spectrum-preview', state.lockedFreqMHz || 0, bw);
   }
 
   function initChannelStep() {
@@ -760,6 +778,7 @@
       $('btn-auto-channel').classList.add('active');
       $('btn-lock-channel').classList.remove('active');
       $('channel-picker').classList.add('hidden');
+      $('spectrum-preview').classList.add('hidden');
       // Deselect any selected channel
       document.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });
     });
@@ -768,7 +787,9 @@
       $('btn-lock-channel').classList.add('active');
       $('btn-auto-channel').classList.remove('active');
       $('channel-picker').classList.remove('hidden');
+      $('spectrum-preview').classList.remove('hidden');
       state.channelLocked = true;
+      renderSpectrumPreview();
     });
 
     $('btn-join-session').addEventListener('click', handleJoinSession);
@@ -789,6 +810,7 @@
         picker.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
         state.lockedFreqMHz = ch.freq;
+        renderSpectrumPreview();
       });
       picker.appendChild(btn);
     });
@@ -944,12 +966,18 @@
       if (state._buddyUpForChange) {
         // Channel change context
         var suggestion = state.pendingBuddySuggestionForChange;
+        var pendingForPilot = state.pendingChannelChangeForPilot;
         state._buddyUpForChange = false;
         state.pendingBuddySuggestionForChange = null;
+        state.pendingChannelChangeForPilot = null;
         hideBuddySuggestion();
         if (suggestion) {
           var body = { channel_locked: true, locked_frequency_mhz: suggestion.freq_mhz };
-          commitChannelChange(body);
+          if (pendingForPilot) {
+            commitChannelChangeForPilot(pendingForPilot.pilotId, body);
+          } else {
+            commitChannelChange(body);
+          }
         }
       } else {
         // Join context
@@ -966,12 +994,14 @@
     $('btn-buddy-cancel').addEventListener('click', function () {
       state._buddyUpForChange = false;
       state.pendingBuddySuggestionForChange = null;
+      state.pendingChannelChangeForPilot = null;
       hideBuddySuggestion();
     });
     $('buddy-suggestion').addEventListener('click', function (e) {
       if (e.target === $('buddy-suggestion')) {
         state._buddyUpForChange = false;
         state.pendingBuddySuggestionForChange = null;
+        state.pendingChannelChangeForPilot = null;
         hideBuddySuggestion();
       }
     });
@@ -1045,6 +1075,7 @@
         return;
       }
 
+      state.cachedPilots = data.pilots;
       renderPilotList(data.pilots);
       updateLeaderControls();
     } catch (err) {
@@ -1083,8 +1114,8 @@
     return 20;
   }
 
-  function renderSpectrum(pilots) {
-    var canvas = $('spectrum-canvas');
+  function renderSpectrum(pilots, canvasOrId, highlightFreq, highlightBw) {
+    var canvas = typeof canvasOrId === 'string' ? $(canvasOrId) : (canvasOrId || $('spectrum-canvas'));
     if (!canvas) return;
     var ctx = canvas.getContext('2d');
     var dpr = window.devicePixelRatio || 1;
@@ -1152,7 +1183,10 @@
       ctx.fillText(String(rbFreqs[t]), tx, baseline + 5);
     }
 
-    if (!pilots || pilots.length === 0) return;
+    if (!pilots || pilots.length === 0) {
+      drawHighlightHump(ctx, highlightFreq, highlightBw, fMin, fSpan, cw, baseline, 44);
+      return;
+    }
 
     // Pre-compute each pilot's layout data
     var items = [];
@@ -1248,6 +1282,46 @@
       ctx.fillStyle = item.color;
       ctx.fillText(item.label, item.centerX, item.labelY);
     });
+
+    drawHighlightHump(ctx, highlightFreq, highlightBw, fMin, fSpan, cw, baseline, humpPeakH);
+  }
+
+  function drawHighlightHump(ctx, freq, bw, fMin, fSpan, cw, baseline, peakH) {
+    if (!freq || freq < fMin || freq > fMin + fSpan) return;
+    var centerX = (freq - fMin) / fSpan * cw;
+    var hBw = bw || 20;
+    var halfW = (hBw / fSpan * cw) / 2;
+    if (halfW < 14) halfW = 14;
+    var peakY = baseline - peakH;
+
+    // Dashed hump outline
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    ctx.moveTo(centerX - halfW, baseline);
+    ctx.bezierCurveTo(
+      centerX - halfW * 0.5, baseline,
+      centerX - halfW * 0.4, peakY,
+      centerX, peakY
+    );
+    ctx.bezierCurveTo(
+      centerX + halfW * 0.4, peakY,
+      centerX + halfW * 0.5, baseline,
+      centerX + halfW, baseline
+    );
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // "YOU" label
+    ctx.font = '700 11px -apple-system, BlinkMacSystemFont, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText('YOU', centerX, peakY - 3);
   }
 
   function roundRect(ctx, x, y, w, h, r) {
@@ -1343,7 +1417,11 @@
         channelLabel += ' (' + bw + 'M)';
       }
       var chEl = el('div', { className: 'pilot-channel', textContent: channelLabel });
-      var freqBlock = el('div', { className: 'pilot-freq-block' }, [freqEl, chEl]);
+      var freqBlockChildren = [freqEl, chEl];
+      if (buddyIdx > 0) {
+        freqBlockChildren.push(el('span', { className: 'pilot-buddy-badge buddy-badge-' + buddyIdx, textContent: 'BUDDIES' }));
+      }
+      var freqBlock = el('div', { className: 'pilot-freq-block' }, freqBlockChildren);
       card.appendChild(freqBlock);
 
       // Info block
@@ -1399,6 +1477,12 @@
       });
 
       card.appendChild(info);
+
+      // Leader-added indicator dot
+      if (p.AddedByLeader) {
+        card.appendChild(el('div', { className: 'pilot-added-dot', title: 'Added by leader' }));
+      }
+
       container.appendChild(card);
     });
 
@@ -1502,9 +1586,20 @@
   }
 
   // ── Channel Change ──────────────────────────────────────────
+  var channelChangeSelectedFreq = 0;
+
+  function renderChannelChangeSpectrum(freq) {
+    var sys = getEffectiveVideoSystem();
+    var bw = occupiedBandwidth(sys, state.bandwidthMHz);
+    // Show other pilots (exclude self) so you see where you'd land
+    var others = (state.cachedPilots || []).filter(function (p) { return p.ID !== state.pilotId; });
+    renderSpectrum(others, 'spectrum-change', freq, bw);
+  }
+
   function showChannelChange() {
     var picker = $('channel-change-picker');
     clearChildren(picker);
+    channelChangeSelectedFreq = 0;
 
     var pool = getChannelPool();
     pool.forEach(function (ch) {
@@ -1512,15 +1607,28 @@
       var freqSpan = el('span', { className: 'ch-freq', textContent: String(ch.freq) });
       var btn = el('button', { className: 'btn-channel' }, [nameSpan, freqSpan]);
       btn.addEventListener('click', function () {
-        submitChannelChange(true, ch.freq);
+        picker.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        channelChangeSelectedFreq = ch.freq;
+        renderChannelChangeSpectrum(ch.freq);
+        $('btn-confirm-channel-change').classList.remove('hidden');
+        // Promote lock button to primary, demote auto-assign
+        $('btn-confirm-channel-change').className = 'btn btn-primary btn-large';
+        $('btn-auto-reassign').className = 'btn btn-secondary btn-large';
+        $('btn-confirm-channel-change').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
       picker.appendChild(btn);
     });
 
     $('channel-change-title').textContent = 'SELECT CHANNEL';
+    $('btn-auto-reassign').className = 'btn btn-primary btn-large';
     $('btn-auto-reassign').classList.remove('hidden');
     $('btn-change-video-system').classList.remove('hidden');
+    $('btn-confirm-channel-change').classList.add('hidden');
+    state._channelChangeForPilot = null;
+    state._changeVideoSystemPilot = null;
     $('channel-change').classList.remove('hidden');
+    renderChannelChangeSpectrum(0);
   }
 
   function hideChannelChange() {
@@ -1528,12 +1636,33 @@
   }
 
   function initChannelChange() {
+    $('btn-confirm-channel-change').addEventListener('click', function () {
+      if (state._channelChangeForPilot) {
+        submitChannelChangeForPilot(state._channelChangeForPilot, true, channelChangeSelectedFreq);
+      } else {
+        submitChannelChange(true, channelChangeSelectedFreq);
+      }
+    });
     $('btn-auto-reassign').addEventListener('click', function () {
       submitChannelChange(false, 0);
     });
     $('btn-change-video-system').addEventListener('click', async function () {
       hideChannelChange();
-      // Remove from session, keep callsign + session code, go to wizard
+      // Leader changing video system for a leader-added pilot
+      if (state._changeVideoSystemPilot) {
+        var pilot = state._changeVideoSystemPilot;
+        state._changeVideoSystemPilot = null;
+        try {
+          await apiDelete('/api/pilots/' + pilot.ID + '?session=' + state.sessionCode);
+        } catch (err) {
+          // Continue even if delete fails
+        }
+        // Open add-pilot dialog pre-filled with their callsign
+        showAddPilotDialog();
+        $('input-add-callsign').value = pilot.Callsign;
+        return;
+      }
+      // Self: remove from session, keep callsign + session code, go to wizard
       var savedCallsign = state.callsign;
       var savedCode = state.sessionCode;
       try {
@@ -1649,6 +1778,7 @@
   function showChannelChangeForPilot(pilot) {
     var picker = $('channel-change-picker');
     clearChildren(picker);
+    channelChangeSelectedFreq = 0;
 
     var pool = getChannelPoolForPilot(pilot);
     pool.forEach(function (ch) {
@@ -1656,7 +1786,16 @@
       var freqSpan = el('span', { className: 'ch-freq', textContent: String(ch.freq) });
       var btn = el('button', { className: 'btn-channel' }, [nameSpan, freqSpan]);
       btn.addEventListener('click', function () {
-        submitChannelChangeForPilot(pilot.ID, true, ch.freq);
+        picker.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        channelChangeSelectedFreq = ch.freq;
+        // Show spectrum with this pilot excluded, highlight the selection
+        var others = (state.cachedPilots || []).filter(function (p) { return p.ID !== pilot.ID; });
+        var bw = occupiedBandwidth(pilot.VideoSystem, pilot.BandwidthMHz);
+        renderSpectrum(others, 'spectrum-change', ch.freq, bw);
+        $('btn-confirm-channel-change').classList.remove('hidden');
+        $('btn-confirm-channel-change').className = 'btn btn-primary btn-large';
+        $('btn-confirm-channel-change').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
       picker.appendChild(btn);
     });
@@ -1664,8 +1803,20 @@
     // Update the title and hide self-only buttons.
     $('channel-change-title').textContent = 'CHANGE CHANNEL: ' + pilot.Callsign;
     $('btn-auto-reassign').classList.add('hidden');
-    $('btn-change-video-system').classList.add('hidden');
+    // Show video system change for leader-added pilots
+    if (pilot.AddedByLeader && state.isLeader) {
+      $('btn-change-video-system').classList.remove('hidden');
+      state._changeVideoSystemPilot = pilot;
+    } else {
+      $('btn-change-video-system').classList.add('hidden');
+    }
+    $('btn-confirm-channel-change').classList.add('hidden');
+    state._channelChangeForPilot = pilot.ID;
     $('channel-change').classList.remove('hidden');
+    // Show spectrum without the target pilot
+    var others = (state.cachedPilots || []).filter(function (p) { return p.ID !== pilot.ID; });
+    var bw = occupiedBandwidth(pilot.VideoSystem, pilot.BandwidthMHz);
+    renderSpectrum(others, 'spectrum-change', 0, bw);
   }
 
   async function submitChannelChangeForPilot(pilotId, locked, freqMHz) {
@@ -1677,6 +1828,15 @@
         body
       );
       var displaced = preview.displaced || [];
+      var level = preview.level || 0;
+
+      if (level === 3 && preview.buddy_suggestion) {
+        // Can't place at requested freq — show buddy suggestion.
+        state.pendingChannelChangeForPilot = { pilotId: pilotId, body: body };
+        state._buddyUpForChange = true;
+        showBuddySuggestionForChange(preview.buddy_suggestion);
+        return;
+      }
 
       if (displaced.length > 0) {
         state.pendingChannelChangeForPilot = { pilotId: pilotId, body: body };

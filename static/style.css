@@ -617,10 +617,21 @@ body {
   align-items: center;
   gap: 16px;
   border-left: 5px solid transparent;
+  position: relative;
 }
 
 .pilot-card.buddy-group {
   border-left-width: 5px;
+}
+
+.pilot-added-dot {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #555555;
 }
 
 .pilot-freq-block {
@@ -713,10 +724,18 @@ body {
   letter-spacing: 1px;
 }
 
-#spectrum-canvas {
+#spectrum-canvas,
+#spectrum-preview,
+#spectrum-change {
   width: 100%;
   height: 120px;
   display: block;
+}
+
+#spectrum-preview,
+#spectrum-change {
+  margin-top: 16px;
+  border-radius: 8px;
 }
 
 /* ===== QR OVERLAY ===== */
@@ -811,23 +830,41 @@ body {
 }
 
 /* ===== BUDDY GROUP COLORS ===== */
-.buddy-1 { border-left-color: #ff3333 !important; }
+.buddy-1 { border-left-color: #3399ff !important; }
 .buddy-2 { border-left-color: #33ff33 !important; }
-.buddy-3 { border-left-color: #3399ff !important; }
-.buddy-4 { border-left-color: #ffcc00 !important; }
+.buddy-3 { border-left-color: #ffcc00 !important; }
+.buddy-4 { border-left-color: #00ffcc !important; }
 .buddy-5 { border-left-color: #ff66ff !important; }
-.buddy-6 { border-left-color: #00ffcc !important; }
-.buddy-7 { border-left-color: #ff9900 !important; }
-.buddy-8 { border-left-color: #cc66ff !important; }
+.buddy-6 { border-left-color: #ff9900 !important; }
+.buddy-7 { border-left-color: #cc66ff !important; }
+.buddy-8 { border-left-color: #66ccff !important; }
 
-.buddy-text-1 { color: #ff3333; }
+.buddy-text-1 { color: #3399ff; }
 .buddy-text-2 { color: #33ff33; }
-.buddy-text-3 { color: #3399ff; }
-.buddy-text-4 { color: #ffcc00; }
+.buddy-text-3 { color: #ffcc00; }
+.buddy-text-4 { color: #00ffcc; }
 .buddy-text-5 { color: #ff66ff; }
-.buddy-text-6 { color: #00ffcc; }
-.buddy-text-7 { color: #ff9900; }
-.buddy-text-8 { color: #cc66ff; }
+.buddy-text-6 { color: #ff9900; }
+.buddy-text-7 { color: #cc66ff; }
+.buddy-text-8 { color: #66ccff; }
+
+.pilot-buddy-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #0a0a0a;
+  margin-top: 4px;
+}
+.buddy-badge-1 { background: #3399ff; }
+.buddy-badge-2 { background: #33ff33; }
+.buddy-badge-3 { background: #ffcc00; }
+.buddy-badge-4 { background: #00ffcc; }
+.buddy-badge-5 { background: #ff66ff; }
+.buddy-badge-6 { background: #ff9900; }
+.buddy-badge-7 { background: #cc66ff; }
+.buddy-badge-8 { background: #66ccff; }
 
 /* ===== LOADING STATE ===== */
 .btn.loading {
@@ -904,6 +941,8 @@ body {
 .action-sheet-content {
   width: 100%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
   background: #1a1a1a;
   border-radius: 16px 16px 0 0;
   padding: 36px 24px;

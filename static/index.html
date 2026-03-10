@@ -68,6 +68,7 @@
           <button id="btn-install-dismiss" class="btn btn-secondary">NOT NOW</button>
         </div>
       </div>
+      <!-- Keep this footer in sync with the QR overlay footer -->
       <div class="landing-footer">
         <div><a href="/changelog.html" class="footer-link">What's New</a></div>
         <div><a href="https://github.com/kgNatx/skwad" class="footer-link">SKWAD</a> is a free service from <a href="https://atxfpv.org" class="footer-link">ATXFPV.org</a></div>
@@ -166,8 +167,9 @@
       <h2 class="step-title">CHANNEL PREFERENCE</h2>
       <div class="channel-pref">
         <button id="btn-auto-channel" class="btn btn-secondary btn-large channel-pref-btn active">ASSIGN ME THE BEST CHANNEL</button>
-        <button id="btn-lock-channel" class="btn btn-secondary btn-large channel-pref-btn">I'M LOCKED TO A CHANNEL</button>
+        <button id="btn-lock-channel" class="btn btn-secondary btn-large channel-pref-btn">LOCK ME TO A CHANNEL</button>
       </div>
+      <canvas id="spectrum-preview" class="spectrum-canvas hidden"></canvas>
       <div id="channel-picker" class="channel-picker hidden"></div>
       <button id="btn-join-session" class="btn btn-primary btn-large btn-join-final">JOIN</button>
       <button id="btn-channel-back" class="btn btn-secondary btn-large">BACK</button>
@@ -355,8 +357,10 @@
   <div id="channel-change" class="action-sheet hidden">
     <div class="action-sheet-content">
       <h3 id="channel-change-title" class="action-sheet-title">SELECT CHANNEL</h3>
+      <canvas id="spectrum-change" class="spectrum-canvas"></canvas>
       <button id="btn-auto-reassign" class="btn btn-primary btn-large">AUTO-ASSIGN BEST</button>
       <div id="channel-change-picker" class="channel-picker"></div>
+      <button id="btn-confirm-channel-change" class="btn btn-primary btn-large hidden">LOCK TO THIS CHANNEL</button>
       <button id="btn-change-video-system" class="btn btn-secondary btn-large">CHANGE VIDEO SYSTEM</button>
       <button id="btn-channel-change-cancel" class="btn btn-secondary btn-large">CANCEL</button>
     </div>
@@ -369,7 +373,9 @@
       <canvas id="qr-canvas" class="qr-canvas"></canvas>
       <p id="qr-url" class="qr-url"></p>
       <button id="btn-qr-close" class="btn btn-secondary btn-large">CLOSE</button>
+      <!-- Keep this footer in sync with the landing page footer -->
       <div class="landing-footer qr-footer">
+        <div><a href="/changelog.html" class="footer-link">What's New</a></div>
         <div><a href="https://github.com/kgNatx/skwad" class="footer-link">SKWAD</a> is a free service from <a href="https://atxfpv.org" class="footer-link">ATXFPV.org</a></div>
         <div id="fpvfc-link-qr" class="hidden">Please support the <a href="https://fpvfc.org/take-action" class="footer-link">FPV Freedom Coalition</a></div>
       </div>
