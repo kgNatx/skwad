@@ -30,6 +30,8 @@
     leaderPilotId: null,
     // Track whether we initiated the current assignment change
     expectingAssignmentChange: false,
+    // Whether this pilot created the session (show leader info step)
+    isCreator: false,
   };
 
   // ── Buddy group colors ────────────────────────────────────────
@@ -486,6 +488,7 @@
     try {
       var sess = await apiPost('/api/sessions');
       state.sessionCode = sess.ID;
+      state.isCreator = true;
       saveState();
       showScreen('setup');
       showStep('step-callsign');
@@ -534,13 +537,24 @@
       }
       hideError('callsign-error');
       state.callsign = cs;
-      showStep('step-video');
+      if (state.isCreator) {
+        showStep('step-leader-info');
+      } else {
+        showStep('step-video');
+      }
     });
     $('input-callsign').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') $('btn-callsign-next').click();
     });
     $('btn-callsign-cancel').addEventListener('click', function () {
       validateAndShowLanding();
+    });
+  }
+
+  // ── Setup: Step 1.5 — Leader Info ──────────────────────────────
+  function initLeaderInfoStep() {
+    $('btn-leader-info-got-it').addEventListener('click', function () {
+      showStep('step-video');
     });
   }
 
@@ -3305,6 +3319,7 @@
   function init() {
     initLanding();
     initCallsignStep();
+    initLeaderInfoStep();
     initVideoStep();
     initFollowUpStep();
     initChannelStep();

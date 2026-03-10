@@ -32,7 +32,6 @@
       <p class="landing-subtitle">FPV FREQUENCY COORDINATOR</p>
       <div class="landing-buttons">
         <button id="btn-start" class="btn btn-primary btn-large">START SESSION</button>
-        <p class="session-leader-hint">You'll be the session leader. You can move pilots between channels, add pilots manually, and rebalance the group. If you leave while others are still flying, tap your row in the roster to transfer leadership first.</p>
         <p class="session-expiry-hint">Sessions last 12 hours</p>
         <div class="join-row">
           <button id="btn-join" class="btn btn-secondary btn-large join-row-btn">JOIN SESSION</button>
@@ -89,6 +88,18 @@
       <button id="btn-callsign-next" class="btn btn-primary btn-large">NEXT</button>
       <button id="btn-callsign-cancel" class="btn btn-secondary btn-large">CANCEL</button>
       <div id="callsign-error" class="error-msg hidden"></div>
+    </div>
+
+    <!-- Step 1.5: Leader Info (only shown when starting a session) -->
+    <div id="step-leader-info" class="setup-step hidden">
+      <h2 class="step-title">YOU'RE THE LEADER</h2>
+      <div class="leader-info-body">
+        <p class="leader-info-item"><strong>Move pilots</strong> between channels by tapping their row.</p>
+        <p class="leader-info-item"><strong>Add pilots</strong> manually if someone doesn't have the app.</p>
+        <p class="leader-info-item"><strong>Rebalance all</strong> to re-optimize the whole group at once.</p>
+        <p class="leader-info-item"><strong>Transfer leadership</strong> before you leave &mdash; tap your own row in the roster and hand it off.</p>
+      </div>
+      <button id="btn-leader-info-got-it" class="btn btn-primary btn-large">GOT IT</button>
     </div>
 
     <!-- Step 2: Video System -->
