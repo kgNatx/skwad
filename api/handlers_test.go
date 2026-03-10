@@ -388,6 +388,60 @@ func TestGetSession_WithConflicts(t *testing.T) {
 	}
 }
 
+func TestGetSession_BuddyPairsNoConflict(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create session.
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess db.Session
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Add two analog pilots both locked to the same frequency — simulates buddy-up.
+	join1 := JoinRequest{Callsign: "PILOT1", VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5658}
+	body1, _ := json.Marshal(join1)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body1)), sess.ID)
+
+	join2 := JoinRequest{Callsign: "PILOT2", VideoSystem: "analog", ChannelLocked: true, LockedFreqMHz: 5658}
+	body2, _ := json.Marshal(join2)
+	s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body2)), sess.ID)
+
+	// GET session — buddy pairs should NOT show conflicts.
+	getW := httptest.NewRecorder()
+	s.HandleGetSession(getW, httptest.NewRequest(http.MethodGet, "/", nil), sess.ID)
+
+	var result struct {
+		Pilots []struct {
+			ID         int `json:"ID"`
+			BuddyGroup int `json:"BuddyGroup"`
+			Conflicts  []struct {
+				Level string `json:"level"`
+			} `json:"conflicts"`
+		} `json:"pilots"`
+	}
+	if err := json.NewDecoder(getW.Result().Body).Decode(&result); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// Both pilots should be in the same buddy group.
+	if len(result.Pilots) < 2 {
+		t.Fatalf("expected at least 2 pilots, got %d", len(result.Pilots))
+	}
+
+	buddied := 0
+	for _, p := range result.Pilots {
+		if p.BuddyGroup > 0 {
+			buddied++
+		}
+		if len(p.Conflicts) > 0 {
+			t.Errorf("pilot %d: expected no conflicts for buddy pair, got %d", p.ID, len(p.Conflicts))
+		}
+	}
+	if buddied < 2 {
+		t.Errorf("expected at least 2 pilots in a buddy group, got %d", buddied)
+	}
+}
+
 func TestUpdateCallsign(t *testing.T) {
 	s := newTestServer(t)
 

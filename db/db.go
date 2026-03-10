@@ -42,6 +42,7 @@ type Pilot struct {
 	BuddyGroup        int
 	Active             bool
 	AnalogBands        string // comma-separated band codes: "R", "R,F,E", etc.
+	AddedByLeader      bool
 }
 
 const schema = `
@@ -109,6 +110,10 @@ func (d *DB) migrate() error {
 	_, err = d.db.Exec(`ALTER TABLE pilots ADD COLUMN analog_bands TEXT DEFAULT 'R'`)
 	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
 		return fmt.Errorf("migrate analog_bands: %w", err)
+	}
+	_, err = d.db.Exec(`ALTER TABLE pilots ADD COLUMN added_by_leader BOOLEAN DEFAULT FALSE`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		return fmt.Errorf("migrate added_by_leader: %w", err)
 	}
 	return nil
 }
@@ -216,12 +221,12 @@ func (d *DB) AddPilot(sessionID string, p *Pilot) (*Pilot, error) {
 	res, err := d.db.Exec(
 		`INSERT INTO pilots (session_id, callsign, video_system, fcc_unlocked, goggles,
 			bandwidth_mhz, race_mode, channel_locked, locked_frequency_mhz,
-			assigned_channel, assigned_frequency_mhz, buddy_group, joined_at, active, analog_bands)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?)`,
+			assigned_channel, assigned_frequency_mhz, buddy_group, joined_at, active, analog_bands, added_by_leader)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, TRUE, ?, ?)`,
 		sessionID, p.Callsign, p.VideoSystem, p.FCCUnlocked, p.Goggles,
 		p.BandwidthMHz, p.RaceMode, p.ChannelLocked, p.LockedFrequencyMHz,
 		p.AssignedChannel, p.AssignedFreqMHz, p.BuddyGroup, time.Now().UTC(),
-		p.AnalogBands,
+		p.AnalogBands, p.AddedByLeader,
 	)
 	if err != nil {
 		// If the callsign already exists but is inactive, reactivate them.
@@ -287,7 +292,8 @@ func (d *DB) GetActivePilots(sessionID string) ([]Pilot, error) {
 	rows, err := d.db.Query(
 		`SELECT id, session_id, callsign, video_system, fcc_unlocked, goggles,
 			bandwidth_mhz, race_mode, channel_locked, locked_frequency_mhz,
-			assigned_channel, assigned_frequency_mhz, buddy_group, active, analog_bands
+			assigned_channel, assigned_frequency_mhz, buddy_group, active, analog_bands,
+			added_by_leader
 		FROM pilots
 		WHERE session_id = ? AND active = TRUE
 		ORDER BY id`,
@@ -305,7 +311,7 @@ func (d *DB) GetActivePilots(sessionID string) ([]Pilot, error) {
 			&p.ID, &p.SessionID, &p.Callsign, &p.VideoSystem, &p.FCCUnlocked,
 			&p.Goggles, &p.BandwidthMHz, &p.RaceMode, &p.ChannelLocked,
 			&p.LockedFrequencyMHz, &p.AssignedChannel, &p.AssignedFreqMHz,
-			&p.BuddyGroup, &p.Active, &p.AnalogBands,
+			&p.BuddyGroup, &p.Active, &p.AnalogBands, &p.AddedByLeader,
 		); err != nil {
 			return nil, fmt.Errorf("scan pilot: %w", err)
 		}

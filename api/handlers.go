@@ -122,14 +122,21 @@ func (s *Server) HandleGetSession(w http.ResponseWriter, r *http.Request, code s
 	assignments := buildAssignments(pilots)
 	conflicts := freq.DetectConflicts(assignments)
 
-	// Build per-pilot conflict map.
+	// Build per-pilot lookup maps.
 	pilotCallsigns := make(map[int]string, len(pilots))
+	pilotBuddyGroup := make(map[int]int, len(pilots))
 	for _, p := range pilots {
 		pilotCallsigns[p.ID] = p.Callsign
+		pilotBuddyGroup[p.ID] = p.BuddyGroup
 	}
 
 	pilotConflicts := make(map[int][]PilotConflict)
 	for _, c := range conflicts {
+		// Skip conflicts between pilots that are intentionally sharing (same buddy group).
+		bgA, bgB := pilotBuddyGroup[c.PilotA], pilotBuddyGroup[c.PilotB]
+		if bgA > 0 && bgA == bgB {
+			continue
+		}
 		pilotConflicts[c.PilotA] = append(pilotConflicts[c.PilotA], PilotConflict{
 			OtherPilotID:  c.PilotB,
 			OtherCallsign: pilotCallsigns[c.PilotB],
@@ -920,6 +927,7 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 		ChannelLocked:      req.ChannelLocked,
 		LockedFrequencyMHz: req.LockedFreqMHz,
 		AnalogBands:        joinBands(req.AnalogBands),
+		AddedByLeader:      true,
 	}
 
 	added, err := s.DB.AddPilot(code, pilot)
