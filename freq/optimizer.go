@@ -4,17 +4,18 @@ import "sort"
 
 // PilotInput is what the optimizer needs from each pilot.
 type PilotInput struct {
-	ID            int
-	VideoSystem   string
-	FCCUnlocked   bool
-	BandwidthMHz  int
-	RaceMode      bool
-	Goggles       string
-	ChannelLocked bool
-	LockedFreqMHz int
-	PrevChannel   string // Previous assignment for stability
-	PrevFreqMHz   int
-	AnalogBands   []string // Band codes for analog: "R", "F", "E", "L"
+	ID               int
+	VideoSystem      string
+	FCCUnlocked      bool
+	BandwidthMHz     int
+	RaceMode         bool
+	Goggles          string
+	PreferredFreqMHz int      // Pilot's preference (0 = auto-assign). Soft signal.
+	Pinned           bool     // true = immovable (set by OptimizeWithLocks, never from DB)
+	PinnedFreqMHz    int      // frequency to pin to (set by OptimizeWithLocks)
+	PrevChannel      string   // Current assignment for stability
+	PrevFreqMHz      int
+	AnalogBands      []string // Band codes for analog: "R", "F", "E", "L"
 }
 
 // Assignment is the optimizer's output for one pilot.
