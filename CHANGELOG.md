@@ -4,6 +4,29 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.3.0] - 2026-03-10
+
+### Changed
+- **Channel preferences replace locks.** Pilots set a preferred channel (or auto-assign). Preferences are soft signals -- the optimizer honors them when possible but can override for session quality.
+- **Simplified escalation.** Two levels instead of four: Level 0 (clean placement) and Level 1 (pilot chooses buddy-up or partial rebalance).
+- **All pilots are rebalanceable.** No permanent locks. Leader's Rebalance All can move anyone, respecting preferences as weights.
+- **Rebalance uses two-phase approach.** Surgical pass first (only move conflicted pilots), full re-optimize fallback.
+
+### Added
+- **Preference override dialog.** When a preference can't be honored, pilot sees why and where they landed (GOT IT button).
+- **Buddy/rebalance choice dialog.** When no clean channel is available, pilot picks: buddy up with someone, or partial rebalance (move the most flexible pilot).
+- **AUTO-ASSIGN NEW button.** Self-service channel change option that picks a different channel.
+- **Moved-by-rebalance notification.** When a partial rebalance moves you, you see a "You've been moved" dialog with GOT IT button on your next poll.
+- **Rebalance recommended indicator.** Subtle nudge on leader's screen when conflicts exist.
+- **Force placement for leaders.** Leader can place a pilot on a conflicting channel (buddy-up or overlap accepted).
+- `preferred_frequency_mhz` column in pilots table.
+- `rebalance_recommended` flag in GET session response.
+- `force` flag on channel change request (leader-only).
+
+### Removed
+- `channel_locked` and `locked_frequency_mhz` no longer used (columns kept for SQLite compatibility).
+- Level 2 (pair unlocking) and Level 3 (buddy-only) escalation -- replaced by Level 1 choice dialog.
+
 ## [0.2.1] - 2026-03-09
 
 ### Added
