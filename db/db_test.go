@@ -466,6 +466,66 @@ func TestMigration_PreferredFrequency(t *testing.T) {
 	}
 }
 
+func TestAddPilot_PreferredFrequency(t *testing.T) {
+	d := newTestDB(t)
+	sess, err := d.CreateSession()
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	pilot := &Pilot{
+		Callsign:         "TESTPILOT",
+		VideoSystem:      "analog",
+		PreferredFreqMHz: 5732,
+	}
+	added, err := d.AddPilot(sess.ID, pilot)
+	if err != nil {
+		t.Fatalf("AddPilot: %v", err)
+	}
+	if added.PreferredFreqMHz != 5732 {
+		t.Errorf("PreferredFreqMHz = %d, want 5732", added.PreferredFreqMHz)
+	}
+
+	// Verify it round-trips through GetActivePilots.
+	pilots, err := d.GetActivePilots(sess.ID)
+	if err != nil {
+		t.Fatalf("GetActivePilots: %v", err)
+	}
+	if len(pilots) != 1 {
+		t.Fatalf("expected 1 pilot, got %d", len(pilots))
+	}
+	if pilots[0].PreferredFreqMHz != 5732 {
+		t.Errorf("round-trip PreferredFreqMHz = %d, want 5732", pilots[0].PreferredFreqMHz)
+	}
+}
+
+func TestUpdatePilotPreference(t *testing.T) {
+	d := newTestDB(t)
+	sess, err := d.CreateSession()
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	pilot := &Pilot{Callsign: "TESTPILOT", VideoSystem: "analog"}
+	added, err := d.AddPilot(sess.ID, pilot)
+	if err != nil {
+		t.Fatalf("AddPilot: %v", err)
+	}
+
+	// Update preference.
+	if err := d.UpdatePilotPreference(added.ID, 5806); err != nil {
+		t.Fatalf("UpdatePilotPreference: %v", err)
+	}
+
+	pilots, err := d.GetActivePilots(sess.ID)
+	if err != nil {
+		t.Fatalf("GetActivePilots: %v", err)
+	}
+	if pilots[0].PreferredFreqMHz != 5806 {
+		t.Errorf("after update PreferredFreqMHz = %d, want 5806", pilots[0].PreferredFreqMHz)
+	}
+}
+
 func TestGenerateCode(t *testing.T) {
 	code := generateCode()
 	if len(code) != 6 {
