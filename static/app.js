@@ -862,9 +862,11 @@
         showChoiceDialog(preview,
           function onBuddy(buddy) {
             body.preferred_frequency_mhz = buddy.freq_mhz;
+            body.choice = 'buddy';
             commitJoin(body);
           },
           function onRebalance() {
+            body.choice = 'rebalance';
             commitJoin(body);
           },
           function onCancel() {
@@ -1582,7 +1584,7 @@
   function initChannelChangeOptions() {
     $('btn-cco-auto-assign').addEventListener('click', function () {
       hideChannelChangeOptions();
-      submitChannelChange(0);
+      submitChannelChange(0, state.myFreqMHz);
     });
 
     $('btn-cco-preference').addEventListener('click', function () {
@@ -1668,7 +1670,14 @@
     channelChangeSelectedFreq = 0;
 
     var pool = getChannelPool();
+    var myVideoSystem = getEffectiveVideoSystem();
+    var myBw = state.bandwidthMHz || 0;
+
     pool.forEach(function (ch) {
+      // Non-leader self-service: hide channels that conflict with other pilots.
+      var conflicts = findConflicts(ch.freq, state.pilotId, myVideoSystem, myBw);
+      if (conflicts.length > 0) return;
+
       var nameSpan = el('span', { className: 'ch-name', textContent: ch.name });
       var freqSpan = el('span', { className: 'ch-freq', textContent: String(ch.freq) });
       var btn = el('button', { className: 'btn-channel' }, [nameSpan, freqSpan]);
@@ -1711,7 +1720,7 @@
       }
     });
     $('btn-auto-reassign').addEventListener('click', function () {
-      submitChannelChange(0);
+      submitChannelChange(0, state.myFreqMHz);
     });
     $('btn-change-video-system').addEventListener('click', async function () {
       hideChannelChange();
@@ -1753,9 +1762,12 @@
     });
   }
 
-  async function submitChannelChange(freqMHz) {
+  async function submitChannelChange(freqMHz, excludeFreqMHz) {
     hideChannelChange();
     var body = { preferred_frequency_mhz: freqMHz };
+    if (excludeFreqMHz && freqMHz === 0) {
+      body.exclude_freq_mhz = excludeFreqMHz;
+    }
     try {
       // Preview first to check for conflicts.
       var preview = await apiPost(
@@ -1774,9 +1786,10 @@
       if (level === 1) {
         showChoiceDialog(preview,
           function onBuddy(buddy) {
-            commitChannelChange({ preferred_frequency_mhz: buddy.freq_mhz });
+            commitChannelChange({ preferred_frequency_mhz: buddy.freq_mhz, choice: 'buddy' });
           },
           function onRebalance() {
+            body.choice = 'rebalance';
             commitChannelChange(body);
           },
           null
@@ -1979,9 +1992,10 @@
       if (level === 1) {
         showChoiceDialog(preview,
           function onBuddy(buddy) {
-            commitChannelChangeForPilot(pilotId, { preferred_frequency_mhz: buddy.freq_mhz });
+            commitChannelChangeForPilot(pilotId, { preferred_frequency_mhz: buddy.freq_mhz, choice: 'buddy' });
           },
           function onRebalance() {
+            body.choice = 'rebalance';
             commitChannelChangeForPilot(pilotId, body);
           },
           null

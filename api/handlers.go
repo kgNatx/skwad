@@ -69,6 +69,7 @@ type JoinRequest struct {
 	RaceMode         bool     `json:"race_mode"`
 	PreferredFreqMHz int      `json:"preferred_frequency_mhz"`
 	AnalogBands      []string `json:"analog_bands"`
+	Choice           string   `json:"choice"` // "", "buddy", or "rebalance"
 }
 
 // PilotConflict describes a conflict between the current pilot and another.
@@ -261,8 +262,14 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 
 	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput)
 
-	// Apply all assignments from the result.
-	for _, a := range result.Assignments {
+	// Select the assignment set based on the client's choice.
+	assignments := result.Assignments
+	if req.Choice == "rebalance" && result.Level == 1 && result.RebalanceOption != nil {
+		assignments = result.RebalanceOption.Assignments
+	}
+
+	// Apply all assignments from the selected set.
+	for _, a := range assignments {
 		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
 			log.Printf("HandleJoinSession: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
 		}
@@ -472,8 +479,10 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 
 // UpdateChannelRequest is the JSON body for changing a pilot's channel preference.
 type UpdateChannelRequest struct {
-	PreferredFreqMHz int  `json:"preferred_frequency_mhz"`
-	Force            bool `json:"force"` // leader-only: accept conflicting placement
+	PreferredFreqMHz int    `json:"preferred_frequency_mhz"`
+	Force            bool   `json:"force"`            // leader-only: accept conflicting placement
+	Choice           string `json:"choice"`           // "", "buddy", or "rebalance"
+	ExcludeFreqMHz   int    `json:"exclude_freq_mhz"` // auto-assign: avoid this frequency
 }
 
 // HandlePreviewChannelChange dry-runs graduated escalation for a pilot changing
@@ -658,7 +667,83 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 
 	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput)
 
-	for _, a := range result.Assignments {
+	// Select the assignment set based on the client's choice.
+	assignments := result.Assignments
+	if req.Choice == "rebalance" && result.Level == 1 && result.RebalanceOption != nil {
+		assignments = result.RebalanceOption.Assignments
+	}
+
+	// For auto-assign (PreferredFreqMHz == 0), if the optimizer gave back the
+	// same frequency the pilot asked to leave, try to find a different one.
+	if req.ExcludeFreqMHz > 0 && req.PreferredFreqMHz == 0 {
+		for _, a := range assignments {
+			if a.PilotID == pilotID && a.FreqMHz == req.ExcludeFreqMHz {
+				// The optimizer picked the excluded frequency. Find the next-best
+				// clean channel from the pilot's pool.
+				pool := freq.ChannelPool(
+					changingPilotInput.VideoSystem,
+					changingPilotInput.FCCUnlocked,
+					changingPilotInput.BandwidthMHz,
+					changingPilotInput.RaceMode,
+					changingPilotInput.Goggles,
+					changingPilotInput.AnalogBands,
+				)
+				bw := freq.OccupiedBandwidth(changingPilotInput.VideoSystem, changingPilotInput.BandwidthMHz)
+				// Build occupied set from existing pilots (not the changing pilot).
+				type occupied struct {
+					freq int
+					bw   int
+				}
+				var others []occupied
+				for _, ep := range existingInputs {
+					for _, ea := range assignments {
+						if ea.PilotID == ep.ID {
+							others = append(others, occupied{ea.FreqMHz, freq.OccupiedBandwidth(ep.VideoSystem, ep.BandwidthMHz)})
+							break
+						}
+					}
+				}
+				bestFreq := 0
+				bestChannel := ""
+				bestMargin := -1
+				for _, ch := range pool {
+					if ch.FreqMHz == req.ExcludeFreqMHz {
+						continue
+					}
+					minSep := 9999
+					for _, o := range others {
+						sep := ch.FreqMHz - o.freq
+						if sep < 0 {
+							sep = -sep
+						}
+						required := (bw + o.bw) / 2
+						margin := sep - required
+						if margin < minSep {
+							minSep = margin
+						}
+					}
+					if minSep > bestMargin {
+						bestMargin = minSep
+						bestFreq = ch.FreqMHz
+						bestChannel = ch.Name
+					}
+				}
+				if bestFreq > 0 {
+					// Patch the assignment in place.
+					for i := range assignments {
+						if assignments[i].PilotID == pilotID {
+							assignments[i].FreqMHz = bestFreq
+							assignments[i].Channel = bestChannel
+							break
+						}
+					}
+				}
+				break
+			}
+		}
+	}
+
+	for _, a := range assignments {
 		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
 			log.Printf("HandleUpdatePilotChannel: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
 		}
