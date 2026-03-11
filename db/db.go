@@ -361,10 +361,10 @@ func (d *DB) UpdatePilotPreference(pilotID int, preferredFreqMHz int) error {
 }
 
 // UpdatePilotVideoSystem changes an active pilot's video system and related settings.
-func (d *DB) UpdatePilotVideoSystem(pilotID int, videoSystem string, fccUnlocked bool, goggles string, bandwidthMHz int, raceMode bool, analogBands string) error {
+func (d *DB) UpdatePilotVideoSystem(pilotID int, videoSystem string, fccUnlocked bool, goggles string, bandwidthMHz int, raceMode bool, analogBands string, preferredFreqMHz int) error {
 	res, err := d.db.Exec(
-		`UPDATE pilots SET video_system = ?, fcc_unlocked = ?, goggles = ?, bandwidth_mhz = ?, race_mode = ?, analog_bands = ? WHERE id = ? AND active = TRUE`,
-		videoSystem, fccUnlocked, goggles, bandwidthMHz, raceMode, analogBands, pilotID,
+		`UPDATE pilots SET video_system = ?, fcc_unlocked = ?, goggles = ?, bandwidth_mhz = ?, race_mode = ?, analog_bands = ?, preferred_frequency_mhz = ? WHERE id = ? AND active = TRUE`,
+		videoSystem, fccUnlocked, goggles, bandwidthMHz, raceMode, analogBands, preferredFreqMHz, pilotID,
 	)
 	if err != nil {
 		return fmt.Errorf("update pilot video system: %w", err)

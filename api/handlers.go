@@ -758,12 +758,13 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 
 // UpdateVideoSystemRequest is the JSON body for changing a pilot's video system.
 type UpdateVideoSystemRequest struct {
-	VideoSystem  string `json:"video_system"`
-	FCCUnlocked  bool   `json:"fcc_unlocked"`
-	Goggles      string `json:"goggles"`
-	BandwidthMHz int      `json:"bandwidth_mhz"`
-	RaceMode     bool     `json:"race_mode"`
-	AnalogBands  []string `json:"analog_bands"`
+	VideoSystem      string   `json:"video_system"`
+	FCCUnlocked      bool     `json:"fcc_unlocked"`
+	Goggles          string   `json:"goggles"`
+	BandwidthMHz     int      `json:"bandwidth_mhz"`
+	RaceMode         bool     `json:"race_mode"`
+	AnalogBands      []string `json:"analog_bands"`
+	PreferredFreqMHz int      `json:"preferred_frequency_mhz"`
 }
 
 // HandleUpdatePilotVideoSystem changes a pilot's video system and reoptimizes.
@@ -780,7 +781,7 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := s.DB.UpdatePilotVideoSystem(pilotID, req.VideoSystem, req.FCCUnlocked, req.Goggles, req.BandwidthMHz, req.RaceMode, joinBands(req.AnalogBands)); err != nil {
+	if err := s.DB.UpdatePilotVideoSystem(pilotID, req.VideoSystem, req.FCCUnlocked, req.Goggles, req.BandwidthMHz, req.RaceMode, joinBands(req.AnalogBands), req.PreferredFreqMHz); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			http.Error(w, "pilot not found", http.StatusNotFound)
 			return

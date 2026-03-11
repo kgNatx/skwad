@@ -32,6 +32,8 @@
     expectingAssignmentChange: false,
     // Whether this pilot created the session (show leader info step)
     isCreator: false,
+    // True when user is changing video system from within a session
+    _changingVideoSystem: false,
   };
 
   // ── Buddy group colors ────────────────────────────────────────
@@ -574,6 +576,7 @@
       });
     });
     $('btn-video-cancel').addEventListener('click', function () {
+      if (state._changingVideoSystem) { cancelVideoSystemChange(); return; }
       validateAndShowLanding();
     });
   }
@@ -688,6 +691,7 @@
     // Next button for follow-up step
     $('btn-followup-next').addEventListener('click', goToChannelStep);
     $('btn-followup-cancel').addEventListener('click', function () {
+      if (state._changingVideoSystem) { cancelVideoSystemChange(); return; }
       validateAndShowLanding();
     });
   }
@@ -758,6 +762,36 @@
     }
   }
 
+  // ── In-session video system change ──────────────────────────
+  async function submitVideoSystemChange() {
+    var btn = $('btn-join-session');
+    setLoading(btn, true);
+    state.expectingAssignmentChange = true;
+    state._changingVideoSystem = false;
+    try {
+      await apiPut('/api/pilots/' + state.pilotId + '/video-system?session=' + state.sessionCode, {
+        video_system: getEffectiveVideoSystem(),
+        fcc_unlocked: state.fccUnlocked,
+        goggles: state.goggles,
+        bandwidth_mhz: state.bandwidthMHz,
+        race_mode: state.raceMode,
+        analog_bands: state.analogBands,
+        preferred_frequency_mhz: state.preferredFreqMHz,
+      });
+    } catch (err) {
+      showError('join-error', 'FAILED TO UPDATE: ' + (err.message || '').toUpperCase());
+      setLoading(btn, false);
+      return;
+    }
+    setLoading(btn, false);
+    enterSessionView();
+  }
+
+  function cancelVideoSystemChange() {
+    state._changingVideoSystem = false;
+    enterSessionView();
+  }
+
   // ── Setup: Step 4 — Channel Preference ────────────────────────
   var previewPilots = []; // Cached pilots for spectrum preview on channel step
 
@@ -770,6 +804,7 @@
     $('spectrum-preview').classList.add('hidden');
     var hint = $('preference-hint');
     if (hint) hint.style.display = 'none';
+    $('btn-join-session').textContent = state._changingVideoSystem ? 'UPDATE' : 'JOIN';
     renderChannelPicker();
     // Pre-fetch existing pilots for spectrum preview
     fetchPreviewPilots();
@@ -869,6 +904,7 @@
 
   async function handleJoinSession() {
     hideError('join-error');
+    if (state._changingVideoSystem) { submitVideoSystemChange(); return; }
 
     var btn = $('btn-join-session');
     setLoading(btn, true);
@@ -1627,23 +1663,15 @@
       showChannelChange();
     });
 
-    $('btn-cco-video-system').addEventListener('click', async function () {
+    $('btn-cco-video-system').addEventListener('click', function () {
       hideChannelChangeOptions();
-      // Self: remove from session, keep callsign + session code, go to wizard
-      state.expectingAssignmentChange = true;
-      var savedCallsign = state.callsign;
-      var savedCode = state.sessionCode;
-      try {
-        await apiDelete('/api/pilots/' + state.pilotId + '?session=' + state.sessionCode);
-      } catch (err) {
-        // Continue even if delete fails
-      }
-      stopPolling();
-      clearState();
-      state.sessionCode = savedCode;
-      state.callsign = savedCallsign;
+      state._changingVideoSystem = true;
       state.videoSystem = '';
-      $('input-callsign').value = savedCallsign;
+      state.fccUnlocked = false;
+      state.goggles = '';
+      state.bandwidthMHz = 0;
+      state.raceMode = false;
+      state.walksnailMode = '';
       showScreen('setup');
       showStep('step-video');
     });
@@ -1774,21 +1802,15 @@
         $('input-add-callsign').value = pilot.Callsign;
         return;
       }
-      // Self: remove from session, keep callsign + session code, go to wizard
-      state.expectingAssignmentChange = true;
-      var savedCallsign = state.callsign;
-      var savedCode = state.sessionCode;
-      try {
-        await apiDelete('/api/pilots/' + state.pilotId + '?session=' + state.sessionCode);
-      } catch (err) {
-        // Continue even if delete fails
-      }
-      stopPolling();
-      clearState();
-      state.sessionCode = savedCode;
-      state.callsign = savedCallsign;
+      // Self: update video system in place
+      hideChannelChange();
+      state._changingVideoSystem = true;
       state.videoSystem = '';
-      $('input-callsign').value = savedCallsign;
+      state.fccUnlocked = false;
+      state.goggles = '';
+      state.bandwidthMHz = 0;
+      state.raceMode = false;
+      state.walksnailMode = '';
       showScreen('setup');
       showStep('step-video');
     });
