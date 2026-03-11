@@ -346,8 +346,11 @@
       </div>
       <div id="add-pilot-options" class="add-pilot-options hidden">
         <div id="add-pilot-fcc" class="add-pilot-option-row hidden">
-          <label class="toggle-label">FCC UNLOCKED</label>
-          <button id="btn-add-fcc" class="btn btn-toggle">NO</button>
+          <label class="toggle-label">FCC UNLOCKED?</label>
+          <div class="btn-row">
+            <button class="btn btn-option btn-add-fcc" data-add-fcc="true">YES</button>
+            <button class="btn btn-option btn-add-fcc" data-add-fcc="false">NO</button>
+          </div>
         </div>
         <div id="add-pilot-bw" class="add-pilot-option-row hidden">
           <label class="toggle-label">BANDWIDTH</label>

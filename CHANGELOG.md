@@ -4,6 +4,12 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.3.1] - 2026-03-11
+
+### Fixed
+- **Video system change no longer kicks you out.** Changing your video system now updates in place instead of deleting and re-adding the pilot. Cancel returns you to the session with your previous settings intact.
+- **Add-pilot FCC buttons.** Leader's add-pilot dialog now uses explicit YES/NO buttons for FCC unlock instead of a single toggle, matching the join wizard.
+
 ## [0.3.0] - 2026-03-10
 
 ### Changed

@@ -2402,8 +2402,7 @@
     var needsFCC = FCC_SYSTEMS.indexOf(system) !== -1 || BW_SYSTEMS[system];
     if (needsFCC) {
       $('add-pilot-fcc').classList.remove('hidden');
-      $('btn-add-fcc').textContent = 'NO';
-      $('btn-add-fcc').classList.remove('active');
+      document.querySelectorAll('.btn-add-fcc').forEach(function (b) { b.classList.remove('selected'); });
     } else {
       $('add-pilot-fcc').classList.add('hidden');
     }
@@ -2478,11 +2477,13 @@
       });
     });
 
-    // FCC toggle
-    $('btn-add-fcc').addEventListener('click', function () {
-      addPilotState.fccUnlocked = !addPilotState.fccUnlocked;
-      $('btn-add-fcc').textContent = addPilotState.fccUnlocked ? 'YES' : 'NO';
-      $('btn-add-fcc').classList.toggle('active', addPilotState.fccUnlocked);
+    // FCC buttons
+    document.querySelectorAll('.btn-add-fcc').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.btn-add-fcc').forEach(function (b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        addPilotState.fccUnlocked = btn.dataset.addFcc === 'true';
+      });
     });
 
     // Analog band toggles for add-pilot
