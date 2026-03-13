@@ -806,6 +806,7 @@
     if (hint) hint.style.display = 'none';
     $('btn-join-session').textContent = state._changingVideoSystem ? 'UPDATE' : 'JOIN';
     renderChannelPicker();
+    updateJoinButtonState();
     // Pre-fetch existing pilots for spectrum preview
     fetchPreviewPilots();
   }
@@ -823,27 +824,33 @@
     renderSpectrum(previewPilots, 'spectrum-preview', state.preferredFreqMHz || 0, bw);
   }
 
+  function updateJoinButtonState() {
+    var btn = $('btn-join-session');
+    var prefActive = $('btn-have-preference').classList.contains('active');
+    btn.disabled = prefActive && !state.preferredFreqMHz;
+  }
+
   function initChannelStep() {
     $('btn-auto-assign').addEventListener('click', function () {
       state.preferredFreqMHz = 0;
       $('btn-auto-assign').classList.add('active');
       $('btn-have-preference').classList.remove('active');
-      $('channel-picker').style.display = 'none';
-      $('spectrum-preview').style.display = 'none';
-      var hint = $('preference-hint');
-      if (hint) hint.style.display = 'none';
+      $('channel-picker').classList.add('hidden');
+      $('spectrum-preview').classList.add('hidden');
+      $('preference-hint').style.display = 'none';
       // Deselect any selected channel
       document.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });
+      updateJoinButtonState();
     });
 
     $('btn-have-preference').addEventListener('click', function () {
       $('btn-have-preference').classList.add('active');
       $('btn-auto-assign').classList.remove('active');
-      $('channel-picker').style.display = '';
-      $('spectrum-preview').style.display = '';
-      var hint = $('preference-hint');
-      if (hint) hint.style.display = '';
+      $('channel-picker').classList.remove('hidden');
+      $('spectrum-preview').classList.remove('hidden');
+      $('preference-hint').style.display = '';
       renderSpectrumPreview();
+      updateJoinButtonState();
     });
 
     $('btn-join-session').addEventListener('click', handleJoinSession);
@@ -883,6 +890,7 @@
         btn.classList.add('selected');
         state.preferredFreqMHz = ch.freq;
         renderSpectrumPreview();
+        updateJoinButtonState();
       });
       picker.appendChild(btn);
     });

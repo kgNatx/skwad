@@ -4,6 +4,12 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.3.2] - 2026-03-13
+
+### Fixed
+- **Preference picker not showing in join wizard.** Clicking "I HAVE A PREFERENCE" showed the hint text but not the channel grid or spectrum — `classList.add('hidden')` (`display: none !important`) was being "shown" with `style.display = ''`, which can't override `!important`. Switched to consistent `classList.remove('hidden')`.
+- **Join without selecting a preference.** JOIN button was always enabled on the channel preference step, allowing pilots to submit with `preferredFreqMHz: 0` (auto-assign) after explicitly choosing "I HAVE A PREFERENCE". JOIN is now disabled until a channel is selected.
+
 ## [0.3.1] - 2026-03-11
 
 ### Fixed
