@@ -14,7 +14,7 @@ func TestOptimize_SingleAnalog(t *testing.T) {
 	pilots := []PilotInput{
 		{ID: 1, VideoSystem: "analog"},
 	}
-	assignments := Optimize(pilots, DefaultGuardBandMHz)
+	assignments := Optimize(pilots, DefaultGuardBandMHz, nil)
 	if len(assignments) != 1 {
 		t.Fatalf("expected 1 assignment, got %d", len(assignments))
 	}
@@ -41,7 +41,7 @@ func TestOptimize_TwoAnalog_MaxSeparation(t *testing.T) {
 		{ID: 1, VideoSystem: "analog"},
 		{ID: 2, VideoSystem: "analog"},
 	}
-	assignments := Optimize(pilots, DefaultGuardBandMHz)
+	assignments := Optimize(pilots, DefaultGuardBandMHz, nil)
 	if len(assignments) != 2 {
 		t.Fatalf("expected 2 assignments, got %d", len(assignments))
 	}
@@ -63,7 +63,7 @@ func TestOptimize_FourAnalog_SafeSpacing(t *testing.T) {
 		{ID: 3, VideoSystem: "analog"},
 		{ID: 4, VideoSystem: "analog"},
 	}
-	assignments := Optimize(pilots, DefaultGuardBandMHz)
+	assignments := Optimize(pilots, DefaultGuardBandMHz, nil)
 	if len(assignments) != 4 {
 		t.Fatalf("expected 4 assignments, got %d", len(assignments))
 	}
@@ -97,7 +97,7 @@ func TestOptimize_LockedChannel(t *testing.T) {
 		{ID: 1, VideoSystem: "analog", Pinned: true, PinnedFreqMHz: 5732}, // R3
 		{ID: 2, VideoSystem: "analog"},
 	}
-	assignments := Optimize(pilots, DefaultGuardBandMHz)
+	assignments := Optimize(pilots, DefaultGuardBandMHz, nil)
 	if len(assignments) != 2 {
 		t.Fatalf("expected 2 assignments, got %d", len(assignments))
 	}
@@ -126,7 +126,7 @@ func TestOptimize_BuddyGroup_TooManyDJI(t *testing.T) {
 		{ID: 3, VideoSystem: "dji_o3", BandwidthMHz: 20},
 		{ID: 4, VideoSystem: "dji_o3", BandwidthMHz: 20},
 	}
-	assignments := Optimize(pilots, DefaultGuardBandMHz)
+	assignments := Optimize(pilots, DefaultGuardBandMHz, nil)
 	if len(assignments) != 4 {
 		t.Fatalf("expected 4 assignments, got %d", len(assignments))
 	}
@@ -150,7 +150,7 @@ func TestOptimize_MixedSystems(t *testing.T) {
 		{ID: 2, VideoSystem: "hdzero"},
 		{ID: 3, VideoSystem: "dji_o3", FCCUnlocked: true, BandwidthMHz: 20},
 	}
-	assignments := Optimize(pilots, DefaultGuardBandMHz)
+	assignments := Optimize(pilots, DefaultGuardBandMHz, nil)
 	if len(assignments) != 3 {
 		t.Fatalf("expected 3 assignments, got %d", len(assignments))
 	}
@@ -175,7 +175,7 @@ func TestOptimize_AnalogAndDJIO3_40MHz(t *testing.T) {
 		{ID: 2, VideoSystem: "analog", Pinned: true, PinnedFreqMHz: 5732}, // R3
 		{ID: 3, VideoSystem: "analog"},                                            // Should avoid R4 (5769)
 	}
-	assignments := Optimize(pilots, DefaultGuardBandMHz)
+	assignments := Optimize(pilots, DefaultGuardBandMHz, nil)
 
 	// Find the flexible analog pilot's assignment.
 	var flexAnalog Assignment
@@ -205,7 +205,7 @@ func TestOptimize_BandwidthMHzPopulated(t *testing.T) {
 		{ID: 2, VideoSystem: "dji_o3", BandwidthMHz: 40},
 		{ID: 3, VideoSystem: "dji_o4", BandwidthMHz: 60},
 	}
-	assignments := Optimize(pilots, DefaultGuardBandMHz)
+	assignments := Optimize(pilots, DefaultGuardBandMHz, nil)
 
 	want := map[int]int{1: 20, 2: 40, 3: 60}
 	for _, a := range assignments {
@@ -227,7 +227,7 @@ func TestOptimizeWithLocks_LockedPilotsStay(t *testing.T) {
 	}
 	lockedIDs := map[int]bool{1: true, 2: true}
 
-	assignments := OptimizeWithLocks(inputs, lockedIDs, DefaultGuardBandMHz)
+	assignments := OptimizeWithLocks(inputs, lockedIDs, DefaultGuardBandMHz, nil)
 
 	// Pilots 1 and 2 must stay exactly where they were.
 	for _, a := range assignments {
@@ -258,8 +258,8 @@ func TestOptimizeWithLocks_EmptyLockedSet(t *testing.T) {
 		{ID: 1, VideoSystem: "analog"},
 		{ID: 2, VideoSystem: "analog"},
 	}
-	locked := OptimizeWithLocks(inputs, map[int]bool{}, DefaultGuardBandMHz)
-	unlocked := Optimize(inputs, DefaultGuardBandMHz)
+	locked := OptimizeWithLocks(inputs, map[int]bool{}, DefaultGuardBandMHz, nil)
+	unlocked := Optimize(inputs, DefaultGuardBandMHz, nil)
 
 	for i := range locked {
 		if locked[i].FreqMHz != unlocked[i].FreqMHz {
@@ -333,7 +333,7 @@ func TestFindMinimalDisplacement_Level0_NoConflict(t *testing.T) {
 	}
 	newPilot := PilotInput{ID: -1, VideoSystem: "analog"}
 
-	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz)
+	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz, nil)
 
 	if result.Level != 0 {
 		t.Errorf("expected level 0, got %d", result.Level)
@@ -358,7 +358,7 @@ func TestFindMinimalDisplacement_Level0_NewPilotGetsAssignment(t *testing.T) {
 	}
 	newPilot := PilotInput{ID: -1, VideoSystem: "analog"}
 
-	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz)
+	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz, nil)
 
 	if result.Level != 0 {
 		t.Errorf("expected level 0, got %d", result.Level)
@@ -392,7 +392,7 @@ func TestFindMinimalDisplacement_Level1_UnlockOne(t *testing.T) {
 	}
 	newPilot := PilotInput{ID: -1, VideoSystem: "dji_o3", BandwidthMHz: 40}
 
-	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz)
+	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz, nil)
 
 	if result.Level != 1 {
 		t.Errorf("expected level 1, got %d", result.Level)
@@ -426,7 +426,7 @@ func TestFindMinimalDisplacement_Level1_PreferencePilotLeastFlexible(t *testing.
 	}
 	newPilot := PilotInput{ID: -1, VideoSystem: "dji_o3", BandwidthMHz: 40}
 
-	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz)
+	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz, nil)
 
 	// Should reach Level 1 since Level 0 has a conflict.
 	if result.Level != 1 {
@@ -459,7 +459,7 @@ func TestFindMinimalDisplacement_Level1_BuddyOption(t *testing.T) {
 	}
 	newPilot := PilotInput{ID: -1, VideoSystem: "analog"}
 
-	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz)
+	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz, nil)
 
 	if result.Level != 1 {
 		t.Errorf("expected level 1, got %d", result.Level)
@@ -527,7 +527,7 @@ func TestFindMinimalDisplacement_Level1_BothOptions(t *testing.T) {
 	}
 	newPilot := PilotInput{ID: -1, VideoSystem: "analog"}
 
-	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz)
+	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz, nil)
 
 	if result.Level != 1 {
 		t.Errorf("expected level 1, got %d", result.Level)
@@ -547,7 +547,7 @@ func TestFindMinimalDisplacement_Level1_RebalanceOption(t *testing.T) {
 	}
 	newPilot := PilotInput{ID: -1, VideoSystem: "dji_o3", BandwidthMHz: 40}
 
-	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz)
+	result := FindMinimalDisplacement(existing, newPilot, DefaultGuardBandMHz, nil)
 
 	if result.Level != 1 {
 		t.Errorf("expected level 1, got %d", result.Level)
@@ -557,5 +557,70 @@ func TestFindMinimalDisplacement_Level1_RebalanceOption(t *testing.T) {
 	}
 	if len(result.RebalanceOption.MovedPilotIDs) == 0 {
 		t.Error("rebalance option should have at least one moved pilot")
+	}
+}
+
+// ── Fixed channel constraint tests ───────────────────────────────
+
+func TestOptimize_FixedChannels(t *testing.T) {
+	fixedFreqs := []int{5658, 5732, 5843, 5917}
+	inputs := []PilotInput{
+		{ID: 1, VideoSystem: "analog", AnalogBands: []string{"R"}},
+		{ID: 2, VideoSystem: "analog", AnalogBands: []string{"R"}},
+		{ID: 3, VideoSystem: "analog", AnalogBands: []string{"R"}},
+		{ID: 4, VideoSystem: "analog", AnalogBands: []string{"R"}},
+	}
+	result := Optimize(inputs, DefaultGuardBandMHz, fixedFreqs)
+	if len(result) != 4 {
+		t.Fatalf("expected 4 assignments, got %d", len(result))
+	}
+	fixedSet := map[int]bool{5658: true, 5732: true, 5843: true, 5917: true}
+	for _, a := range result {
+		if !fixedSet[a.FreqMHz] {
+			t.Errorf("pilot %d assigned to %d, not in fixed set", a.PilotID, a.FreqMHz)
+		}
+	}
+	usedFreqs := map[int]bool{}
+	for _, a := range result {
+		usedFreqs[a.FreqMHz] = true
+	}
+	if len(usedFreqs) != 4 {
+		t.Errorf("expected 4 unique frequencies, got %d", len(usedFreqs))
+	}
+}
+
+func TestOptimize_FixedChannels_BuddyOverflow(t *testing.T) {
+	fixedFreqs := []int{5658, 5732, 5843, 5917}
+	inputs := make([]PilotInput, 6)
+	for i := range inputs {
+		inputs[i] = PilotInput{ID: i + 1, VideoSystem: "analog", AnalogBands: []string{"R"}}
+	}
+	result := Optimize(inputs, DefaultGuardBandMHz, fixedFreqs)
+	fixedSet := map[int]bool{5658: true, 5732: true, 5843: true, 5917: true}
+	for _, a := range result {
+		if !fixedSet[a.FreqMHz] {
+			t.Errorf("pilot %d assigned to %d, not in fixed set", a.PilotID, a.FreqMHz)
+		}
+	}
+	hasBuddy := false
+	for _, a := range result {
+		if a.BuddyGroup > 0 {
+			hasBuddy = true
+			break
+		}
+	}
+	if !hasBuddy {
+		t.Error("expected buddy groups with 6 pilots on 4 channels")
+	}
+}
+
+func TestOptimize_FixedChannels_Nil(t *testing.T) {
+	inputs := []PilotInput{
+		{ID: 1, VideoSystem: "analog", AnalogBands: []string{"R"}},
+		{ID: 2, VideoSystem: "analog", AnalogBands: []string{"R"}},
+	}
+	result := Optimize(inputs, DefaultGuardBandMHz, nil)
+	if len(result) != 2 {
+		t.Fatalf("expected 2 assignments, got %d", len(result))
 	}
 }

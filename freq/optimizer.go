@@ -1,6 +1,9 @@
 package freq
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 // PilotInput is what the optimizer needs from each pilot.
 type PilotInput struct {
@@ -39,7 +42,9 @@ type usedEntry struct {
 // When channels must be shared, it creates buddy groups.
 // guardBandMHz is the minimum guard band between signal edges; pass
 // DefaultGuardBandMHz when no power ceiling is in effect.
-func Optimize(pilots []PilotInput, guardBandMHz int) []Assignment {
+// fixedFreqs, if non-nil, constrains every pilot's pool to only those
+// frequencies; pass nil for no constraint (backward compatible).
+func Optimize(pilots []PilotInput, guardBandMHz int, fixedFreqs []int) []Assignment {
 	// Result map keyed by pilot ID for order preservation.
 	results := make(map[int]Assignment, len(pilots))
 
@@ -49,6 +54,30 @@ func Optimize(pilots []PilotInput, guardBandMHz int) []Assignment {
 	for _, p := range pilots {
 		pools[p.ID] = ChannelPool(p.VideoSystem, p.FCCUnlocked, p.BandwidthMHz, p.RaceMode, p.Goggles, p.AnalogBands)
 		pilotBW[p.ID] = OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz)
+	}
+
+	// If fixed channels are set, filter each pilot's pool to only fixed frequencies.
+	if len(fixedFreqs) > 0 {
+		fixedSet := make(map[int]bool, len(fixedFreqs))
+		for _, f := range fixedFreqs {
+			fixedSet[f] = true
+		}
+		for id, pool := range pools {
+			var filtered []Channel
+			for _, ch := range pool {
+				if fixedSet[ch.FreqMHz] {
+					filtered = append(filtered, ch)
+				}
+			}
+			if len(filtered) == 0 {
+				// Pilot's system has no channels in the fixed set — give them
+				// the fixed frequencies directly so they buddy up on the closest match.
+				for _, f := range fixedFreqs {
+					filtered = append(filtered, Channel{Name: fmt.Sprintf("CH-%d", f), FreqMHz: f})
+				}
+			}
+			pools[id] = filtered
+		}
 	}
 
 	// Separate pinned vs flexible pilots.
@@ -167,8 +196,8 @@ func Optimize(pilots []PilotInput, guardBandMHz int) []Assignment {
 
 // OptimizeWithLocks runs the optimizer but forces pilots in lockedIDs to be
 // pinned at their PrevFreqMHz, regardless of their preference.
-// guardBandMHz is passed through to Optimize.
-func OptimizeWithLocks(pilots []PilotInput, lockedIDs map[int]bool, guardBandMHz int) []Assignment {
+// guardBandMHz and fixedFreqs are passed through to Optimize.
+func OptimizeWithLocks(pilots []PilotInput, lockedIDs map[int]bool, guardBandMHz int, fixedFreqs []int) []Assignment {
 	modified := make([]PilotInput, len(pilots))
 	for i, p := range pilots {
 		modified[i] = p
@@ -177,7 +206,7 @@ func OptimizeWithLocks(pilots []PilotInput, lockedIDs map[int]bool, guardBandMHz
 			modified[i].PinnedFreqMHz = p.PrevFreqMHz
 		}
 	}
-	return Optimize(modified, guardBandMHz)
+	return Optimize(modified, guardBandMHz, fixedFreqs)
 }
 
 // effectiveSeparation returns the worst-case margin between a candidate
@@ -294,7 +323,8 @@ type DisplacementResult struct {
 //
 // guardBandMHz is the minimum guard band between signal edges; pass
 // DefaultGuardBandMHz when no power ceiling is in effect.
-func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput, guardBandMHz int) DisplacementResult {
+// fixedFreqs, if non-nil, constrains the optimizer to only those frequencies.
+func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput, guardBandMHz int, fixedFreqs []int) DisplacementResult {
 	all := make([]PilotInput, len(existing)+1)
 	copy(all, existing)
 	all[len(existing)] = newPilot
@@ -306,7 +336,7 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput, guardBa
 	}
 
 	// Level 0: lock all existing pilots, only new pilot is flexible.
-	assignments := OptimizeWithLocks(all, allExistingIDs, guardBandMHz)
+	assignments := OptimizeWithLocks(all, allExistingIDs, guardBandMHz, fixedFreqs)
 	movedIDs := movedPilotIDs(existing, assignments)
 	movedIDs[newPilot.ID] = true
 	if !hasDangerInvolving(assignments, movedIDs, guardBandMHz) {
@@ -330,7 +360,7 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput, guardBa
 		}
 		delete(tryLocked, pilot.ID)
 
-		assignments = OptimizeWithLocks(all, tryLocked, guardBandMHz)
+		assignments = OptimizeWithLocks(all, tryLocked, guardBandMHz, fixedFreqs)
 		movedIDs = movedPilotIDs(existing, assignments)
 		movedIDs[newPilot.ID] = true
 		if !hasDangerInvolving(assignments, movedIDs, guardBandMHz) {
@@ -359,7 +389,7 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput, guardBa
 				delete(tryLocked, flexible[i].ID)
 				delete(tryLocked, flexible[j].ID)
 
-				assignments = OptimizeWithLocks(all, tryLocked, guardBandMHz)
+				assignments = OptimizeWithLocks(all, tryLocked, guardBandMHz, fixedFreqs)
 				movedIDs = movedPilotIDs(existing, assignments)
 				movedIDs[newPilot.ID] = true
 				if !hasDangerInvolving(assignments, movedIDs, guardBandMHz) {

@@ -267,7 +267,7 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand)
+	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand, nil)
 
 	// Select the assignment set based on the client's choice.
 	assignments := result.Assignments
@@ -390,7 +390,7 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		AnalogBands:      req.AnalogBands,
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand)
+	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand, nil)
 
 	// Find the new pilot's assignment and build displaced list.
 	var newAssignment freq.Assignment
@@ -539,7 +539,7 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand)
+	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand, nil)
 
 	// Find the changing pilot's assignment and build displaced list.
 	var myAssignment freq.Assignment
@@ -687,7 +687,7 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand)
+	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand, nil)
 
 	// Select the assignment set based on the client's choice.
 	assignments := result.Assignments
@@ -843,7 +843,7 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand)
+	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand, nil)
 
 	for _, a := range result.Assignments {
 		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
@@ -1020,7 +1020,7 @@ func (s *Server) HandlePreviewRebalance(w http.ResponseWriter, r *http.Request, 
 	inputs := buildPilotInputs(pilots)
 
 	// Run same two-phase logic as reoptimize but don't save.
-	assignments := freq.Optimize(inputs, guardBand)
+	assignments := freq.Optimize(inputs, guardBand, nil)
 	conflicts := freq.DetectConflicts(assignments, guardBand)
 
 	if len(conflicts) > 0 {
@@ -1035,7 +1035,7 @@ func (s *Server) HandlePreviewRebalance(w http.ResponseWriter, r *http.Request, 
 				cleanIDs[p.ID] = true
 			}
 		}
-		surgical := freq.OptimizeWithLocks(inputs, cleanIDs, guardBand)
+		surgical := freq.OptimizeWithLocks(inputs, cleanIDs, guardBand, nil)
 		surgicalConflicts := freq.DetectConflicts(surgical, guardBand)
 		if len(surgicalConflicts) < len(conflicts) {
 			assignments = surgical
@@ -1305,7 +1305,7 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand)
+	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand, nil)
 
 	for _, a := range result.Assignments {
 		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
@@ -1349,7 +1349,7 @@ func (s *Server) reoptimize(sessionCode string, guardBandMHz int) {
 	inputs := buildPilotInputs(pilots)
 
 	// Phase 1: surgical -- only move pilots involved in conflicts.
-	assignments := freq.Optimize(inputs, guardBandMHz)
+	assignments := freq.Optimize(inputs, guardBandMHz, nil)
 	conflicts := freq.DetectConflicts(assignments, guardBandMHz)
 
 	if len(conflicts) > 0 {
@@ -1368,7 +1368,7 @@ func (s *Server) reoptimize(sessionCode string, guardBandMHz int) {
 			}
 		}
 
-		surgical := freq.OptimizeWithLocks(inputs, cleanIDs, guardBandMHz)
+		surgical := freq.OptimizeWithLocks(inputs, cleanIDs, guardBandMHz, nil)
 		surgicalConflicts := freq.DetectConflicts(surgical, guardBandMHz)
 
 		if len(surgicalConflicts) < len(conflicts) {
