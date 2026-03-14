@@ -4,6 +4,16 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.5.1] - 2026-03-14
+
+### Added
+- **IMD source attribution.** Tapping a pilot with an IMD flag shows which two pilots are creating the interference. Visible to all users, not just the leader.
+- **IMD preview on channel picker.** When selecting a channel (join, self-service change, or leader moving a pilot), the spectrum preview now shows IMD products for the hypothetical assignment, helping pilots pick IMD-clean channels.
+
+### Fixed
+- **O3 FCC 40 MHz frontend channel table.** Frontend channel picker now shows 3 channels for O3 FCC 40 MHz, matching the backend. Previously only showed 1 channel.
+- **IMD index mapping.** Fixed `calcIMDProducts` to use original pilot array indices instead of filtered array indices. Prevents wrong pilot being flagged if any pilot has no assigned frequency.
+
 ## [0.5.0] - 2026-03-14
 
 ### Added
