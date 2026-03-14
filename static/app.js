@@ -63,10 +63,11 @@
   function calcIMDProducts(pilots) {
     var products = [];
     if (!pilots || pilots.length < 2) return products;
+    // Build freq list with original pilot indices preserved
     var freqs = [];
-    pilots.forEach(function(p) {
-      if (p.AssignedFreqMHz) freqs.push({ idx: freqs.length, freq: p.AssignedFreqMHz, pilotIdx: freqs.length });
-    });
+    for (var fi = 0; fi < pilots.length; fi++) {
+      if (pilots[fi].AssignedFreqMHz) freqs.push({ origIdx: fi, freq: pilots[fi].AssignedFreqMHz });
+    }
     for (var i = 0; i < freqs.length; i++) {
       for (var j = 0; j < freqs.length; j++) {
         if (i === j) continue;
@@ -75,11 +76,11 @@
           var hitIdx = -1;
           for (var k = 0; k < freqs.length; k++) {
             if (k !== i && k !== j && Math.abs(freqs[k].freq - imd) < 12) {
-              hitIdx = k;
+              hitIdx = freqs[k].origIdx;
               break;
             }
           }
-          products.push({ freq: imd, hitIdx: hitIdx, sources: [i, j] });
+          products.push({ freq: imd, hitIdx: hitIdx, sources: [freqs[i].origIdx, freqs[j].origIdx] });
         }
       }
     }
@@ -193,7 +194,8 @@
       { name: 'O3-CH5', freq: 5805 }, { name: 'O3-CH6', freq: 5840 },
       { name: 'O3-CH7', freq: 5876 },
     ],
-    dji_o3_40: [{ name: 'O3-CH1', freq: 5795 }],
+    dji_o3_40_fcc: [{ name: 'O3-CH1', freq: 5735 }, { name: 'O3-CH2', freq: 5795 }, { name: 'O3-CH3', freq: 5855 }],
+    dji_o3_40_stock: [{ name: 'O3-CH1', freq: 5795 }],
     dji_o4_stock: [
       { name: 'O4-CH1', freq: 5769 }, { name: 'O4-CH2', freq: 5790 },
       { name: 'O4-CH3', freq: 5815 },
@@ -471,7 +473,7 @@
       case 'dji_v1':
         return fcc ? CHANNELS.dji_v1_fcc : CHANNELS.dji_v1_stock;
       case 'dji_o3':
-        if (bw >= 40) return CHANNELS.dji_o3_40;
+        if (bw >= 40) return fcc ? CHANNELS.dji_o3_40_fcc : CHANNELS.dji_o3_40_stock;
         return fcc ? CHANNELS.dji_o3_fcc : CHANNELS.dji_o3_stock;
       case 'dji_o4':
         if (rm && (goggles === 'goggles_3' || goggles === 'goggles_n3'))
@@ -1071,7 +1073,13 @@
   function renderSpectrumPreview() {
     var sys = getEffectiveVideoSystem();
     var bw = occupiedBandwidth(sys, state.bandwidthMHz);
-    renderSpectrum(previewPilots, 'spectrum-preview', state.preferredFreqMHz || 0, bw);
+    var freq = state.preferredFreqMHz || 0;
+    // Include hypothetical self in pilot list for IMD preview
+    var pilotsForIMD = previewPilots;
+    if (freq > 0) {
+      pilotsForIMD = previewPilots.concat([{ AssignedFreqMHz: freq, VideoSystem: sys, BandwidthMHz: bw, Callsign: 'YOU', ID: -1 }]);
+    }
+    renderSpectrum(pilotsForIMD, 'spectrum-preview', freq, bw);
   }
 
   function updateJoinButtonState() {
@@ -2063,7 +2071,12 @@
     var bw = occupiedBandwidth(sys, state.bandwidthMHz);
     // Show other pilots (exclude self) so you see where you'd land
     var others = (state.cachedPilots || []).filter(function (p) { return p.ID !== state.pilotId; });
-    renderSpectrum(others, 'spectrum-change', freq, bw);
+    // Include hypothetical self at candidate freq for IMD preview
+    var pilotsForIMD = others;
+    if (freq > 0) {
+      pilotsForIMD = others.concat([{ AssignedFreqMHz: freq, VideoSystem: sys, BandwidthMHz: bw, Callsign: state.callsign || 'YOU', ID: state.pilotId }]);
+    }
+    renderSpectrum(pilotsForIMD, 'spectrum-change', freq, bw);
   }
 
   function showChannelChange() {
@@ -2232,7 +2245,7 @@
       case 'dji_v1':
         return fcc ? CHANNELS.dji_v1_fcc : CHANNELS.dji_v1_stock;
       case 'dji_o3':
-        if (bw >= 40) return CHANNELS.dji_o3_40;
+        if (bw >= 40) return fcc ? CHANNELS.dji_o3_40_fcc : CHANNELS.dji_o3_40_stock;
         return fcc ? CHANNELS.dji_o3_fcc : CHANNELS.dji_o3_stock;
       case 'dji_o4':
         if (rm && (goggles === 'goggles_3' || goggles === 'goggles_n3'))
@@ -2299,7 +2312,9 @@
         // Show spectrum with this pilot excluded, highlight the selection
         var others = (state.cachedPilots || []).filter(function (p) { return p.ID !== pilot.ID; });
         var bw = occupiedBandwidth(pilot.VideoSystem, pilot.BandwidthMHz);
-        renderSpectrum(others, 'spectrum-change', ch.freq, bw);
+        // Include hypothetical pilot at candidate freq for IMD preview
+        var withCandidate = others.concat([{ AssignedFreqMHz: ch.freq, VideoSystem: pilot.VideoSystem, BandwidthMHz: pilot.BandwidthMHz, Callsign: pilot.Callsign, ID: pilot.ID }]);
+        renderSpectrum(withCandidate, 'spectrum-change', ch.freq, bw);
 
         if (isConflict) {
           // Leader tapped a conflicting channel — hide picker, show confirmation

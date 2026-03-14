@@ -9,7 +9,7 @@ All notable changes to Skwad are documented in this file.
 ### Added
 - **IMD visibility (informational only).** Third-order intermodulation products are now calculated and displayed. IMD score badge in session header (green ≥80, amber ≥50, red <50). Red tick marks on the spectrum canvas show where IMD products land, with diamond markers when they hit an active pilot's channel. Affected pilots get an "IMD" flag on their row. This is purely informational — the optimizer does not use IMD in its channel assignments.
 - **Power step redesign.** Hero stats layout shows mW and guard band side by side above the slider. Spectrum preview bar visualizes occupied bandwidth and guard band. Removed dBm and channel count displays. Bigger slider labels. Added "Guidance only" disclaimer.
-- **Rebalance power slider.** Leaders can adjust (or remove) the power ceiling during rebalance. Slider includes a NO LIMIT position. Preview updates live as the slider moves. Backend accepts optional `power_ceiling_mw` on rebalance and preview-rebalance endpoints.
+- **Rebalance power slider.** Leaders can adjust (or remove) the power ceiling during rebalance. Slider includes a NO LIMIT position. Preview updates when the slider is released. Backend accepts optional `power_ceiling_mw` on rebalance and preview-rebalance endpoints.
 - **Freq guide page.** Full frequency reference published as a styled HTML page at `/freq-guide.html`, linked from the landing page footer.
 
 ### Fixed
