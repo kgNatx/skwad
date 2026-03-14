@@ -4,6 +4,20 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.6.0] - 2026-03-14
+
+### Added
+- **Fixed channels.** Session leaders can select a preset channel set (2-5 unique channels) during session creation. The optimizer constrains all assignments to the fixed set, buddying up overflow pilots. Presets include analog-only, DJI-only, and mixed sets optimized for spacing and IMD.
+- **Session options on leader info.** The "YOU'RE THE LEADER" screen now shows optional checkboxes for Power Ceiling and Fixed Channels. Only checked options appear in the wizard — unchecked options are skipped for a faster setup.
+- **Mixed channel set analysis.** Computed optimal channel combinations for mixed analog + DJI sessions. Mixed sets can achieve better spacing than pure raceband at 5 pilots (47 MHz vs 37 MHz).
+- **Joiner channel restriction.** Pilots joining a fixed-channel session see which channels are available and can only pick from the fixed set. Channel change pickers are also restricted.
+- **Fixed channels badge.** Session header shows "FIXED · N CH" badge when fixed channels are active.
+
+### Changed
+- **Session creation flow.** Power ceiling step is now optional (only shown when the leader checks the Power Ceiling option). Sessions without options checked go straight from leader info to video system selection.
+- **`CreateSession` accepts fixed_channels.** `POST /api/sessions` now accepts an optional `fixed_channels` JSON string.
+- **Optimizer accepts fixed frequency constraint.** `Optimize()`, `OptimizeWithLocks()`, and `FindMinimalDisplacement()` accept a `fixedFreqs []int` parameter. When set, pilot channel pools are filtered to only include frequencies in the fixed set.
+
 ## [0.5.1] - 2026-03-14
 
 ### Added
