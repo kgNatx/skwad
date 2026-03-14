@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Freq Guide — Skwad</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    .back-link {
+      display: inline-block;
+      color: #33ff33;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 1px;
+      margin-bottom: 32px;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 800;
+      color: #33ff33;
+      margin-top: 40px;
+      margin-bottom: 16px;
+    }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+
+    p {
+      margin-bottom: 12px;
+      color: #ccc;
+      text-wrap: balance;
+    }
+
+    ul {
+      list-style: none;
+      margin-bottom: 16px;
+    }
+
+    li {
+      padding: 4px 0 4px 20px;
+      position: relative;
+      color: #ccc;
+    }
+
+    li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 12px;
+      width: 8px;
+      height: 8px;
+      background: #33ff33;
+      border-radius: 50%;
+    }
+
+    strong {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    a {
+      color: #33ff33;
+      text-decoration: none;
+    }
+
+    a:hover { text-decoration: underline; }
+
+    hr {
+      border: none;
+      border-top: 1px solid #333;
+      margin: 36px 0;
+    }
+
+    pre, code {
+      font-family: "SF Mono", "Fira Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 14px;
+    }
+
+    pre {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin: 12px 0 16px;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    code {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 20px;
+      font-size: 15px;
+    }
+
+    thead tr {
+      background: #1e1e1e;
+    }
+
+    th {
+      color: #ffffff;
+      font-weight: 700;
+      text-align: left;
+      padding: 9px 12px;
+      border: 1px solid #333;
+      letter-spacing: 0.3px;
+    }
+
+    td {
+      color: #ccc;
+      padding: 7px 12px;
+      border: 1px solid #2a2a2a;
+    }
+
+    td:first-child, td:nth-child(2) {
+      font-family: "SF Mono", "Fira Mono", "Fira Code", Consolas, "Courier New", monospace;
+      font-size: 14px;
+    }
+
+    tbody tr:hover {
+      background: #111;
+    }
+
+    .note {
+      background: #111;
+      border-left: 3px solid #33ff33;
+      padding: 10px 14px;
+      margin: 12px 0 16px;
+      border-radius: 0 4px 4px 0;
+      color: #ccc;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/" class="back-link">&larr; Back to Skwad</a>
+
+    <h1>FPV Frequency Guide</h1>
+
+    <p>All frequencies and channel assignments used by Skwad's optimizer.</p>
+
+    <!-- ===================== ANALOG BANDS ===================== -->
+    <h2>Analog Bands</h2>
+
+    <p>Analog pilots select which bands their VTX supports. Default is Race Band only.</p>
+
+    <h3>R — Race Band (20 MHz)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>R1</td><td>5658</td></tr>
+        <tr><td>R2</td><td>5695</td></tr>
+        <tr><td>R3</td><td>5732</td></tr>
+        <tr><td>R4</td><td>5769</td></tr>
+        <tr><td>R5</td><td>5806</td></tr>
+        <tr><td>R6</td><td>5843</td></tr>
+        <tr><td>R7</td><td>5880</td></tr>
+        <tr><td>R8</td><td>5917</td></tr>
+      </tbody>
+    </table>
+
+    <h3>F — Fatshark Band (20 MHz)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>F1</td><td>5740</td></tr>
+        <tr><td>F2</td><td>5760</td></tr>
+        <tr><td>F3</td><td>5780</td></tr>
+        <tr><td>F4</td><td>5800</td></tr>
+        <tr><td>F5</td><td>5820</td></tr>
+        <tr><td>F6</td><td>5840</td></tr>
+        <tr><td>F7</td><td>5860</td></tr>
+        <tr><td>F8</td><td>5880</td></tr>
+      </tbody>
+    </table>
+
+    <h3>E — Boscam E Band (20 MHz)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>E1</td><td>5705</td></tr>
+        <tr><td>E2</td><td>5685</td></tr>
+        <tr><td>E3</td><td>5665</td></tr>
+        <tr><td>E4</td><td>5645</td></tr>
+        <tr><td>E5</td><td>5885</td></tr>
+        <tr><td>E6</td><td>5905</td></tr>
+        <tr><td>E7</td><td>5925</td></tr>
+        <tr><td>E8</td><td>5945</td></tr>
+      </tbody>
+    </table>
+
+    <h3>L — Low Race Band (20 MHz)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>L1</td><td>5362</td></tr>
+        <tr><td>L2</td><td>5399</td></tr>
+        <tr><td>L3</td><td>5436</td></tr>
+        <tr><td>L4</td><td>5473</td></tr>
+        <tr><td>L5</td><td>5510</td></tr>
+        <tr><td>L6</td><td>5547</td></tr>
+        <tr><td>L7</td><td>5584</td></tr>
+        <tr><td>L8</td><td>5621</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Frequency Overlaps</h3>
+    <p>When multiple analog bands are selected, the optimizer deduplicates by frequency. The only overlap across all four bands is:</p>
+    <table>
+      <thead><tr><th>Freq (MHz)</th><th>Channels</th></tr></thead>
+      <tbody>
+        <tr><td>5880</td><td>R7, F8</td></tr>
+      </tbody>
+    </table>
+    <p>All other frequencies are unique across R, F, E, and L.</p>
+
+    <hr>
+
+    <!-- ===================== HDZERO ===================== -->
+    <h2>HDZero (20 MHz)</h2>
+
+    <p>Uses Race Band channels (R1–R8). Same table as analog Race Band.</p>
+
+    <hr>
+
+    <!-- ===================== DJI V1 / VISTA ===================== -->
+    <h2>DJI V1 / Vista (20 MHz)</h2>
+
+    <h3>Stock (4 channels)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>DJI-CH3</td><td>5735</td></tr>
+        <tr><td>DJI-CH4</td><td>5770</td></tr>
+        <tr><td>DJI-CH5</td><td>5805</td></tr>
+        <tr><td>DJI-CH8</td><td>5839</td></tr>
+      </tbody>
+    </table>
+
+    <h3>FCC Unlocked (8 channels)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>DJI-CH1</td><td>5660</td></tr>
+        <tr><td>DJI-CH2</td><td>5695</td></tr>
+        <tr><td>DJI-CH3</td><td>5735</td></tr>
+        <tr><td>DJI-CH4</td><td>5770</td></tr>
+        <tr><td>DJI-CH5</td><td>5805</td></tr>
+        <tr><td>DJI-CH6</td><td>5878</td></tr>
+        <tr><td>DJI-CH7</td><td>5914</td></tr>
+        <tr><td>DJI-CH8</td><td>5839</td></tr>
+      </tbody>
+    </table>
+
+    <hr>
+
+    <!-- ===================== DJI O3 ===================== -->
+    <h2>DJI O3</h2>
+
+    <h3>Stock 20 MHz (3 channels)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>O3-CH1</td><td>5769</td></tr>
+        <tr><td>O3-CH2</td><td>5805</td></tr>
+        <tr><td>O3-CH3</td><td>5840</td></tr>
+      </tbody>
+    </table>
+
+    <h3>FCC 20 MHz (7 channels)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>O3-CH1</td><td>5669</td></tr>
+        <tr><td>O3-CH2</td><td>5705</td></tr>
+        <tr><td>O3-CH3</td><td>5741</td></tr>
+        <tr><td>O3-CH4</td><td>5769</td></tr>
+        <tr><td>O3-CH5</td><td>5805</td></tr>
+        <tr><td>O3-CH6</td><td>5840</td></tr>
+        <tr><td>O3-CH7</td><td>5876</td></tr>
+      </tbody>
+    </table>
+
+    <h3>40 MHz (1 channel)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>O3-CH1</td><td>5795</td></tr>
+      </tbody>
+    </table>
+
+    <hr>
+
+    <!-- ===================== DJI O4 ===================== -->
+    <h2>DJI O4</h2>
+
+    <h3>Stock 20 MHz (3 channels)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>O4-CH1</td><td>5769</td></tr>
+        <tr><td>O4-CH2</td><td>5790</td></tr>
+        <tr><td>O4-CH3</td><td>5815</td></tr>
+      </tbody>
+    </table>
+
+    <h3>FCC 20 MHz (7 channels)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>O4-CH1</td><td>5669</td></tr>
+        <tr><td>O4-CH2</td><td>5705</td></tr>
+        <tr><td>O4-CH3</td><td>5741</td></tr>
+        <tr><td>O4-CH4</td><td>5769</td></tr>
+        <tr><td>O4-CH5</td><td>5790</td></tr>
+        <tr><td>O4-CH6</td><td>5815</td></tr>
+        <tr><td>O4-CH7</td><td>5876</td></tr>
+      </tbody>
+    </table>
+
+    <h3>FCC 40 MHz (3 channels)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>O4-CH1</td><td>5735</td></tr>
+        <tr><td>O4-CH2</td><td>5795</td></tr>
+        <tr><td>O4-CH3</td><td>5855</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Stock 40 MHz (1 channel)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>O4-CH1</td><td>5795</td></tr>
+      </tbody>
+    </table>
+
+    <h3>60 MHz (1 channel)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>O4-CH1</td><td>5795</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Race Mode (Goggles 3 / N3)</h3>
+    <p>Uses Race Band channels (R1–R8) when race mode is enabled with compatible goggles.</p>
+
+    <hr>
+
+    <!-- ===================== WALKSNAIL ===================== -->
+    <h2>Walksnail Avatar</h2>
+
+    <h3>Standard Stock (4 channels)</h3>
+    <p>Same as DJI V1 Stock (DJI-CH3, CH4, CH5, CH8).</p>
+
+    <h3>Standard FCC (8 channels)</h3>
+    <p>Same as DJI V1 FCC (DJI-CH1–CH8).</p>
+
+    <h3>Race Mode (8 channels)</h3>
+    <p>Uses Race Band channels (R1–R8).</p>
+
+    <hr>
+
+    <!-- ===================== OPENIPC ===================== -->
+    <h2>OpenIPC (20 MHz)</h2>
+
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>WiFi-165</td><td>5825</td></tr>
+      </tbody>
+    </table>
+
+    <hr>
+
+    <!-- ===================== SPACING RULES ===================== -->
+    <h2>Spacing Rules</h2>
+
+    <p>The optimizer enforces minimum center-to-center spacing between any two pilots:</p>
+
+    <pre>Required Spacing = (Bandwidth_A / 2) + (Bandwidth_B / 2) + 10 MHz guard band</pre>
+
+    <table>
+      <thead><tr><th>Pilot A</th><th>Pilot B</th><th>Required Spacing</th></tr></thead>
+      <tbody>
+        <tr><td>20 MHz</td><td>20 MHz</td><td>30 MHz</td></tr>
+        <tr><td>20 MHz</td><td>40 MHz</td><td>40 MHz</td></tr>
+        <tr><td>40 MHz</td><td>40 MHz</td><td>50 MHz</td></tr>
+        <tr><td>40 MHz</td><td>60 MHz</td><td>60 MHz</td></tr>
+        <tr><td>60 MHz</td><td>60 MHz</td><td>70 MHz</td></tr>
+      </tbody>
+    </table>
+
+    <hr>
+
+    <!-- ===================== TX POWER ===================== -->
+    <h2>Transmit Power and Channel Separation</h2>
+
+    <p>The optimizer's guard band — the minimum frequency gap it enforces between pilots beyond their occupied bandwidth — isn't a fixed number. It depends on how much power the VTXs in the session are transmitting. Higher power means more spectral splatter and stronger adjacent-channel interference, which demands wider spacing.</p>
+
+    <h3>Common VTX Power Steps</h3>
+
+    <p>Most FPV video transmitters offer adjustable power in fixed steps. The exact steps vary by manufacturer, but these are the most common:</p>
+
+    <table>
+      <thead><tr><th>Power</th><th>dBm</th><th>Typical Use</th></tr></thead>
+      <tbody>
+        <tr><td>25 mW</td><td>14 dBm</td><td>Indoor, pit area, crowded racing</td></tr>
+        <tr><td>100 mW</td><td>20 dBm</td><td>Close-range outdoor, warm-up</td></tr>
+        <tr><td>200 mW</td><td>23 dBm</td><td>Standard outdoor group flying</td></tr>
+        <tr><td>400 mW</td><td>26 dBm</td><td>Freestyle, moderate range</td></tr>
+        <tr><td>600 mW</td><td>27.8 dBm</td><td>Long range</td></tr>
+        <tr><td>800 mW</td><td>29 dBm</td><td>Extended range</td></tr>
+        <tr><td>1000 mW</td><td>30 dBm</td><td>Maximum power</td></tr>
+      </tbody>
+    </table>
+
+    <p>The dBm scale is logarithmic: every +3 dB doubles the power, but it takes +6 dB (4x the power) to double your range. Going from 200 mW to 800 mW is only +6 dB — noticeable, but not transformative for range.</p>
+
+    <h3>Why Power Affects Required Spacing</h3>
+
+    <p>Two factors drive the relationship between TX power and required channel separation:</p>
+
+    <p><strong>1. Spectral splatter.</strong> No VTX transmits a perfectly clean signal on exactly one frequency. Some energy leaks into adjacent frequencies — this is called out-of-band emission or spectral splatter. Higher power amplifiers produce proportionally more splatter because they're driven harder and closer to their nonlinear region. A VTX running at 800 mW has noticeably worse spectral purity than the same VTX at 25 mW.</p>
+
+    <p><strong>2. Receiver filter limitations.</strong> FPV receivers use bandpass filters (typically ~18–20 MHz wide at -3 dB) to reject signals on other channels. These filters have a finite rolloff — they don't brick-wall at the passband edge. The filter attenuates an interfering signal by roughly 20 dB per decade of frequency offset beyond the passband edge. At low power, even modest attenuation is enough. At high power, the interfering signal is strong enough to punch through the filter skirt.</p>
+
+    <h3>The Math: Deriving Guard Band from TX Power</h3>
+
+    <p>The receiver needs a minimum <strong>carrier-to-interference ratio (C/I)</strong> of ~20 dB for clean video. Several factors determine how much frequency separation is needed to achieve that:</p>
+
+    <ul>
+      <li><strong>Capture effect:</strong> Your own quad is typically much closer to your receiver than other pilots' quads. In typical group flying geometry this gives your desired signal a ~20 dB advantage over other pilots' signals.</li>
+      <li><strong>Filter attenuation:</strong> The receiver's bandpass filter (typically ~20 MHz wide at -3 dB) rejects signals at offset frequencies. Attenuation is approximately <code>20 × log10(offset / (BW/2))</code> dB beyond the passband edge.</li>
+      <li><strong>Spectral splatter:</strong> Higher TX power degrades spectral purity. We model the additional interference as <code>3 × log10(P_tx / 25)</code> dB relative to a 25 mW baseline. This is calibrated against the known-good 10 MHz guard band at 25 mW.</li>
+    </ul>
+
+    <p>The condition for clean video:</p>
+
+    <pre>filter_attenuation(offset) >= C/I_required - capture_advantage + splatter_penalty</pre>
+
+    <p>With these calibrated values, the guard band formula becomes:</p>
+
+    <pre>guard_band = 10 × 10^((3 × log10(P_mW / 25)) / 20)  MHz</pre>
+
+    <p>This produces 10 MHz at 25 mW (matching the current proven default) and scales gently through the low-power range before steepening at high power.</p>
+
+    <h3>Recommended Guard Band by Power Level</h3>
+
+    <p>The theoretical formula above provides a continuous curve, but in practice we calibrate against a key constraint: <strong>Race Band channels are spaced exactly 37 MHz apart.</strong> This creates a hard cliff — at ≤17 MHz guard band (required spacing ≤37 MHz), all 8 raceband channels are conflict-free. Above 17 MHz, you can only use every-other channel (4 max).</p>
+
+    <p>We calibrate so this cliff falls between 400 mW and 600 mW, aligning with community consensus that 400 mW is the upper limit for comfortable group flying:</p>
+
+    <table>
+      <thead><tr><th>Session Power Ceiling</th><th>Guard Band</th><th>Required Spacing (20 MHz)</th><th>Raceband Channels</th></tr></thead>
+      <tbody>
+        <tr><td>25 mW</td><td><strong>10 MHz</strong></td><td>30 MHz</td><td>8</td></tr>
+        <tr><td>100 mW</td><td><strong>12 MHz</strong></td><td>32 MHz</td><td>8</td></tr>
+        <tr><td>200 mW</td><td><strong>14 MHz</strong></td><td>34 MHz</td><td>8</td></tr>
+        <tr><td>400 mW</td><td><strong>16 MHz</strong></td><td>36 MHz</td><td>8 (1 MHz margin)</td></tr>
+        <tr><td>600 mW</td><td><strong>24 MHz</strong></td><td>44 MHz</td><td>4</td></tr>
+        <tr><td>800 mW</td><td><strong>28 MHz</strong></td><td>48 MHz</td><td>4</td></tr>
+        <tr><td>1000 mW</td><td><strong>32 MHz</strong></td><td>52 MHz</td><td>4</td></tr>
+      </tbody>
+    </table>
+
+    <p>Key observations:</p>
+    <ul>
+      <li><strong>≤400 mW:</strong> All 8 raceband channels remain usable. The guard band grows gently from 10 to 16 MHz, staying safely below the 17 MHz cliff. This matches real-world experience — pilots routinely use adjacent raceband channels at these power levels.</li>
+      <li><strong>600+ mW:</strong> The cliff hits. Only every-other raceband channel is conflict-free (R1/R3/R5/R7 or R2/R4/R6/R8). This is where leaders should consider the race day channel set feature or accept buddying up.</li>
+      <li>The jump from 400→600 mW is intentionally dramatic — it signals a real change in the interference environment and matches the community rule of thumb: "stay under 200–400 mW for group flying."</li>
+    </ul>
+
+    <h3>The Raceband Cliff</h3>
+
+    <p>The sharp transition at 37 MHz required spacing deserves emphasis because it's unintuitive. Race Band was designed with 37 MHz channel spacing — just barely enough for low-to-moderate power group flying. This means:</p>
+
+    <ul>
+      <li><strong>At 36 MHz required spacing (400 mW ceiling):</strong> 8 channels, 1 MHz margin. Everyone fits.</li>
+      <li><strong>At 38 MHz required spacing:</strong> 4 channels. Half the capacity vanishes instantly.</li>
+    </ul>
+
+    <p>There is no gradual degradation between 8 and 4 on Race Band because the channels are uniformly spaced. With mixed analog bands (R+F+E), the non-uniform spacing provides more intermediate options, but for pure raceband the cliff is real.</p>
+
+    <p>For sessions at 600+ mW, the race day channel set feature becomes essential — the leader should pre-select which 3–4 well-spaced channels to use and let the optimizer buddy up from there.</p>
+
+    <h3>Assumptions and Limitations</h3>
+
+    <ul>
+      <li>The capture advantage (20 dB) assumes typical geometry where your quad is closer to your receiver than other pilots' quads. On a tight race course with stacked quads, this drops to ~10–15 dB, effectively pushing all guard bands wider.</li>
+      <li>The splatter model is calibrated to match the current 10 MHz default at 25 mW, not measured from specific VTX hardware. Cheap VTXs with poor PA linearity will splatter more.</li>
+      <li>These calculations assume 20 MHz occupied bandwidth. For DJI O3/O4 at 40 or 60 MHz, the bandwidth terms in the spacing formula dominate and the guard band contribution matters less.</li>
+      <li>IMD (intermodulation distortion) is a separate concern not captured by this model. See the IMD section below.</li>
+    </ul>
+
+    <h3>Impact Summary</h3>
+
+    <p>The fundamental trade-off: <strong>more power = wider guard band = fewer unique channels = more buddying up.</strong></p>
+
+    <p>For a session leader, the practical question is simple: do you need everyone on a unique channel, or is buddying acceptable? If unique channels matter, keep the power ceiling at 400 mW or below. If power matters more than density, set the ceiling higher and plan for buddying.</p>
+
+    <hr>
+
+    <!-- ===================== DJI DYNAMIC POWER ===================== -->
+    <h2>DJI Dynamic Power Control</h2>
+
+    <p>DJI O3 and O4 video systems use automatic power control — the VTX adjusts transmit power dynamically based on link quality. Pilots have no manual mW setting. This has several implications for session power ceilings.</p>
+
+    <p><strong>How DJI dynamic power behaves:</strong></p>
+    <ul>
+      <li>Power scales with link quality, which depends on distance, obstacles, and antenna orientation — not a single variable</li>
+      <li>At typical meetup distances (~100m line-of-sight), DJI tends to stay at low power (community estimates suggest under 200 mW)</li>
+      <li>Power ramps up progressively at range, approaching the maximum (~1W / 30 dBm in FCC mode) beyond ~500m or through obstacles</li>
+      <li>These are community observations from spectrum analyzer measurements, not manufacturer specifications — DJI does not publish their power control curves</li>
+      <li>The exact power at a given distance varies significantly with environment, antenna choice, and interference</li>
+    </ul>
+
+    <p><strong>Why bandwidth matters more than power for DJI:</strong></p>
+
+    <p>Bandwidth is the lever DJI pilots actually control. Switching from 40 MHz to 20 MHz mode saves 10 MHz of required spacing per neighbor — a bigger impact than most power ceiling steps. The math:</p>
+
+    <table>
+      <thead><tr><th>DJI Bandwidth</th><th>vs 20 MHz neighbor (14 MHz guard*)</th><th>vs 40 MHz neighbor (14 MHz guard*)</th></tr></thead>
+      <tbody>
+        <tr><td>20 MHz</td><td>34 MHz spacing</td><td>44 MHz spacing</td></tr>
+        <tr><td>40 MHz</td><td>44 MHz spacing</td><td>54 MHz spacing</td></tr>
+        <tr><td>60 MHz</td><td>54 MHz spacing</td><td>64 MHz spacing</td></tr>
+      </tbody>
+    </table>
+
+    <p>*14 MHz guard band = 200 mW power ceiling step. Each 20 MHz step in DJI bandwidth adds 10 MHz to required spacing — equivalent to going from a 200 mW guard band to a 600 mW guard band.</p>
+
+    <p><strong>Practical experience:</strong></p>
+
+    <p>Groups of 6–8 mixed DJI/analog pilots fit comfortably on raceband channels when DJI pilots use 20 MHz bandwidth and fly within a confined area. The dynamic power at these distances stays within a range where the default guard band provides adequate separation.</p>
+
+    <hr>
+
+    <!-- ===================== IMD ===================== -->
+    <h2>Intermodulation Distortion (IMD)</h2>
+
+    <p>When two VTXs transmit simultaneously, their signals can mix nonlinearly (in the RF front-end of nearby receivers, or even in the transmitters themselves) to produce phantom signals at new frequencies. This is intermodulation distortion.</p>
+
+    <h3>How IMD Works</h3>
+
+    <p>The strongest IMD products are third-order, calculated as:</p>
+
+    <pre>F_imd = (2 × F1) - F2
+F_imd = (2 × F2) - F1</pre>
+
+    <p>For example, pilots on 5760 MHz and 5800 MHz produce IMD at:</p>
+    <ul>
+      <li>(2 × 5760) − 5800 = <strong>5720 MHz</strong></li>
+      <li>(2 × 5800) − 5760 = <strong>5840 MHz</strong></li>
+    </ul>
+    <p>If a third pilot is on 5840 MHz, they'll see interference from this IMD product even though neither of the other two pilots is on their channel.</p>
+
+    <h3>IMD Ratings</h3>
+
+    <p>IMD quality for a set of frequencies is measured on a 0–100 scale, where 100 means no IMD products land near any active channel:</p>
+
+    <table>
+      <thead><tr><th>Pilot Count</th><th>Recommended Channel Set</th><th>Frequencies (MHz)</th><th>IMD Rating</th></tr></thead>
+      <tbody>
+        <tr><td>2 pilots</td><td>R1, R8</td><td>5658, 5917</td><td>100</td></tr>
+        <tr><td>3 pilots</td><td>R1, R4, R7</td><td>5658, 5769, 5880</td><td>100</td></tr>
+        <tr><td>4 pilots</td><td>R1, R3, R6, R8</td><td>5658, 5732, 5843, 5917</td><td>100</td></tr>
+        <tr><td>5 pilots</td><td>ET5A</td><td>5665, 5752, 5800, 5866, 5905</td><td>88</td></tr>
+        <tr><td>6 pilots</td><td>IMD 6C (MultiGP standard)</td><td>5658, 5695, 5760, 5800, 5880, 5917</td><td>29</td></tr>
+      </tbody>
+    </table>
+
+    <p>The sharp drop at 6 pilots illustrates why IMD matters: there simply aren't 6 frequencies in the 5.8 GHz band that avoid all third-order products. The IMD 6C set is a practical compromise that minimizes the worst cases.</p>
+
+    <h3>IMD vs. Guard Band</h3>
+
+    <p>IMD and guard band spacing address different problems:</p>
+    <ul>
+      <li><strong>Guard band</strong> prevents direct adjacent-channel bleed from a single interferer</li>
+      <li><strong>IMD</strong> prevents phantom signals created by the <em>interaction</em> of two interferers</li>
+    </ul>
+    <p>A channel can be perfectly spaced from all active channels but still receive IMD interference. Both must be considered for robust multi-pilot sessions.</p>
+
+    <h3>References</h3>
+    <ul>
+      <li><a href="http://www.etheli.com/IMD/" target="_blank" rel="noopener">ET's FPV IMD Tools</a> — IMD calculator and optimal frequency set generator</li>
+      <li><a href="https://rcforces.com/blogs/blog5.shtml" target="_blank" rel="noopener">RCForces 5.8 GHz Guide</a> — channel tables and IMD-aware pilot recommendations</li>
+      <li><a href="https://phaserfpv.com.au/blogs/fpv-news/what-is-the-best-fpv-channels-to-use-when-flying-with-mates" target="_blank" rel="noopener">PhaserFPV Group Flying Guide</a> — practical channel sets by group size</li>
+    </ul>
+
+  </div>
+</body>
+</html>
