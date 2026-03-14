@@ -4,6 +4,19 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.4.0] - 2026-03-14
+
+### Added
+- **Power ceiling.** Session leaders can set a TX power ceiling during session creation. Higher power widens the optimizer's guard band, reducing available unique channels but improving signal quality. Calibrated against raceband channel spacing — see `frequency-reference.md`.
+- **Joiner power alert.** Pilots joining a session with a power ceiling see an interstitial alert showing the limit before picking their video system.
+- **Session power badge.** Active sessions with a power ceiling show an amber "X mW MAX" badge in the header.
+
+### Changed
+- **Guard band is now configurable.** `RequiredSpacing()` and all optimizer functions accept a `guardBandMHz` parameter instead of using the hardcoded `DefaultGuardBandMHz` constant. Default behavior (10 MHz) is preserved when no power ceiling is set.
+- **`CreateSession` accepts power ceiling.** `POST /api/sessions` now accepts an optional `power_ceiling_mw` field.
+- **Session creation deferred.** Session is now created after the leader completes the power ceiling step (or skips it), not when they click START SESSION.
+- **Session struct JSON tags.** All Session fields now use explicit lowercase JSON tags (`id`, `version`, `leader_pilot_id`, `power_ceiling_mw`).
+
 ## [0.3.3] - 2026-03-14
 
 ### Fixed
