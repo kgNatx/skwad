@@ -189,10 +189,34 @@
     $('power-slider-thumb').style.left = (thumbRadius - 23 + pct * usable) + 'px';
     var step = POWER_STEPS[state.powerStepIndex];
     $('power-mw-value').textContent = step.mw;
-    $('power-dbm-value').textContent = step.dbm;
     $('power-guard-value').textContent = step.guard;
-    $('power-channels-value').textContent = step.channels;
     $('power-tip').textContent = step.tip;
+    renderPowerSpectrum(step.guard);
+  }
+
+  function renderPowerSpectrum(guard) {
+    var bw = 20;
+    var total = bw + guard;
+    var bar = $('power-spectrum-bar');
+    if (!bar) return;
+    while (bar.firstChild) bar.removeChild(bar.firstChild);
+    var halfBwPct = ((bw / 2) / total * 100);
+    var guardPct = (guard / total * 100);
+    var seg1 = document.createElement('div');
+    seg1.className = 'power-spectrum-segment power-seg-bw';
+    seg1.style.width = halfBwPct + '%';
+    seg1.textContent = (bw / 2) + '';
+    bar.appendChild(seg1);
+    var seg2 = document.createElement('div');
+    seg2.className = 'power-spectrum-segment power-seg-guard';
+    seg2.style.width = guardPct + '%';
+    seg2.textContent = guard + ' MHz';
+    bar.appendChild(seg2);
+    var seg3 = document.createElement('div');
+    seg3.className = 'power-spectrum-segment power-seg-bw';
+    seg3.style.width = halfBwPct + '%';
+    seg3.textContent = (bw / 2) + '';
+    bar.appendChild(seg3);
   }
 
   function showError(elementId, msg) {
@@ -634,10 +658,9 @@
       var pct = idx / (POWER_STEPS.length - 1);
       $('power-slider-thumb').style.left = (thumbRadius - 23 + pct * usable) + 'px';
       $('power-mw-value').textContent = step.mw;
-      $('power-dbm-value').textContent = step.dbm;
       $('power-guard-value').textContent = step.guard;
-      $('power-channels-value').textContent = step.channels;
       $('power-tip').textContent = step.tip;
+      renderPowerSpectrum(step.guard);
     }
 
     function getStepFromX(clientX) {
@@ -870,7 +893,8 @@
   }
 
   function shouldWarnBandwidth() {
-    return state.sessionPowerCeiling > 0 && state.sessionPowerCeiling < 600;
+    var ceiling = state.sessionPowerCeiling || state.powerCeilingMW;
+    return ceiling > 0 && ceiling < 600;
   }
 
   function applyBandwidthHint(btn, bw) {
@@ -2427,22 +2451,108 @@
   }
 
   function initLeaderControls() {
+    // Rebalance power slider state
+    var rebalancePowerIndex = 2;
+    var rebalancePowerInitialized = false;
+
+    function initRebalanceSlider() {
+      var notches = $('rebalance-slider-notches');
+      if (rebalancePowerInitialized) return;
+      rebalancePowerInitialized = true;
+      for (var i = 0; i < REBALANCE_POSITIONS; i++) {
+        var n = document.createElement('div');
+        n.className = 'power-slider-notch';
+        notches.appendChild(n);
+      }
+    }
+
+    // Rebalance slider has POWER_STEPS.length + 1 positions (last = NO LIMIT)
+    var REBALANCE_POSITIONS = POWER_STEPS.length + 1;
+
+    function rebalanceMW() {
+      if (rebalancePowerIndex >= POWER_STEPS.length) return 0; // NO LIMIT
+      return POWER_STEPS[rebalancePowerIndex].mw;
+    }
+
+    function updateRebalancePower(idx) {
+      rebalancePowerIndex = idx;
+      var label = idx >= POWER_STEPS.length ? 'NO LIMIT' : POWER_STEPS[idx].mw + ' mW';
+      $('rebalance-power-value').textContent = label;
+      var track = $('rebalance-slider-track');
+      var thumbRadius = 18;
+      var usable = track.offsetWidth - thumbRadius * 2;
+      var pct = idx / (REBALANCE_POSITIONS - 1);
+      $('rebalance-slider-thumb').style.left = (thumbRadius - 18 + pct * usable) + 'px';
+    }
+
+    function getRebalanceStepFromX(clientX) {
+      var rect = $('rebalance-slider-track').getBoundingClientRect();
+      var pct = (clientX - rect.left) / rect.width;
+      pct = Math.max(0, Math.min(1, pct));
+      return Math.round(pct * (REBALANCE_POSITIONS - 1));
+    }
+
+    (function () {
+      var track = $('rebalance-slider-track');
+      if (!track) return;
+      var dragging = false;
+      track.addEventListener('pointerdown', function (e) {
+        dragging = true;
+        track.setPointerCapture(e.pointerId);
+        var idx = getRebalanceStepFromX(e.clientX);
+        updateRebalancePower(idx);
+        fetchRebalancePreview();
+      });
+      track.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        var idx = getRebalanceStepFromX(e.clientX);
+        if (idx !== rebalancePowerIndex) {
+          updateRebalancePower(idx);
+        }
+      });
+      track.addEventListener('pointerup', function () {
+        if (dragging) {
+          dragging = false;
+          fetchRebalancePreview();
+        }
+      });
+      track.addEventListener('pointercancel', function () { dragging = false; });
+    })();
+
+    async function fetchRebalancePreview() {
+      try {
+        var body = { power_ceiling_mw: rebalanceMW() };
+        var proposed = await apiPost('/api/sessions/' + state.sessionCode + '/preview-rebalance', body);
+        renderSpectrum(proposed, 'spectrum-rebalance-after', 0, 0);
+      } catch (err) {
+        renderSpectrum([], 'spectrum-rebalance-after', 0, 0);
+      }
+    }
+
     $('btn-rebalance-all').addEventListener('click', async function () {
       // Show dialog first so canvases have layout dimensions
       $('rebalance-confirm').classList.remove('hidden');
+
+      // Set up the power slider
+      initRebalanceSlider();
+      var currentCeiling = state.sessionPowerCeiling || 0;
+      if (currentCeiling > 0) {
+        var matchIdx = POWER_STEPS.length; // default to NO LIMIT
+        for (var i = 0; i < POWER_STEPS.length; i++) {
+          if (POWER_STEPS[i].mw === currentCeiling) { matchIdx = i; break; }
+        }
+        updateRebalancePower(matchIdx);
+      } else {
+        // No ceiling — start at NO LIMIT (rightmost)
+        updateRebalancePower(POWER_STEPS.length);
+      }
 
       // Render current spectrum
       var pilots = state.cachedPilots || [];
       renderSpectrum(pilots, 'spectrum-rebalance-before', 0, 0);
 
-      // Fetch proposed assignments and render proposed spectrum
-      try {
-        var proposed = await apiPost('/api/sessions/' + state.sessionCode + '/preview-rebalance');
-        renderSpectrum(proposed, 'spectrum-rebalance-after', 0, 0);
-      } catch (err) {
-        // If preview fails, just show empty
-        renderSpectrum([], 'spectrum-rebalance-after', 0, 0);
-      }
+      // Fetch proposed assignments
+      fetchRebalancePreview();
     });
 
     $('btn-add-pilot').addEventListener('click', function () {
@@ -2461,7 +2571,8 @@
       setLoading(btn, true);
       try {
         state.expectingAssignmentChange = true;
-        var result = await apiPost('/api/sessions/' + state.sessionCode + '/rebalance');
+        var body = { power_ceiling_mw: rebalanceMW() };
+        var result = await apiPost('/api/sessions/' + state.sessionCode + '/rebalance', body);
         if ($('rebalance-hint')) $('rebalance-hint').style.display = 'none';
         await refreshSession();
         showRebalanceResult(result);

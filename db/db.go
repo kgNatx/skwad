@@ -200,6 +200,21 @@ func (d *DB) IncrementVersion(sessionID string) error {
 	return nil
 }
 
+func (d *DB) UpdateSessionPowerCeiling(sessionID string, powerCeilingMW int) error {
+	res, err := d.db.Exec(
+		`UPDATE sessions SET power_ceiling_mw = ? WHERE id = ?`,
+		powerCeilingMW, sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("update power ceiling: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("session %q not found", sessionID)
+	}
+	return nil
+}
+
 // SetLeader sets the leader pilot ID for a session.
 func (d *DB) SetLeader(sessionID string, pilotID int) error {
 	res, err := d.db.Exec(

@@ -995,12 +995,21 @@ func (s *Server) HandlePreviewRebalance(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
+	var req struct {
+		PowerCeilingMW *int `json:"power_ceiling_mw"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
 	sess, err := s.DB.GetSession(code)
 	if err != nil {
 		http.Error(w, "session not found", http.StatusNotFound)
 		return
 	}
-	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
+	ceiling := sess.PowerCeilingMW
+	if req.PowerCeilingMW != nil {
+		ceiling = *req.PowerCeilingMW
+	}
+	guardBand := freq.PowerToGuardBand(ceiling)
 
 	pilots, err := s.DB.GetActivePilots(code)
 	if err != nil {
@@ -1073,10 +1082,24 @@ func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code
 		return
 	}
 
+	var req struct {
+		PowerCeilingMW *int `json:"power_ceiling_mw"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
 	sess, err := s.DB.GetSession(code)
 	if err != nil {
 		http.Error(w, "session not found", http.StatusNotFound)
 		return
+	}
+
+	// Update power ceiling if the leader changed it
+	if req.PowerCeilingMW != nil && *req.PowerCeilingMW != sess.PowerCeilingMW {
+		if err := s.DB.UpdateSessionPowerCeiling(code, *req.PowerCeilingMW); err != nil {
+			http.Error(w, "failed to update power ceiling", http.StatusInternalServerError)
+			return
+		}
+		sess.PowerCeilingMW = *req.PowerCeilingMW
 	}
 	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
 

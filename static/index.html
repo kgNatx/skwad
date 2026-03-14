@@ -118,6 +118,16 @@
     <div id="step-power" class="setup-step hidden">
       <h2 class="step-title">POWER CEILING</h2>
       <p class="power-subtitle">Higher power needs wider channel spacing. More power means fewer pilots on separate channels.</p>
+      <div class="power-hero-stats">
+        <div class="power-hero-stat">
+          <span class="power-hero-value" id="power-mw-value">200</span>
+          <span class="power-hero-unit">mW</span>
+        </div>
+        <div class="power-hero-stat">
+          <span class="power-hero-value" id="power-guard-value" style="color:#f59e0b">14</span>
+          <span class="power-hero-unit" style="color:#b08a3e">MHz GUARD</span>
+        </div>
+      </div>
       <div class="power-slider-container">
         <div class="power-slider-labels">
           <span class="power-label-left">MORE PILOTS</span>
@@ -128,22 +138,16 @@
           <div class="power-slider-thumb" id="power-slider-thumb"></div>
         </div>
       </div>
-      <div class="power-display">
-        <span class="power-value" id="power-mw-value">200</span>
-        <span class="power-mw-unit">mW</span>
-        <div class="power-dbm" id="power-dbm-value">23 dBm</div>
-      </div>
-      <div class="power-stats">
-        <div class="power-stat">
-          <span class="power-stat-value" id="power-guard-value" style="color:#f59e0b">14</span>
-          <span class="power-stat-label">MHz GUARD</span>
-        </div>
-        <div class="power-stat">
-          <span class="power-stat-value" id="power-channels-value" style="color:#4ade80">8</span>
-          <span class="power-stat-label">CHANNELS</span>
+      <div class="power-spectrum-preview">
+        <div class="power-spectrum-label">CHANNEL SPACING (20 MHz PILOT)</div>
+        <div class="power-spectrum-bar" id="power-spectrum-bar"></div>
+        <div class="power-spectrum-legend">
+          <span><span class="power-legend-dot power-legend-bw"></span>BANDWIDTH</span>
+          <span><span class="power-legend-dot power-legend-guard"></span>GUARD BAND</span>
         </div>
       </div>
       <div class="power-tip" id="power-tip"></div>
+      <p class="power-guidance-note">Guidance only — pilots must configure their own VTX.</p>
       <button id="btn-power-next" class="btn btn-primary btn-large">SET CEILING</button>
       <button id="btn-power-skip" class="btn btn-secondary btn-large">SKIP (NO LIMIT)</button>
     </div>
@@ -423,6 +427,20 @@
   <div id="rebalance-confirm" class="action-sheet hidden">
     <div class="action-sheet-content">
       <h3 class="action-sheet-title">REBALANCE ALL</h3>
+      <div class="rebalance-power-section">
+        <div class="rebalance-power-header">
+          <span class="rebalance-power-label">POWER CEILING</span>
+          <span class="rebalance-power-value" id="rebalance-power-value">NO LIMIT</span>
+        </div>
+        <div class="rebalance-slider-track" id="rebalance-slider-track">
+          <div class="rebalance-slider-notches" id="rebalance-slider-notches"></div>
+          <div class="power-slider-thumb" id="rebalance-slider-thumb"></div>
+        </div>
+        <div class="rebalance-power-labels">
+          <span style="color:#4ade80">MORE PILOTS</span>
+          <span style="color:#f97316">NO LIMIT</span>
+        </div>
+      </div>
       <div class="spectrum-label">CURRENT</div>
       <canvas id="spectrum-rebalance-before" class="spectrum-canvas"></canvas>
       <div class="spectrum-label">PROPOSED</div>

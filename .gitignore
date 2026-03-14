@@ -2,3 +2,9 @@ data/
 .claude/
 .playwright-mcp/
 .worktrees/
+.superpowers/
+
+# Screenshots and mockups
+*.png
+!static/*.png
+static/mockup-*
