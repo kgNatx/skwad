@@ -2587,6 +2587,7 @@
           className: 'btn btn-toggle' + (bw === 20 ? ' active' : ''),
           textContent: bw + ' MHz'
         });
+        applyBandwidthHint(btn, bw);
         btn.addEventListener('click', function () {
           addPilotState.bandwidthMHz = bw;
           bwContainer.querySelectorAll('.btn-toggle').forEach(function (b) { b.classList.remove('active'); });
