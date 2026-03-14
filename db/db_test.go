@@ -48,7 +48,7 @@ func TestNewDB_CreatesTables(t *testing.T) {
 func TestCreateSession(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -77,7 +77,7 @@ func TestCreateSession(t *testing.T) {
 func TestGetSession(t *testing.T) {
 	d := newTestDB(t)
 
-	created, err := d.CreateSession()
+	created, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestGetSession_NotFound(t *testing.T) {
 func TestGetSession_Expired(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -130,7 +130,7 @@ func TestGetSession_Expired(t *testing.T) {
 func TestAddPilot(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -164,7 +164,7 @@ func TestAddPilot(t *testing.T) {
 func TestAddPilot_DuplicateCallsign(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestAddPilot_DuplicateCallsign(t *testing.T) {
 func TestGetActivePilots(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -222,7 +222,7 @@ func TestGetActivePilots(t *testing.T) {
 func TestDeactivatePilot(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -250,7 +250,7 @@ func TestDeactivatePilot(t *testing.T) {
 func TestUpdatePilotAssignment(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -286,7 +286,7 @@ func TestUpdatePilotAssignment(t *testing.T) {
 func TestIncrementVersion(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestIncrementVersion(t *testing.T) {
 func TestDeleteExpiredSessions(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -340,7 +340,7 @@ func TestDeleteExpiredSessions(t *testing.T) {
 func TestUpdatePilotCallsign(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -370,7 +370,7 @@ func TestUpdatePilotCallsign(t *testing.T) {
 func TestUpdatePilotCallsign_Duplicate(t *testing.T) {
 	d := newTestDB(t)
 
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -393,14 +393,14 @@ func TestUpdatePilotCallsign_Duplicate(t *testing.T) {
 func TestCreateSession_CollisionRetry(t *testing.T) {
 	d := newTestDB(t)
 
-	first, err := d.CreateSession()
+	first, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("first CreateSession: %v", err)
 	}
 
 	// Creating many sessions should never fail — retries handle collisions.
 	for i := 0; i < 50; i++ {
-		sess, err := d.CreateSession()
+		sess, err := d.CreateSession(0)
 		if err != nil {
 			t.Fatalf("CreateSession #%d: %v", i, err)
 		}
@@ -412,7 +412,7 @@ func TestCreateSession_CollisionRetry(t *testing.T) {
 
 func TestSetAndGetLeader(t *testing.T) {
 	d := newTestDB(t)
-	sess, _ := d.CreateSession()
+	sess, _ := d.CreateSession(0)
 
 	// No leader initially.
 	leaderID, err := d.GetLeader(sess.ID)
@@ -438,7 +438,7 @@ func TestSetAndGetLeader(t *testing.T) {
 
 func TestTransferLeader(t *testing.T) {
 	d := newTestDB(t)
-	sess, _ := d.CreateSession()
+	sess, _ := d.CreateSession(0)
 	d.SetLeader(sess.ID, 10)
 
 	if err := d.SetLeader(sess.ID, 20); err != nil {
@@ -468,7 +468,7 @@ func TestMigration_PreferredFrequency(t *testing.T) {
 
 func TestAddPilot_PreferredFrequency(t *testing.T) {
 	d := newTestDB(t)
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -501,7 +501,7 @@ func TestAddPilot_PreferredFrequency(t *testing.T) {
 
 func TestUpdatePilotPreference(t *testing.T) {
 	d := newTestDB(t)
-	sess, err := d.CreateSession()
+	sess, err := d.CreateSession(0)
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
@@ -541,5 +541,30 @@ func TestGenerateCode(t *testing.T) {
 	code2 := generateCode()
 	if code == code2 {
 		t.Errorf("two generated codes are identical: %q", code)
+	}
+}
+
+func TestCreateSessionWithPowerCeiling(t *testing.T) {
+	d := newTestDB(t)
+	sess, err := d.CreateSession(0)
+	if err != nil {
+		t.Fatalf("CreateSession(0): %v", err)
+	}
+	if sess.PowerCeilingMW != 0 {
+		t.Errorf("PowerCeilingMW = %d, want 0", sess.PowerCeilingMW)
+	}
+	sess2, err := d.CreateSession(400)
+	if err != nil {
+		t.Fatalf("CreateSession(400): %v", err)
+	}
+	if sess2.PowerCeilingMW != 400 {
+		t.Errorf("PowerCeilingMW = %d, want 400", sess2.PowerCeilingMW)
+	}
+	got, err := d.GetSession(sess2.ID)
+	if err != nil {
+		t.Fatalf("GetSession: %v", err)
+	}
+	if got.PowerCeilingMW != 400 {
+		t.Errorf("GetSession PowerCeilingMW = %d, want 400", got.PowerCeilingMW)
 	}
 }

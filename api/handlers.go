@@ -90,7 +90,7 @@ type PilotWithConflicts struct {
 // HandleCreateSession creates a new frequency-coordination session.
 // POST /api/sessions
 func (s *Server) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
-	sess, err := s.DB.CreateSession()
+	sess, err := s.DB.CreateSession(0)
 	if err != nil {
 		http.Error(w, "failed to create session", http.StatusInternalServerError)
 		log.Printf("CreateSession error: %v", err)
