@@ -543,7 +543,7 @@
     var body = {};
     if (powerCeilingMW > 0) body.power_ceiling_mw = powerCeilingMW;
     var sess = await apiPost('/api/sessions', body);
-    state.sessionCode = sess.ID;
+    state.sessionCode = sess.id;
     state.powerCeilingMW = powerCeilingMW;
     saveState();
   }
@@ -1207,10 +1207,10 @@
   async function refreshSession() {
     try {
       var data = await apiGet('/api/sessions/' + state.sessionCode);
-      state.knownVersion = data.session.Version;
+      state.knownVersion = data.session.version;
 
       // Track leader state.
-      state.leaderPilotId = data.session.LeaderPilotID || null;
+      state.leaderPilotId = data.session.leader_pilot_id || null;
       state.isLeader = (state.pilotId && state.leaderPilotId === state.pilotId);
 
       // If session has no pilots or our pilot isn't in it, abandon it.
@@ -1233,7 +1233,7 @@
                 showMovedDialog(
                   data.pilots[j].AssignedChannel,
                   data.pilots[j].AssignedFreqMHz,
-                  data.session.LeaderPilotID,
+                  data.session.leader_pilot_id,
                   data.pilots
                 );
               }
@@ -1270,7 +1270,7 @@
       // Rebalance recommended indicator (Task 20)
       var rebalHint = $('rebalance-hint');
       if (rebalHint) {
-        if (data.rebalance_recommended && state.pilotId === data.session.LeaderPilotID) {
+        if (data.rebalance_recommended && state.pilotId === data.session.leader_pilot_id) {
           rebalHint.style.display = '';
         } else {
           rebalHint.style.display = 'none';
