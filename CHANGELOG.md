@@ -4,6 +4,13 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.4.1] - 2026-03-14
+
+### Added
+- **DJI bandwidth guidance.** Power ceiling interstitial now includes a tip for DJI pilots to use 20 MHz bandwidth for best channel compatibility (shown when ceiling < 600 mW).
+- **Bandwidth button indicators.** DJI O3/O4 bandwidth buttons show "RECOMMENDED" on 10/20 MHz and amber warning on 40/60 MHz when a power ceiling is set below 600 mW. Applies in join wizard, video system change, and leader add-pilot dialog.
+- **DJI Dynamic Power Control section** in `frequency-reference.md` documenting DJI's automatic power behavior, bandwidth impact on spacing, and practical group flying experience.
+
 ## [0.4.0] - 2026-03-14
 
 ### Added
