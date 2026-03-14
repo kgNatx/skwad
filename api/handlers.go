@@ -95,7 +95,7 @@ func (s *Server) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewDecoder(r.Body).Decode(&req) // ignore error — empty body is fine
 
-	sess, err := s.DB.CreateSession(req.PowerCeilingMW)
+	sess, err := s.DB.CreateSession(req.PowerCeilingMW, "")
 	if err != nil {
 		http.Error(w, "failed to create session", http.StatusInternalServerError)
 		log.Printf("CreateSession error: %v", err)

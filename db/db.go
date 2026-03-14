@@ -24,6 +24,7 @@ type Session struct {
 	Version        int       `json:"version"`
 	LeaderPilotID  int       `json:"leader_pilot_id"`
 	PowerCeilingMW int       `json:"power_ceiling_mw"`
+	FixedChannels  string    `json:"fixed_channels"` // JSON array of {name, freq} or empty
 }
 
 // Pilot represents a pilot within a session.
@@ -128,6 +129,10 @@ func (d *DB) migrate() error {
 	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
 		return fmt.Errorf("migrate power_ceiling_mw: %w", err)
 	}
+	_, err = d.db.Exec(`ALTER TABLE sessions ADD COLUMN fixed_channels TEXT DEFAULT ''`)
+	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+		return fmt.Errorf("migrate fixed_channels: %w", err)
+	}
 	return nil
 }
 
@@ -138,8 +143,9 @@ func (d *DB) Close() error {
 
 // CreateSession generates a new session with a 6-char hex code that expires in 12 hours.
 // powerCeilingMW sets the TX power ceiling for the session (0 = no limit).
+// fixedChannels is a JSON array of {name, freq} objects, or empty string for none.
 // Retries with a new code if a collision occurs (primary key conflict).
-func (d *DB) CreateSession(powerCeilingMW int) (*Session, error) {
+func (d *DB) CreateSession(powerCeilingMW int, fixedChannels string) (*Session, error) {
 	now := time.Now().UTC()
 	expires := now.Add(12 * time.Hour)
 
@@ -147,8 +153,8 @@ func (d *DB) CreateSession(powerCeilingMW int) (*Session, error) {
 	for i := 0; i < maxRetries; i++ {
 		id := generateCode()
 		_, err := d.db.Exec(
-			`INSERT INTO sessions (id, created_at, expires_at, version, power_ceiling_mw) VALUES (?, ?, ?, 1, ?)`,
-			id, now, expires, powerCeilingMW,
+			`INSERT INTO sessions (id, created_at, expires_at, version, power_ceiling_mw, fixed_channels) VALUES (?, ?, ?, 1, ?, ?)`,
+			id, now, expires, powerCeilingMW, fixedChannels,
 		)
 		if err != nil {
 			if strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "PRIMARY") {
@@ -162,6 +168,7 @@ func (d *DB) CreateSession(powerCeilingMW int) (*Session, error) {
 			ExpiresAt:      expires,
 			Version:        1,
 			PowerCeilingMW: powerCeilingMW,
+			FixedChannels:  fixedChannels,
 		}, nil
 	}
 	return nil, fmt.Errorf("failed to generate unique session ID after %d attempts", maxRetries)
@@ -172,9 +179,9 @@ func (d *DB) CreateSession(powerCeilingMW int) (*Session, error) {
 func (d *DB) GetSession(id string) (*Session, error) {
 	var s Session
 	err := d.db.QueryRow(
-		`SELECT id, created_at, expires_at, version, leader_pilot_id, COALESCE(power_ceiling_mw, 0) FROM sessions WHERE id = ? AND expires_at > datetime('now')`,
+		`SELECT id, created_at, expires_at, version, leader_pilot_id, COALESCE(power_ceiling_mw, 0), COALESCE(fixed_channels, '') FROM sessions WHERE id = ? AND expires_at > datetime('now')`,
 		id,
-	).Scan(&s.ID, &s.CreatedAt, &s.ExpiresAt, &s.Version, &s.LeaderPilotID, &s.PowerCeilingMW)
+	).Scan(&s.ID, &s.CreatedAt, &s.ExpiresAt, &s.Version, &s.LeaderPilotID, &s.PowerCeilingMW, &s.FixedChannels)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("session %q not found or expired", id)
