@@ -111,6 +111,17 @@
         <p class="leader-info-item"><strong>Rebalance all</strong> to re-optimize the whole group at once.</p>
         <p class="leader-info-item"><strong>Transfer leadership</strong> before you leave &mdash; tap your own row in the roster and hand it off.</p>
       </div>
+      <div class="session-options">
+        <div class="session-options-label">SESSION OPTIONS</div>
+        <button id="opt-power-ceiling" class="session-option-btn" data-option="power">
+          <span class="session-option-check">&#x2610;</span>
+          <span class="session-option-text">POWER CEILING</span>
+        </button>
+        <button id="opt-fixed-channels" class="session-option-btn" data-option="channels">
+          <span class="session-option-check">&#x2610;</span>
+          <span class="session-option-text">FIXED CHANNELS</span>
+        </button>
+      </div>
       <button id="btn-leader-info-got-it" class="btn btn-primary btn-large">GOT IT</button>
     </div>
 
@@ -150,6 +161,30 @@
       <p class="power-guidance-note">Guidance only — pilots must configure their own VTX.</p>
       <button id="btn-power-next" class="btn btn-primary btn-large">SET CEILING</button>
       <button id="btn-power-skip" class="btn btn-secondary btn-large">SKIP (NO LIMIT)</button>
+    </div>
+
+    <!-- Step 1.85: Fixed Channels (only for session creators who opted in) -->
+    <div id="step-fixed-channels" class="setup-step hidden">
+      <h2 class="step-title">FIXED CHANNELS</h2>
+      <p class="power-subtitle">Wider spacing for higher power and cleaner video. Extra pilots buddy up on shared channels.</p>
+      <div class="fc-pilot-display">
+        <span class="fc-pilot-count" id="fc-pilot-count">4</span>
+        <span class="fc-pilot-label">UNIQUE CHANNELS</span>
+      </div>
+      <div class="fc-slider-container">
+        <div class="fc-slider-track" id="fc-slider-track">
+          <div class="fc-slider-notches" id="fc-slider-notches"></div>
+          <div class="power-slider-thumb" id="fc-slider-thumb"></div>
+        </div>
+        <div class="fc-slider-labels">
+          <span>2</span>
+          <span>5</span>
+        </div>
+      </div>
+      <div id="fc-set-list" class="fc-set-list"></div>
+      <p class="fc-hint">For 6+ pilots, skip this and let the optimizer assign channels.</p>
+      <button id="btn-fc-use-set" class="btn btn-primary btn-large" disabled>USE THIS SET</button>
+      <button id="btn-fc-skip" class="btn btn-secondary btn-large">SKIP</button>
     </div>
 
     <!-- Step 2: Video System -->

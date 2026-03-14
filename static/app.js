@@ -40,6 +40,12 @@
     powerStepIndex: 2,
     // Power ceiling of the session we've joined (from server)
     sessionPowerCeiling: 0,
+    // Session options chosen on leader info step
+    optPowerCeiling: false,
+    optFixedChannels: false,
+    fixedChannels: '',
+    // Pending power ceiling (mW) chosen in power step, 0 = no limit, -1 = not yet set
+    pendingPowerMW: 0,
   };
 
   // ── Buddy group colors ────────────────────────────────────────
@@ -58,6 +64,30 @@
     { mw: 800,  dbm: '29 dBm',   guard: 28, channels: 4, tip: 'Near-max power. 4 unique channels, buddy up for larger groups.' },
     { mw: 1000, dbm: '30 dBm',   guard: 32, channels: 4, tip: 'Full send. 4 unique channels max.' },
   ];
+
+  // ── Fixed channel sets ────────────────────────────────────────
+  var FIXED_CHANNEL_SETS = {
+    2: [
+      { name: 'MAX SPREAD', channels: [{ n: 'R1', f: 5658 }, { n: 'R8', f: 5917 }], spacing: 259, imd: 100, power: 'ANY POWER', systems: 'ANALOG / HDZERO', powerColor: '#4ade80' },
+      { name: 'DJI SPREAD', channels: [{ n: 'DJI-CH1', f: 5669, dji: true }, { n: 'DJI-CH7', f: 5876, dji: true }], spacing: 207, imd: 100, power: 'ANY POWER', systems: 'DJI', powerColor: '#4ade80' }
+    ],
+    3: [
+      { name: 'IMD CLEAN', channels: [{ n: 'R1', f: 5658 }, { n: 'R4', f: 5769 }, { n: 'R8', f: 5917 }], spacing: 111, imd: 100, power: 'ANY POWER', systems: 'ANALOG / HDZERO', powerColor: '#4ade80' },
+      { name: 'MIXED CLEAN', channels: [{ n: 'R1', f: 5658 }, { n: 'DJI-CH5', f: 5805, dji: true }, { n: 'R8', f: 5917 }], spacing: 112, imd: 100, power: 'ANY POWER', systems: 'MIXED', powerColor: '#4ade80' },
+      { name: 'DJI SPREAD', channels: [{ n: 'DJI-CH1', f: 5669, dji: true }, { n: 'DJI-CH4', f: 5769, dji: true }, { n: 'DJI-CH7', f: 5876, dji: true }], spacing: 100, imd: 78, power: 'ANY POWER', systems: 'DJI', powerColor: '#4ade80' }
+    ],
+    4: [
+      { name: 'IMD CLEAN', channels: [{ n: 'R1', f: 5658 }, { n: 'R3', f: 5732 }, { n: 'R6', f: 5843 }, { n: 'R8', f: 5917 }], spacing: 74, imd: 100, power: 'ANY POWER', systems: 'ANALOG / HDZERO', powerColor: '#4ade80' },
+      { name: 'MIXED CLEAN', channels: [{ n: 'R1', f: 5658 }, { n: 'DJI-CH3', f: 5741, dji: true }, { n: 'DJI-CH6', f: 5840, dji: true }, { n: 'R8', f: 5917 }], spacing: 77, imd: 98, power: 'ANY POWER', systems: 'MIXED', powerColor: '#4ade80' },
+      { name: 'DJI SPREAD', channels: [{ n: 'DJI-CH1', f: 5669, dji: true }, { n: 'DJI-CH3', f: 5741, dji: true }, { n: 'DJI-CH5', f: 5805, dji: true }, { n: 'DJI-CH7', f: 5876, dji: true }], spacing: 64, imd: 69, power: 'ANY POWER', systems: 'DJI', powerColor: '#4ade80' }
+    ],
+    5: [
+      { name: 'MIXED OPTIMAL', channels: [{ n: 'R1', f: 5658 }, { n: 'DJI-CH2', f: 5705, dji: true }, { n: 'R4', f: 5769 }, { n: 'R6', f: 5843 }, { n: 'R8', f: 5917 }], spacing: 47, imd: 91, power: '\u2264 600 mW', systems: 'MIXED', powerColor: '#60a5fa' },
+      { name: 'ET5A', channels: [{ n: 'E3', f: 5665, multi: true }, { n: 'F1', f: 5740, multi: true }, { n: 'F4', f: 5800, multi: true }, { n: 'F7', f: 5860, multi: true }, { n: 'E6', f: 5905, multi: true }], spacing: 45, imd: 88, power: '\u2264 600 mW', systems: 'ANALOG (MULTI-BAND)', powerColor: '#60a5fa' },
+      { name: 'RACEBAND 5', channels: [{ n: 'R1', f: 5658 }, { n: 'R3', f: 5732 }, { n: 'R5', f: 5806 }, { n: 'R6', f: 5843 }, { n: 'R8', f: 5917 }], spacing: 37, imd: 40, power: '\u2264 400 mW', systems: 'ANALOG / HDZERO', powerColor: '#f59e0b' },
+      { name: 'DJI 5', channels: [{ n: 'DJI-CH1', f: 5669, dji: true }, { n: 'DJI-CH3', f: 5741, dji: true }, { n: 'DJI-CH5', f: 5805, dji: true }, { n: 'DJI-CH6', f: 5840, dji: true }, { n: 'DJI-CH7', f: 5876, dji: true }], spacing: 36, imd: 100, power: '\u2264 400 mW', systems: 'DJI', powerColor: '#f59e0b' }
+    ]
+  };
 
   // ── IMD (Intermodulation Distortion) Helpers ──────────────────
   function calcIMDProducts(pilots) {
@@ -644,6 +674,14 @@
       state.sessionCode = null;
       state.powerCeilingMW = 0;
       state.powerStepIndex = 2;
+      state.optPowerCeiling = false;
+      state.optFixedChannels = false;
+      state.fixedChannels = '';
+      state.pendingPowerMW = 0;
+      $('opt-power-ceiling').classList.remove('active');
+      $('opt-power-ceiling').querySelector('.session-option-check').textContent = '\u2610';
+      $('opt-fixed-channels').classList.remove('active');
+      $('opt-fixed-channels').querySelector('.session-option-check').textContent = '\u2610';
       $('joining-session-hint').classList.add('hidden');
       showScreen('setup');
       showStep('step-callsign');
@@ -653,14 +691,29 @@
     }
   }
 
-  // Called from the power step buttons — creates the session with the chosen ceiling.
+  // Creates the session with the pending power ceiling and fixed channels, then shows video step.
   async function createSessionWithPower(powerCeilingMW) {
     var body = {};
     if (powerCeilingMW > 0) body.power_ceiling_mw = powerCeilingMW;
+    if (state.fixedChannels) body.fixed_channels = state.fixedChannels;
     var sess = await apiPost('/api/sessions', body);
     state.sessionCode = sess.id;
     state.powerCeilingMW = powerCeilingMW;
     saveState();
+  }
+
+  // Creates the session (collecting all wizard options) then shows the video step.
+  // Used when power ceiling and/or fixed channels steps have been configured.
+  async function createSessionAndShowVideo(btn) {
+    setLoading(btn, true);
+    try {
+      await createSessionWithPower(state.pendingPowerMW > 0 ? state.pendingPowerMW : 0);
+      showStep('step-video');
+    } catch (err) {
+      alert('FAILED TO CREATE SESSION');
+    } finally {
+      setLoading(btn, false);
+    }
   }
 
   async function handleJoinByCode() {
@@ -725,8 +778,27 @@
 
   // ── Setup: Step 1.5 — Leader Info ──────────────────────────────
   function initLeaderInfoStep() {
-    $('btn-leader-info-got-it').addEventListener('click', function () {
-      showStep('step-power');
+    $('btn-leader-info-got-it').addEventListener('click', async function () {
+      if (state.optPowerCeiling) {
+        // Power step will handle session creation after ceiling is chosen
+        showStep('step-power');
+      } else if (state.optFixedChannels) {
+        // Fixed channels step will create the session after set is chosen
+        showStep('step-fixed-channels');
+      } else {
+        // No optional steps — create session immediately then go to video
+        await createSessionAndShowVideo(this);
+      }
+    });
+    $('opt-power-ceiling').addEventListener('click', function () {
+      state.optPowerCeiling = !state.optPowerCeiling;
+      this.classList.toggle('active', state.optPowerCeiling);
+      this.querySelector('.session-option-check').textContent = state.optPowerCeiling ? '\u2611' : '\u2610';
+    });
+    $('opt-fixed-channels').addEventListener('click', function () {
+      state.optFixedChannels = !state.optFixedChannels;
+      this.classList.toggle('active', state.optFixedChannels);
+      this.querySelector('.session-option-check').textContent = state.optFixedChannels ? '\u2611' : '\u2610';
     });
   }
 
@@ -774,33 +846,202 @@
     });
 
     $('btn-power-next').addEventListener('click', async function () {
-      var btn = this;
-      setLoading(btn, true);
-      try {
-        await createSessionWithPower(POWER_STEPS[state.powerStepIndex].mw);
-        showStep('step-video');
-      } catch (err) {
-        alert('FAILED TO CREATE SESSION');
-      } finally {
-        setLoading(btn, false);
+      state.pendingPowerMW = POWER_STEPS[state.powerStepIndex].mw;
+      if (state.optFixedChannels) {
+        showStep('step-fixed-channels');
+      } else {
+        await createSessionAndShowVideo(this);
       }
     });
 
     $('btn-power-skip').addEventListener('click', async function () {
-      var btn = this;
-      setLoading(btn, true);
-      try {
-        await createSessionWithPower(0);
-        showStep('step-video');
-      } catch (err) {
-        alert('FAILED TO CREATE SESSION');
-      } finally {
-        setLoading(btn, false);
+      state.pendingPowerMW = 0;
+      if (state.optFixedChannels) {
+        showStep('step-fixed-channels');
+      } else {
+        await createSessionAndShowVideo(this);
       }
     });
 
     // Set initial display after DOM is fully ready
     // (offsetWidth is 0 before the step is visible, so we defer to when shown)
+  }
+
+  // ── Setup: Step 1.85 — Fixed Channels (creators only) ─────────
+  function initFixedChannelsStep() {
+    var FC_COUNT_MIN = 2;
+    var FC_COUNT_MAX = 5;
+    var fcCount = 4;
+    var selectedFCSet = null;
+
+    // Build notches (4 gaps between 2..5 = 4 positions)
+    var notchContainer = $('fc-slider-notches');
+    var notchCount = FC_COUNT_MAX - FC_COUNT_MIN + 1; // 4 notches
+    for (var ni = 0; ni < notchCount; ni++) {
+      var n = document.createElement('div');
+      n.className = 'power-slider-notch';
+      notchContainer.appendChild(n);
+    }
+
+    function getFCCountFromX(clientX) {
+      var rect = $('fc-slider-track').getBoundingClientRect();
+      var pct = (clientX - rect.left) / rect.width;
+      pct = Math.max(0, Math.min(1, pct));
+      return Math.round(pct * (FC_COUNT_MAX - FC_COUNT_MIN)) + FC_COUNT_MIN;
+    }
+
+    function updateFCSlider(count) {
+      fcCount = count;
+      selectedFCSet = null;
+      $('btn-fc-use-set').disabled = true;
+      $('fc-pilot-count').textContent = count;
+      var track = $('fc-slider-track');
+      var thumbRadius = 19;
+      var usable = track.offsetWidth - thumbRadius * 2;
+      var pct = (count - FC_COUNT_MIN) / (FC_COUNT_MAX - FC_COUNT_MIN);
+      $('fc-slider-thumb').style.left = (thumbRadius - 19 + pct * usable) + 'px';
+      renderFCSetList(count);
+    }
+
+    function drawFCSpectrum(canvas, channels) {
+      var ctx = canvas.getContext('2d');
+      var w = canvas.width;
+      var h = canvas.height;
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(0, 0, w, h);
+      var freqMin = 5620;
+      var freqMax = 5950;
+      var freqRange = freqMax - freqMin;
+      function freqToX(f) { return ((f - freqMin) / freqRange) * w; }
+      channels.forEach(function (ch) {
+        var cx = freqToX(ch.f);
+        var color = ch.dji ? '#60a5fa' : (ch.multi ? '#f59e0b' : '#33ff33');
+        ctx.beginPath();
+        var bwHalf = freqToX(ch.f + 10) - freqToX(ch.f);
+        ctx.moveTo(cx - bwHalf, h);
+        ctx.bezierCurveTo(cx - bwHalf, h * 0.2, cx, 0, cx, 0);
+        ctx.bezierCurveTo(cx, 0, cx + bwHalf, h * 0.2, cx + bwHalf, h);
+        ctx.closePath();
+        ctx.fillStyle = color + '55';
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+    }
+
+    function renderFCSetList(count) {
+      var list = $('fc-set-list');
+      clearChildren(list);
+      var sets = FIXED_CHANNEL_SETS[count] || [];
+      sets.forEach(function (set) {
+        var card = document.createElement('div');
+        card.className = 'fc-set-card';
+
+        // Header
+        var header = document.createElement('div');
+        header.className = 'fc-set-header';
+        var nameEl = document.createElement('span');
+        nameEl.className = 'fc-set-name';
+        nameEl.textContent = set.name;
+        header.appendChild(nameEl);
+        var badges = document.createElement('div');
+        badges.className = 'fc-set-badges';
+        var imdBadge = document.createElement('span');
+        imdBadge.className = 'fc-set-badge';
+        imdBadge.textContent = 'IMD ' + set.imd;
+        imdBadge.style.borderColor = set.imd >= 90 ? '#4ade8066' : (set.imd >= 60 ? '#f59e0b66' : '#f9713166');
+        imdBadge.style.color = set.imd >= 90 ? '#4ade80' : (set.imd >= 60 ? '#f59e0b' : '#f97316');
+        badges.appendChild(imdBadge);
+        var powerBadge = document.createElement('span');
+        powerBadge.className = 'fc-set-badge';
+        powerBadge.textContent = set.power;
+        powerBadge.style.borderColor = set.powerColor + '66';
+        powerBadge.style.color = set.powerColor;
+        badges.appendChild(powerBadge);
+        header.appendChild(badges);
+        card.appendChild(header);
+
+        // Systems
+        var systemsEl = document.createElement('div');
+        systemsEl.className = 'fc-set-systems';
+        systemsEl.textContent = set.systems;
+        card.appendChild(systemsEl);
+
+        // Channel pills
+        var pillsEl = document.createElement('div');
+        pillsEl.className = 'fc-set-channels';
+        set.channels.forEach(function (ch) {
+          var pill = document.createElement('span');
+          pill.className = 'fc-ch-pill' + (ch.dji ? ' ch-dji' : '') + (ch.multi ? ' ch-multi' : '');
+          pill.textContent = ch.n;
+          pillsEl.appendChild(pill);
+        });
+        card.appendChild(pillsEl);
+
+        // Mini spectrum canvas
+        var canvas = document.createElement('canvas');
+        canvas.className = 'fc-set-spectrum';
+        canvas.height = 32;
+        card.appendChild(canvas);
+
+        // Click to select
+        card.addEventListener('click', function () {
+          document.querySelectorAll('.fc-set-card').forEach(function (c) { c.classList.remove('selected'); });
+          card.classList.add('selected');
+          selectedFCSet = set;
+          $('btn-fc-use-set').disabled = false;
+        });
+
+        list.appendChild(card);
+
+        // Draw spectrum after insertion
+        requestAnimationFrame(function () {
+          canvas.width = canvas.offsetWidth || 300;
+          drawFCSpectrum(canvas, set.channels);
+        });
+      });
+    }
+
+    $('fc-slider-track').addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      this.setPointerCapture(e.pointerId);
+      updateFCSlider(getFCCountFromX(e.clientX));
+    });
+
+    $('fc-slider-track').addEventListener('pointermove', function (e) {
+      if (this.hasPointerCapture && this.hasPointerCapture(e.pointerId)) {
+        updateFCSlider(getFCCountFromX(e.clientX));
+      }
+    });
+
+    $('btn-fc-use-set').addEventListener('click', async function () {
+      if (!selectedFCSet) return;
+      state.fixedChannels = JSON.stringify(selectedFCSet.channels.map(function (c) {
+        return { name: c.n, freq: c.f };
+      }));
+      await createSessionAndShowVideo(this);
+    });
+
+    $('btn-fc-skip').addEventListener('click', async function () {
+      state.fixedChannels = '';
+      await createSessionAndShowVideo(this);
+    });
+
+    // showStep hook: initialize slider display when step becomes visible
+    var origShowStep = showStep;
+    showStep = function (stepId) {
+      origShowStep(stepId);
+      if (stepId === 'step-fixed-channels') {
+        // Reset selection
+        selectedFCSet = null;
+        $('btn-fc-use-set').disabled = true;
+        // Defer thumb positioning until track has layout
+        requestAnimationFrame(function () {
+          updateFCSlider(fcCount);
+        });
+      }
+    };
   }
 
   // ── Setup: Step 1.25 — Power Ceiling Alert (joiners) ──────────
@@ -3832,6 +4073,7 @@
     initCallsignStep();
     initLeaderInfoStep();
     initPowerStep();
+    initFixedChannelsStep();
     initPowerAlertStep();
     initVideoStep();
     initFollowUpStep();
