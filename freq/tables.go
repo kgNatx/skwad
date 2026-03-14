@@ -29,10 +29,35 @@ func OccupiedBandwidth(videoSystem string, bandwidthMHz int) int {
 	}
 }
 
+// PowerToGuardBand maps a transmitter power level (in milliwatts) to the
+// recommended guard band in MHz. Uses a calibrated lookup table in descending
+// order; falls back to DefaultGuardBandMHz for low or unspecified power.
+func PowerToGuardBand(powerMW int) int {
+	switch {
+	case powerMW >= 1000:
+		return 32
+	case powerMW >= 800:
+		return 28
+	case powerMW >= 600:
+		return 24
+	case powerMW >= 400:
+		return 16
+	case powerMW >= 200:
+		return 14
+	case powerMW >= 100:
+		return 12
+	case powerMW >= 25:
+		return 10
+	default:
+		return DefaultGuardBandMHz
+	}
+}
+
 // RequiredSpacing returns the minimum center-to-center frequency separation
-// in MHz required between two signals with the given occupied bandwidths.
-func RequiredSpacing(bwA, bwB int) int {
-	return bwA/2 + bwB/2 + DefaultGuardBandMHz
+// in MHz required between two signals with the given occupied bandwidths and
+// guard band.
+func RequiredSpacing(bwA, bwB, guardBandMHz int) int {
+	return bwA/2 + bwB/2 + guardBandMHz
 }
 
 // ---------- Race Band ----------

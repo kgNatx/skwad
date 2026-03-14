@@ -192,7 +192,7 @@ func effectiveSeparation(freq, bw int, used []usedEntry) int {
 		if d < 0 {
 			d = -d
 		}
-		required := RequiredSpacing(bw, u.bandwidthMHz)
+		required := RequiredSpacing(bw, u.bandwidthMHz, DefaultGuardBandMHz)
 		margin := d - required
 		if margin < worstMargin {
 			worstMargin = margin
@@ -236,7 +236,7 @@ func DetectConflicts(assignments []Assignment) []Conflict {
 			halfA := a.BandwidthMHz / 2
 			halfB := b.BandwidthMHz / 2
 			overlapThreshold := halfA + halfB
-			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz)
+			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz, DefaultGuardBandMHz)
 
 			if sep < overlapThreshold {
 				conflicts = append(conflicts, Conflict{
@@ -468,7 +468,7 @@ func worstMargin(assignments []Assignment) int {
 			if sep < 0 {
 				sep = -sep
 			}
-			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz)
+			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz, DefaultGuardBandMHz)
 			margin := sep - required
 			if margin < worst {
 				worst = margin

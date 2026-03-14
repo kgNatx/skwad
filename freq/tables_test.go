@@ -106,18 +106,66 @@ func TestOccupiedBandwidth(t *testing.T) {
 
 func TestRequiredSpacing(t *testing.T) {
 	tests := []struct {
-		bwA, bwB, want int
+		bwA, bwB, guardBand, want int
 	}{
-		{20, 20, 30},  // 10+10+10
-		{20, 40, 40},  // 10+20+10
-		{40, 40, 50},  // 20+20+10
-		{40, 60, 60},  // 20+30+10
-		{60, 60, 70},  // 30+30+10
+		{20, 20, 10, 30}, // 10+10+10
+		{20, 40, 10, 40}, // 10+20+10
+		{40, 40, 10, 50}, // 20+20+10
+		{40, 60, 10, 60}, // 20+30+10
+		{60, 60, 10, 70}, // 30+30+10
 	}
 	for _, tt := range tests {
-		got := RequiredSpacing(tt.bwA, tt.bwB)
+		got := RequiredSpacing(tt.bwA, tt.bwB, tt.guardBand)
 		if got != tt.want {
-			t.Errorf("RequiredSpacing(%d, %d) = %d, want %d", tt.bwA, tt.bwB, got, tt.want)
+			t.Errorf("RequiredSpacing(%d, %d, %d) = %d, want %d", tt.bwA, tt.bwB, tt.guardBand, got, tt.want)
+		}
+	}
+}
+
+func TestPowerToGuardBand(t *testing.T) {
+	tests := []struct {
+		powerMW int
+		want    int
+	}{
+		// Exact thresholds
+		{0, 10},
+		{25, 10},
+		{100, 12},
+		{200, 14},
+		{400, 16},
+		{600, 24},
+		{800, 28},
+		{1000, 32},
+		// Between steps
+		{50, 10},
+		{300, 14},
+		{500, 16},
+		{1500, 32},
+	}
+
+	for _, tt := range tests {
+		got := PowerToGuardBand(tt.powerMW)
+		if got != tt.want {
+			t.Errorf("PowerToGuardBand(%d) = %d, want %d", tt.powerMW, got, tt.want)
+		}
+	}
+}
+
+func TestRequiredSpacingWithGuardBand(t *testing.T) {
+	tests := []struct {
+		bwA, bwB, guardBand int
+		want                int
+	}{
+		{20, 20, 10, 30},
+		{20, 20, 24, 44},
+		{20, 40, 16, 46},
+	}
+
+	for _, tt := range tests {
+		got := RequiredSpacing(tt.bwA, tt.bwB, tt.guardBand)
+		if got != tt.want {
+			t.Errorf("RequiredSpacing(%d, %d, %d) = %d, want %d",
+				tt.bwA, tt.bwB, tt.guardBand, got, tt.want)
 		}
 	}
 }

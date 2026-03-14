@@ -77,8 +77,8 @@ func TestOptimize_FourAnalog_SafeSpacing(t *testing.T) {
 		freqs[a.FreqMHz] = true
 	}
 
-	// All pairs should be >= RequiredSpacing(20, 20) = 30 MHz apart.
-	required := RequiredSpacing(20, 20)
+	// All pairs should be >= RequiredSpacing(20, 20, DefaultGuardBandMHz) = 30 MHz apart.
+	required := RequiredSpacing(20, 20, DefaultGuardBandMHz)
 	for i := 0; i < len(assignments); i++ {
 		for j := i + 1; j < len(assignments); j++ {
 			sep := abs(assignments[i].FreqMHz - assignments[j].FreqMHz)
@@ -110,9 +110,9 @@ func TestOptimize_LockedChannel(t *testing.T) {
 		t.Errorf("pinned pilot channel = %s, want R3", assignments[0].Channel)
 	}
 
-	// Pilot 2 should be far from 5732 — at least RequiredSpacing(20, 20) = 30 MHz.
+	// Pilot 2 should be far from 5732 — at least RequiredSpacing(20, 20, DefaultGuardBandMHz) = 30 MHz.
 	sep := abs(assignments[1].FreqMHz - 5732)
-	required := RequiredSpacing(20, 20)
+	required := RequiredSpacing(20, 20, DefaultGuardBandMHz)
 	if sep < required {
 		t.Errorf("pilot 2 only %d MHz from locked pilot (want >= %d)", sep, required)
 	}
@@ -189,12 +189,12 @@ func TestOptimize_AnalogAndDJIO3_40MHz(t *testing.T) {
 	// Verify pilot 3 was NOT assigned R4 (5769) — only 26 MHz from 5795.
 	if flexAnalog.FreqMHz == 5769 {
 		t.Errorf("flexible analog pilot assigned R4 (5769), only 26 MHz from O3@5795; "+
-			"should be farther away (required spacing = %d)", RequiredSpacing(20, 40))
+			"should be farther away (required spacing = %d)", RequiredSpacing(20, 40, DefaultGuardBandMHz))
 	}
 
 	// Verify the separation between pilot 3 and the O3 pilot is reasonable.
 	sep := abs(flexAnalog.FreqMHz - 5795)
-	required := RequiredSpacing(20, 40) // 40 MHz
+	required := RequiredSpacing(20, 40, DefaultGuardBandMHz) // 40 MHz
 	t.Logf("flexible analog assigned %s@%d, separation from O3@5795 = %d (required %d)",
 		flexAnalog.Channel, flexAnalog.FreqMHz, sep, required)
 }
