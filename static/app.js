@@ -593,6 +593,12 @@
       } else if (state.sessionPowerCeiling > 0) {
         $('power-alert-mw').textContent = state.sessionPowerCeiling;
         $('power-alert-mw-bold').textContent = state.sessionPowerCeiling;
+        var djiHint = $('power-alert-dji-hint');
+        if (state.sessionPowerCeiling < 600) {
+          djiHint.classList.remove('hidden');
+        } else {
+          djiHint.classList.add('hidden');
+        }
         showStep('step-power-alert');
       } else {
         showStep('step-video');
