@@ -90,18 +90,31 @@
   function calcIMDScore(pilots) {
     if (!pilots || pilots.length < 2) return 100;
     var products = calcIMDProducts(pilots);
-    var hits = 0;
-    var total = 0;
+    // Proximity-weighted scoring: products closer to active channels score worse.
+    // Inspired by ET's IMD Tools but with a 20 MHz threshold (matches our guard band range).
+    var IMD_THRESHOLD = 20;
+    var penaltySum = 0;
+    var activeFreqs = [];
+    pilots.forEach(function(p) { if (p.AssignedFreqMHz) activeFreqs.push(p.AssignedFreqMHz); });
     var seen = {};
     products.forEach(function(p) {
       var key = Math.round(p.freq);
       if (seen[key]) return;
       seen[key] = true;
-      total++;
-      if (p.hitIdx >= 0) hits++;
+      // Find closest active channel
+      var minDist = IMD_THRESHOLD;
+      for (var i = 0; i < activeFreqs.length; i++) {
+        var d = Math.abs(p.freq - activeFreqs[i]);
+        if (d < minDist) minDist = d;
+      }
+      if (minDist < IMD_THRESHOLD) {
+        var gap = IMD_THRESHOLD - minDist;
+        penaltySum += gap * gap; // quadratic — closer = much worse
+      }
     });
-    if (total === 0) return 100;
-    return Math.round(100 * (1 - hits / total));
+    if (activeFreqs.length < 2) return 100;
+    var score = 100 - penaltySum / (5 * activeFreqs.length);
+    return Math.max(0, Math.min(100, Math.round(score)));
   }
 
   function getIMDSourcesForPilot(pilots, targetIdx) {
@@ -1832,45 +1845,52 @@
         badgeRow.appendChild(leaderBadge);
       }
 
-      if (imdHitSet[pilotIdx]) {
-        var imdFlag = el('span', { className: 'pilot-imd-flag', textContent: 'IMD' });
-        badgeRow.appendChild(imdFlag);
-      }
-
       info.appendChild(badgeRow);
-
-      // Buddy info
-      if (buddyIdx > 0 && buddyGroups[p.BuddyGroup] && buddyGroups[p.BuddyGroup].length > 1) {
-        var buddies = buddyGroups[p.BuddyGroup]
-          .filter(function (b) { return b.ID !== p.ID; })
-          .map(function (b) { return b.Callsign; });
-        if (buddies.length > 0) {
-          var buddyInfo = el('div', {
-            className: 'pilot-buddy-info buddy-text-' + buddyIdx,
-            textContent: 'SHARING WITH: ' + buddies.join(', ')
-          });
-          info.appendChild(buddyInfo);
-        }
-      }
-
-      // Conflict warnings
-      conflicts.forEach(function (c) {
-        var level = c.level || c.Level;
-        var otherName = c.other_callsign || c.OtherCallsign || '?';
-        var sep = c.separation_mhz || c.SeparationMHz || 0;
-        var req = c.required_mhz || c.RequiredMHz || 0;
-        var conflictEl = el('div', {
-          className: 'pilot-conflict conflict-' + level,
-          textContent: (level === 'danger' ? 'OVERLAP' : 'CLOSE TO') + ' ' + otherName + ' (' + sep + '/' + req + ' MHz)'
-        });
-        info.appendChild(conflictEl);
-      });
 
       card.appendChild(info);
 
-      // Leader-added indicator dot
-      if (p.AddedByLeader) {
-        card.appendChild(el('div', { className: 'pilot-added-dot', title: 'Added by leader' }));
+      // Bottom row: IMD badge (left), status text (right), leader dot (far right)
+      var hasIMD = imdHitSet[pilotIdx];
+      var hasBuddy = buddyIdx > 0 && buddyGroups[p.BuddyGroup] && buddyGroups[p.BuddyGroup].length > 1;
+      var hasConflicts = conflicts.length > 0;
+      var hasLeaderDot = p.AddedByLeader;
+
+      if (hasIMD || hasBuddy || hasConflicts || hasLeaderDot) {
+        var bottomRow = el('div', { className: 'pilot-bottom-row' });
+
+        if (hasIMD) {
+          bottomRow.appendChild(el('span', { className: 'pilot-imd-flag', textContent: 'IMD' }));
+        }
+
+        var statusText = el('div', { className: 'pilot-status-text' });
+        if (hasBuddy) {
+          var buddies = buddyGroups[p.BuddyGroup]
+            .filter(function (b) { return b.ID !== p.ID; })
+            .map(function (b) { return b.Callsign; });
+          if (buddies.length > 0) {
+            statusText.appendChild(el('span', {
+              className: 'pilot-buddy-info buddy-text-' + buddyIdx,
+              textContent: 'SHARING WITH: ' + buddies.join(', ')
+            }));
+          }
+        }
+        conflicts.forEach(function (c) {
+          var level = c.level || c.Level;
+          var otherName = c.other_callsign || c.OtherCallsign || '?';
+          var sep = c.separation_mhz || c.SeparationMHz || 0;
+          var req = c.required_mhz || c.RequiredMHz || 0;
+          statusText.appendChild(el('span', {
+            className: 'pilot-conflict conflict-' + level,
+            textContent: (level === 'danger' ? 'OVERLAP' : 'CLOSE TO') + ' ' + otherName + ' (' + sep + '/' + req + ' MHz)'
+          }));
+        });
+        bottomRow.appendChild(statusText);
+
+        if (hasLeaderDot) {
+          bottomRow.appendChild(el('div', { className: 'pilot-added-dot' }));
+        }
+
+        card.appendChild(bottomRow);
       }
 
       container.appendChild(card);
