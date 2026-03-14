@@ -869,6 +869,19 @@
     }
   }
 
+  function shouldWarnBandwidth() {
+    return state.sessionPowerCeiling > 0 && state.sessionPowerCeiling < 600;
+  }
+
+  function applyBandwidthHint(btn, bw) {
+    if (!shouldWarnBandwidth()) return;
+    if (bw <= 20) {
+      btn.classList.add('bw-recommended');
+    } else {
+      btn.classList.add('bw-warn');
+    }
+  }
+
   function showBandwidthOptions(options) {
     $('followup-bandwidth').classList.remove('hidden');
     var container = $('bandwidth-buttons');
@@ -877,6 +890,7 @@
       var btn = document.createElement('button');
       btn.className = 'btn btn-option';
       btn.textContent = bw + ' MHz';
+      applyBandwidthHint(btn, bw);
       btn.addEventListener('click', function () {
         container.querySelectorAll('.btn-option').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
