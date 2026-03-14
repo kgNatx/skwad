@@ -593,12 +593,8 @@
       } else if (state.sessionPowerCeiling > 0) {
         $('power-alert-mw').textContent = state.sessionPowerCeiling;
         $('power-alert-mw-bold').textContent = state.sessionPowerCeiling;
-        var djiHint = $('power-alert-dji-hint');
-        if (state.sessionPowerCeiling < 600) {
-          djiHint.classList.remove('hidden');
-        } else {
-          djiHint.classList.add('hidden');
-        }
+        // 600 mW = raceband cliff where channels drop from 8 to 4; below that, 20 MHz BW matters
+        $('power-alert-dji-hint').classList.toggle('hidden', state.sessionPowerCeiling >= 600);
         showStep('step-power-alert');
       } else {
         showStep('step-video');
