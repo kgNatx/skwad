@@ -40,6 +40,8 @@
     powerStepIndex: 2,
     // Power ceiling of the session we've joined (from server)
     sessionPowerCeiling: 0,
+    // Fixed channels of the session we've joined (from server), JSON string
+    sessionFixedChannels: '',
     // Session options chosen on leader info step
     optPowerCeiling: false,
     optFixedChannels: false,
@@ -730,6 +732,7 @@
       var data = await apiGet('/api/sessions/' + code);
       state.sessionCode = code;
       state.sessionPowerCeiling = (data.session && data.session.power_ceiling_mw) || 0;
+      state.sessionFixedChannels = (data.session && data.session.fixed_channels) || '';
       saveState();
       $('joining-session-code').textContent = code;
       $('joining-session-hint').classList.remove('hidden');
@@ -759,10 +762,50 @@
       if (state.isCreator) {
         showStep('step-leader-info');
       } else if (state.sessionPowerCeiling > 0) {
+        // Restore power ceiling elements in case they were hidden by a previous fixed-only display
+        var alertTitle = $('power-alert-title');
+        var alertValueRow = $('power-alert-value-row');
+        var alertText = $('power-alert-text');
+        if (alertTitle) alertTitle.textContent = 'POWER CEILING';
+        if (alertValueRow) alertValueRow.classList.remove('hidden');
+        if (alertText) alertText.classList.remove('hidden');
         $('power-alert-mw').textContent = state.sessionPowerCeiling;
         $('power-alert-mw-bold').textContent = state.sessionPowerCeiling;
         // 600 mW = raceband cliff where channels drop from 8 to 4; below that, 20 MHz BW matters
         $('power-alert-dji-hint').classList.toggle('hidden', state.sessionPowerCeiling >= 600);
+        // Show fixed channels info if set
+        var fixedHint = $('power-alert-fixed-hint');
+        if (fixedHint) {
+          if (state.sessionFixedChannels) {
+            try {
+              var fcList = JSON.parse(state.sessionFixedChannels);
+              var fcNames = fcList.map(function (c) { return c.name; });
+              fixedHint.textContent = 'This session uses fixed channels: ' + fcNames.join(', ');
+              fixedHint.classList.remove('hidden');
+            } catch (e) { fixedHint.classList.add('hidden'); }
+          } else {
+            fixedHint.classList.add('hidden');
+          }
+        }
+        showStep('step-power-alert');
+      } else if (state.sessionFixedChannels) {
+        // Fixed channels but no power ceiling — reuse the alert step with only the fixed hint
+        alertTitle = $('power-alert-title');
+        alertValueRow = $('power-alert-value-row');
+        alertText = $('power-alert-text');
+        if (alertTitle) alertTitle.textContent = 'SESSION CHANNELS';
+        if (alertValueRow) alertValueRow.classList.add('hidden');
+        if (alertText) alertText.classList.add('hidden');
+        $('power-alert-dji-hint').classList.add('hidden');
+        fixedHint = $('power-alert-fixed-hint');
+        if (fixedHint) {
+          try {
+            fcList = JSON.parse(state.sessionFixedChannels);
+            fcNames = fcList.map(function (c) { return c.name; });
+            fixedHint.textContent = 'This session uses fixed channels: ' + fcNames.join(', ');
+            fixedHint.classList.remove('hidden');
+          } catch (e) { fixedHint.classList.add('hidden'); }
+        }
         showStep('step-power-alert');
       } else {
         showStep('step-video');
@@ -1389,8 +1432,22 @@
     picker.style.gridTemplateColumns = 'repeat(' + cols + ', 1fr)';
   }
 
+  function filterPoolToFixedChannels(pool) {
+    if (!state.sessionFixedChannels) return pool;
+    try {
+      var fixedChannels = JSON.parse(state.sessionFixedChannels);
+      var fixedFreqs = {};
+      fixedChannels.forEach(function (c) { fixedFreqs[c.freq] = true; });
+      var filtered = pool.filter(function (ch) { return fixedFreqs[ch.freq]; });
+      if (filtered.length > 0) return filtered;
+      // Pilot's system has no overlap — show fixed channels directly
+      return fixedChannels.map(function (c) { return { name: c.name, freq: c.freq }; });
+    } catch (e) { return pool; }
+  }
+
   function renderChannelPicker() {
     var pool = getChannelPool();
+    pool = filterPoolToFixedChannels(pool);
     var picker = $('channel-picker');
     clearChildren(picker);
     pool.forEach(function (ch) {
@@ -1657,6 +1714,7 @@
 
       // Power ceiling badge
       state.sessionPowerCeiling = data.session.power_ceiling_mw || 0;
+      state.sessionFixedChannels = data.session.fixed_channels || '';
       var badge = $('power-ceiling-badge');
       if (badge) {
         if (state.sessionPowerCeiling > 0) {
@@ -1665,6 +1723,18 @@
         } else {
           badge.classList.add('hidden');
         }
+      }
+
+      // Fixed channels badge
+      var fcBadge = $('fixed-channels-badge');
+      if (fcBadge && state.sessionFixedChannels) {
+        try {
+          var fcParsed = JSON.parse(state.sessionFixedChannels);
+          fcBadge.textContent = 'FIXED \u00b7 ' + fcParsed.length + ' CH';
+          fcBadge.classList.remove('hidden');
+        } catch (e) { fcBadge.classList.add('hidden'); }
+      } else if (fcBadge) {
+        fcBadge.classList.add('hidden');
       }
 
       // IMD badge
@@ -2345,7 +2415,7 @@
     clearChildren(picker);
     channelChangeSelectedFreq = 0;
 
-    var pool = getChannelPool();
+    var pool = filterPoolToFixedChannels(getChannelPool());
     var myVideoSystem = getEffectiveVideoSystem();
     var myBw = state.bandwidthMHz || 0;
 
@@ -2556,7 +2626,7 @@
     clearChildren(picker);
     channelChangeSelectedFreq = 0;
 
-    var pool = getChannelPoolForPilot(pilot);
+    var pool = filterPoolToFixedChannels(getChannelPoolForPilot(pilot));
     var pilotBw = pilot.BandwidthMHz || 0;
 
     pool.forEach(function (ch) {
@@ -3895,17 +3965,20 @@
         // Need to join this session
         state.sessionCode = code;
         state.sessionPowerCeiling = 0;
+        state.sessionFixedChannels = '';
         saveState();
         $('joining-session-code').textContent = code;
         $('joining-session-hint').classList.remove('hidden');
         showScreen('setup');
         showStep('step-callsign');
         $('input-callsign').focus();
-        // Fetch session in background to get power ceiling for the alert step
+        // Fetch session in background to get power ceiling and fixed channels for alert steps
         apiGet('/api/sessions/' + code).then(function (data) {
           state.sessionPowerCeiling = (data.session && data.session.power_ceiling_mw) || 0;
+          state.sessionFixedChannels = (data.session && data.session.fixed_channels) || '';
         }).catch(function () {
           state.sessionPowerCeiling = 0;
+          state.sessionFixedChannels = '';
         });
       }
       return;

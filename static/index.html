@@ -91,13 +91,14 @@
       <div id="callsign-error" class="error-msg hidden"></div>
     </div>
 
-    <!-- Step 1.25: Power Ceiling Alert (joining a session with a ceiling) -->
+    <!-- Step 1.25: Power Ceiling Alert (joining a session with a ceiling or fixed channels) -->
     <div id="step-power-alert" class="setup-step hidden">
-      <h2 class="step-title power-alert-title">POWER CEILING</h2>
+      <h2 id="power-alert-title" class="step-title power-alert-title">POWER CEILING</h2>
       <div class="power-alert-body">
-        <div class="power-alert-value"><span id="power-alert-mw">200</span> mW</div>
-        <p class="power-alert-text">The session leader has set a transmit power ceiling. Please set your VTX to <strong id="power-alert-mw-bold">200</strong> mW or below for the best experience.</p>
+        <div id="power-alert-value-row" class="power-alert-value"><span id="power-alert-mw">200</span> mW</div>
+        <p id="power-alert-text" class="power-alert-text">The session leader has set a transmit power ceiling. Please set your VTX to <strong id="power-alert-mw-bold">200</strong> mW or below for the best experience.</p>
         <p id="power-alert-dji-hint" class="power-alert-dji-hint hidden">DJI pilots: use 20 MHz bandwidth for best channel compatibility.</p>
+        <p id="power-alert-fixed-hint" class="power-alert-dji-hint hidden"></p>
       </div>
       <button id="btn-power-alert-ok" class="btn btn-primary btn-large">GOT IT</button>
     </div>
@@ -305,6 +306,7 @@
         </div>
         <div class="pilot-count-row"><span id="pilot-count" class="pilot-count"></span> <span id="imd-badge" class="imd-badge hidden"></span></div>
         <span id="power-ceiling-badge" class="power-ceiling-badge hidden"></span>
+        <span id="fixed-channels-badge" class="fixed-channels-badge hidden"></span>
       </div>
     </div>
 
