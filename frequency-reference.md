@@ -320,6 +320,45 @@ For a session leader, the practical question is simple: do you need everyone on 
 
 ---
 
+## DJI Dynamic Power Control
+
+DJI O3 and O4 video systems use automatic power control — the VTX adjusts transmit power dynamically based on link quality. Pilots have no manual mW setting. This has several implications for session power ceilings:
+
+**How DJI dynamic power behaves:**
+
+- Power scales with link quality, which depends on distance, obstacles, and antenna orientation — not a single variable
+- At typical meetup distances (~100m line-of-sight), DJI tends to stay at low power (community estimates suggest under 200 mW)
+- Power ramps up progressively at range, approaching the maximum (~1W / 30 dBm in FCC mode) beyond ~500m or through obstacles
+- These are community observations from spectrum analyzer measurements, not manufacturer specifications — DJI does not publish their power control curves
+- The exact power at a given distance varies significantly with environment, antenna choice, and interference
+
+**Why bandwidth matters more than power for DJI:**
+
+Bandwidth is the lever DJI pilots actually control. Switching from 40 MHz to 20 MHz mode saves 10 MHz of required spacing per neighbor — a bigger impact than most power ceiling steps. The math:
+
+| DJI Bandwidth | vs 20 MHz neighbor (14 MHz guard*) | vs 40 MHz neighbor (14 MHz guard*) |
+|--------------|-----------------------------------|-----------------------------------|
+| 20 MHz | 34 MHz spacing | 44 MHz spacing |
+| 40 MHz | 44 MHz spacing | 54 MHz spacing |
+| 60 MHz | 54 MHz spacing | 64 MHz spacing |
+
+*14 MHz guard band = 200 mW power ceiling step. Each 20 MHz step in DJI bandwidth adds 10 MHz to required spacing — equivalent to going from a 200 mW guard band to a 600 mW guard band.
+
+**Practical experience:**
+
+Groups of 6-8 mixed DJI/analog pilots fit comfortably on raceband channels when DJI pilots use 20 MHz bandwidth and fly within a confined area. The dynamic power at these distances stays within a range where the default guard band provides adequate separation.
+
+**Skwad's approach:**
+
+Skwad treats DJI pilots identically to analog in the optimizer — same guard band for the same power ceiling. The app provides guidance rather than enforcement:
+- The power ceiling joiner interstitial includes a DJI-specific bandwidth recommendation (when ceiling < 600 mW)
+- Bandwidth buttons show visual recommended/warning indicators based on the session's power ceiling
+- The optimizer already accounts for DJI's wider bandwidth through the `RequiredSpacing()` formula
+
+This matches Skwad's philosophy: it's a coordinator, not a controller.
+
+---
+
 ## Intermodulation Distortion (IMD)
 
 When two VTXs transmit simultaneously, their signals can mix nonlinearly (in the RF front-end of nearby receivers, or even in the transmitters themselves) to produce phantom signals at new frequencies. This is intermodulation distortion.
