@@ -103,6 +103,29 @@
     return Math.round(100 * (1 - hits / total));
   }
 
+  function getIMDSourcesForPilot(pilots, targetIdx) {
+    var products = calcIMDProducts(pilots);
+    var sources = [];
+    var seen = {};
+    products.forEach(function(p) {
+      if (p.hitIdx !== targetIdx) return;
+      var key = p.sources[0] + ',' + p.sources[1];
+      if (seen[key]) return;
+      seen[key] = true;
+      sources.push({ a: pilots[p.sources[0]], b: pilots[p.sources[1]] });
+    });
+    return sources;
+  }
+
+  function formatIMDSources(pilots, targetIdx) {
+    var sources = getIMDSourcesForPilot(pilots, targetIdx);
+    if (sources.length === 0) return '';
+    var parts = sources.map(function(s) {
+      return s.a.Callsign + ' + ' + s.b.Callsign;
+    });
+    return 'IMD from ' + parts.join(', ');
+  }
+
   function getIMDHitPilots(pilots) {
     var products = calcIMDProducts(pilots);
     var hitPilots = {};
@@ -1916,6 +1939,21 @@
 
   // ── Pilot Action Sheet ───────────────────────────────────────
   function showPilotActions() {
+    var imdInfo = $('self-imd-info');
+    if (imdInfo) {
+      var pilots = state.cachedPilots || [];
+      var myIdx = -1;
+      for (var i = 0; i < pilots.length; i++) {
+        if (pilots[i].ID === state.pilotId) { myIdx = i; break; }
+      }
+      var msg = myIdx >= 0 ? formatIMDSources(pilots, myIdx) : '';
+      if (msg) {
+        imdInfo.textContent = msg;
+        imdInfo.classList.remove('hidden');
+      } else {
+        imdInfo.classList.add('hidden');
+      }
+    }
     $('pilot-actions').classList.remove('hidden');
   }
 
@@ -2419,6 +2457,22 @@
     otherPilotTarget = pilot;
     $('other-pilot-name').textContent = pilot.Callsign;
     resetSlideHandle();
+    // IMD source info
+    var imdInfo = $('other-imd-info');
+    if (imdInfo) {
+      var pilots = state.cachedPilots || [];
+      var targetIdx = -1;
+      for (var i = 0; i < pilots.length; i++) {
+        if (pilots[i].ID === pilot.ID) { targetIdx = i; break; }
+      }
+      var msg = targetIdx >= 0 ? formatIMDSources(pilots, targetIdx) : '';
+      if (msg) {
+        imdInfo.textContent = msg;
+        imdInfo.classList.remove('hidden');
+      } else {
+        imdInfo.classList.add('hidden');
+      }
+    }
     // Show/hide leader-only controls
     if (state.isLeader) {
       $('btn-change-other-channel').classList.remove('hidden');
