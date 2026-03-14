@@ -4,6 +4,21 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.5.0] - 2026-03-14
+
+### Added
+- **IMD visibility (informational only).** Third-order intermodulation products are now calculated and displayed. IMD score badge in session header (green ≥80, amber ≥50, red <50). Red tick marks on the spectrum canvas show where IMD products land, with diamond markers when they hit an active pilot's channel. Affected pilots get an "IMD" flag on their row. This is purely informational — the optimizer does not use IMD in its channel assignments.
+- **Power step redesign.** Hero stats layout shows mW and guard band side by side above the slider. Spectrum preview bar visualizes occupied bandwidth and guard band. Removed dBm and channel count displays. Bigger slider labels. Added "Guidance only" disclaimer.
+- **Rebalance power slider.** Leaders can adjust (or remove) the power ceiling during rebalance. Slider includes a NO LIMIT position. Preview updates live as the slider moves. Backend accepts optional `power_ceiling_mw` on rebalance and preview-rebalance endpoints.
+- **Freq guide page.** Full frequency reference published as a styled HTML page at `/freq-guide.html`, linked from the landing page footer.
+
+### Fixed
+- **O3 FCC 40 MHz channels.** O3 now correctly returns 3 channels (5735, 5795, 5855) in FCC mode at 40 MHz, matching O4. Previously only returned 1 channel regardless of FCC status.
+- **DJI bandwidth hints for session creators.** `shouldWarnBandwidth()` now checks `state.powerCeilingMW` in addition to `state.sessionPowerCeiling`, so bandwidth recommended/warning indicators appear for the leader during session creation, not just for joiners.
+- **IMD 3-pilot set corrected** in frequency reference. R1/R4/R7 was not IMD-free (2×R4−R1 = R7). Changed to R1/R4/R8.
+- **Guard band formula clarification.** Documentation now notes the formula approximates 25–200 mW only; 600+ mW values are calibrated overrides.
+- **DJI EIRP corrected.** Documentation updated to 33 dBm (~2W) for O3/O4 Pro, 30 dBm (~1W) for standard O4.
+
 ## [0.4.1] - 2026-03-14
 
 ### Added
