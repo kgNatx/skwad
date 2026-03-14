@@ -118,7 +118,15 @@ Uses Race Band channels (R1–R8). Same table as analog Race Band.
 | O3-CH6   | 5840      |
 | O3-CH7   | 5876      |
 
-### 40 MHz (1 channel)
+### FCC 40 MHz (3 channels)
+
+| Channel  | Freq (MHz) |
+|----------|-----------|
+| O3-CH1   | 5735      |
+| O3-CH2   | 5795      |
+| O3-CH3   | 5855      |
+
+### Stock 40 MHz (1 channel)
 
 | Channel  | Freq (MHz) |
 |----------|-----------|
@@ -271,7 +279,7 @@ With these calibrated values, the guard band formula becomes:
 guard_band = 10 × 10^((3 × log10(P_mW / 25)) / 20)  MHz
 ```
 
-This produces 10 MHz at 25 mW (matching the current proven default) and scales gently through the low-power range before steepening at high power.
+This produces 10 MHz at 25 mW (matching the current proven default) and scales gently through the low-power range (25–200 mW). Above 400 mW the formula output stays below 18 MHz, but the table values are manually calibrated overrides designed to place the raceband cliff between 400 and 600 mW.
 
 ### Recommended Guard Band by Power Level
 
@@ -328,7 +336,7 @@ DJI O3 and O4 video systems use automatic power control — the VTX adjusts tran
 
 - Power scales with link quality, which depends on distance, obstacles, and antenna orientation — not a single variable
 - At typical meetup distances (~100m line-of-sight), DJI tends to stay at low power (community estimates suggest under 200 mW)
-- Power ramps up progressively at range, approaching the maximum (~1W / 30 dBm in FCC mode) beyond ~500m or through obstacles
+- Power ramps up progressively at range, approaching the maximum EIRP (up to 33 dBm / ~2W for O3/O4 Pro in FCC mode, 30 dBm / ~1W for standard O4) beyond ~500m or through obstacles
 - These are community observations from spectrum analyzer measurements, not manufacturer specifications — DJI does not publish their power control curves
 - The exact power at a given distance varies significantly with environment, antenna choice, and interference
 
@@ -385,7 +393,7 @@ IMD quality for a set of frequencies is measured on a 0-100 scale, where 100 mea
 | Pilot Count | Recommended Channel Set | Frequencies (MHz) | IMD Rating |
 |-------------|------------------------|--------------------|-----------|
 | 2 pilots | R1, R8 | 5658, 5917 | 100 |
-| 3 pilots | R1, R4, R7 | 5658, 5769, 5880 | 100 |
+| 3 pilots | R1, R4, R8 | 5658, 5769, 5917 | 100 |
 | 4 pilots | R1, R3, R6, R8 | 5658, 5732, 5843, 5917 | 100 |
 | 5 pilots | ET5A | 5665, 5752, 5800, 5866, 5905 | 88 |
 | 6 pilots | IMD 6C (MultiGP standard) | 5658, 5695, 5760, 5800, 5880, 5917 | 29 |

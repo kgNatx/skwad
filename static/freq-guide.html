@@ -329,7 +329,17 @@
       </tbody>
     </table>
 
-    <h3>40 MHz (1 channel)</h3>
+    <h3>FCC 40 MHz (3 channels)</h3>
+    <table>
+      <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
+      <tbody>
+        <tr><td>O3-CH1</td><td>5735</td></tr>
+        <tr><td>O3-CH2</td><td>5795</td></tr>
+        <tr><td>O3-CH3</td><td>5855</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Stock 40 MHz (1 channel)</h3>
     <table>
       <thead><tr><th>Channel</th><th>Freq (MHz)</th></tr></thead>
       <tbody>
@@ -493,7 +503,7 @@
 
     <pre>guard_band = 10 × 10^((3 × log10(P_mW / 25)) / 20)  MHz</pre>
 
-    <p>This produces 10 MHz at 25 mW (matching the current proven default) and scales gently through the low-power range before steepening at high power.</p>
+    <p>This produces 10 MHz at 25 mW (matching the current proven default) and scales gently through the low-power range (25–200 mW). Above 400 mW the formula output stays below 18 MHz, but the table values are manually calibrated overrides designed to place the raceband cliff between 400 and 600 mW.</p>
 
     <h3>Recommended Guard Band by Power Level</h3>
 
@@ -560,7 +570,7 @@
     <ul>
       <li>Power scales with link quality, which depends on distance, obstacles, and antenna orientation — not a single variable</li>
       <li>At typical meetup distances (~100m line-of-sight), DJI tends to stay at low power (community estimates suggest under 200 mW)</li>
-      <li>Power ramps up progressively at range, approaching the maximum (~1W / 30 dBm in FCC mode) beyond ~500m or through obstacles</li>
+      <li>Power ramps up progressively at range, approaching the maximum EIRP (up to 33 dBm / ~2W for O3/O4 Pro in FCC mode, 30 dBm / ~1W for standard O4) beyond ~500m or through obstacles</li>
       <li>These are community observations from spectrum analyzer measurements, not manufacturer specifications — DJI does not publish their power control curves</li>
       <li>The exact power at a given distance varies significantly with environment, antenna choice, and interference</li>
     </ul>
@@ -613,7 +623,7 @@ F_imd = (2 × F2) - F1</pre>
       <thead><tr><th>Pilot Count</th><th>Recommended Channel Set</th><th>Frequencies (MHz)</th><th>IMD Rating</th></tr></thead>
       <tbody>
         <tr><td>2 pilots</td><td>R1, R8</td><td>5658, 5917</td><td>100</td></tr>
-        <tr><td>3 pilots</td><td>R1, R4, R7</td><td>5658, 5769, 5880</td><td>100</td></tr>
+        <tr><td>3 pilots</td><td>R1, R4, R8</td><td>5658, 5769, 5917</td><td>100</td></tr>
         <tr><td>4 pilots</td><td>R1, R3, R6, R8</td><td>5658, 5732, 5843, 5917</td><td>100</td></tr>
         <tr><td>5 pilots</td><td>ET5A</td><td>5665, 5752, 5800, 5866, 5905</td><td>88</td></tr>
         <tr><td>6 pilots</td><td>IMD 6C (MultiGP standard)</td><td>5658, 5695, 5760, 5800, 5880, 5917</td><td>29</td></tr>

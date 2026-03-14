@@ -166,8 +166,15 @@ var DJIO3FCC = []Channel{
 	{"O3-CH7", 5876},
 }
 
-// DJIO3_40 contains the single DJI O3 channel available at 40 MHz bandwidth.
-var DJIO3_40 = []Channel{
+// DJIO3_40_FCC contains the 3 DJI O3 channels available at 40 MHz with FCC unlock.
+var DJIO3_40_FCC = []Channel{
+	{"O3-CH1", 5735},
+	{"O3-CH2", 5795},
+	{"O3-CH3", 5855},
+}
+
+// DJIO3_40_Stock contains the single DJI O3 channel at 40 MHz without FCC unlock.
+var DJIO3_40_Stock = []Channel{
 	{"O3-CH1", 5795},
 }
 
@@ -262,7 +269,10 @@ func ChannelPool(videoSystem string, fccUnlocked bool, bandwidthMHz int, raceMod
 
 	case "dji_o3":
 		if bandwidthMHz >= 40 {
-			return DJIO3_40
+			if fccUnlocked {
+				return DJIO3_40_FCC
+			}
+			return DJIO3_40_Stock
 		}
 		if fccUnlocked {
 			return DJIO3FCC
