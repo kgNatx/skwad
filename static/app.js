@@ -948,27 +948,46 @@
 
     function drawFCSpectrum(canvas, channels) {
       var ctx = canvas.getContext('2d');
-      var w = canvas.width;
-      var h = canvas.height;
+      var dpr = window.devicePixelRatio || 1;
+      var rect = canvas.getBoundingClientRect();
+      var cw = rect.width;
+      var canvasH = rect.height;
+      canvas.width = cw * dpr;
+      canvas.height = canvasH * dpr;
+      ctx.scale(dpr, dpr);
+
+      var fMin = 5620;
+      var fMax = 5950;
+      var fSpan = fMax - fMin;
+      var baseline = canvasH - 2;
+
       ctx.fillStyle = '#1a1a1a';
-      ctx.fillRect(0, 0, w, h);
-      var freqMin = 5620;
-      var freqMax = 5950;
-      var freqRange = freqMax - freqMin;
-      function freqToX(f) { return ((f - freqMin) / freqRange) * w; }
-      channels.forEach(function (ch) {
-        var cx = freqToX(ch.f);
-        var color = ch.dji ? '#60a5fa' : (ch.multi ? '#f59e0b' : '#33ff33');
+      roundRect(ctx, 0, 0, cw, canvasH, 4);
+      ctx.fill();
+
+      ctx.strokeStyle = '#2a2a2a';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(4, baseline);
+      ctx.lineTo(cw - 4, baseline);
+      ctx.stroke();
+
+      channels.forEach(function (c) {
+        var x = ((c.f - fMin) / fSpan) * cw;
+        var halfW = (20 / fSpan * cw) / 2;
+        if (halfW < 8) halfW = 8;
+        var peakY = 4;
+        var color = c.dji ? '#60a5fa' : (c.multi ? '#f59e0b' : '#888888');
+
         ctx.beginPath();
-        var bwHalf = freqToX(ch.f + 10) - freqToX(ch.f);
-        ctx.moveTo(cx - bwHalf, h);
-        ctx.bezierCurveTo(cx - bwHalf, h * 0.2, cx, 0, cx, 0);
-        ctx.bezierCurveTo(cx, 0, cx + bwHalf, h * 0.2, cx + bwHalf, h);
+        ctx.moveTo(x - halfW, baseline);
+        ctx.bezierCurveTo(x - halfW * 0.5, baseline, x - halfW * 0.4, peakY, x, peakY);
+        ctx.bezierCurveTo(x + halfW * 0.4, peakY, x + halfW * 0.5, baseline, x + halfW, baseline);
         ctx.closePath();
-        ctx.fillStyle = color + '55';
+        ctx.fillStyle = color + '40';
         ctx.fill();
         ctx.strokeStyle = color;
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1;
         ctx.stroke();
       });
     }
@@ -1450,9 +1469,26 @@
     pool = filterPoolToFixedChannels(pool);
     var picker = $('channel-picker');
     clearChildren(picker);
+
+    // Count pilots per frequency for fixed session buddy info
+    var isFixedSession = !!state.sessionFixedChannels;
+    var freqPilotCount = {};
+    if (isFixedSession && previewPilots) {
+      previewPilots.forEach(function (p) {
+        if (p.Active && p.AssignedFreqMHz) {
+          freqPilotCount[p.AssignedFreqMHz] = (freqPilotCount[p.AssignedFreqMHz] || 0) + 1;
+        }
+      });
+    }
+
     pool.forEach(function (ch) {
       var nameSpan = el('span', { className: 'ch-name', textContent: ch.name });
-      var freqSpan = el('span', { className: 'ch-freq', textContent: String(ch.freq) });
+      var countOnChannel = freqPilotCount[ch.freq] || 0;
+      var freqLabel = String(ch.freq);
+      if (isFixedSession && countOnChannel > 0) {
+        freqLabel += ' (' + countOnChannel + ')';
+      }
+      var freqSpan = el('span', { className: 'ch-freq', textContent: freqLabel });
       var btn = el('button', { className: 'btn-channel' }, [nameSpan, freqSpan]);
       btn.addEventListener('click', function () {
         picker.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });
@@ -2419,13 +2455,33 @@
     var myVideoSystem = getEffectiveVideoSystem();
     var myBw = state.bandwidthMHz || 0;
 
+    // In fixed-channel sessions, show all channels (buddying is expected).
+    var isFixedSession = !!state.sessionFixedChannels;
+
+    // Count pilots per frequency for buddy info
+    var freqPilotCount = {};
+    if (isFixedSession && state.cachedPilots) {
+      state.cachedPilots.forEach(function (p) {
+        if (p.Active && p.ID !== state.pilotId && p.AssignedFreqMHz) {
+          freqPilotCount[p.AssignedFreqMHz] = (freqPilotCount[p.AssignedFreqMHz] || 0) + 1;
+        }
+      });
+    }
+
     pool.forEach(function (ch) {
-      // Non-leader self-service: hide channels that conflict with other pilots.
-      var conflicts = findConflicts(ch.freq, state.pilotId, myVideoSystem, myBw);
-      if (conflicts.length > 0) return;
+      // Non-leader self-service: hide conflicting channels unless fixed session.
+      if (!isFixedSession) {
+        var conflicts = findConflicts(ch.freq, state.pilotId, myVideoSystem, myBw);
+        if (conflicts.length > 0) return;
+      }
 
       var nameSpan = el('span', { className: 'ch-name', textContent: ch.name });
-      var freqSpan = el('span', { className: 'ch-freq', textContent: String(ch.freq) });
+      var countOnChannel = freqPilotCount[ch.freq] || 0;
+      var freqLabel = String(ch.freq);
+      if (isFixedSession && countOnChannel > 0) {
+        freqLabel += ' (' + countOnChannel + ')';
+      }
+      var freqSpan = el('span', { className: 'ch-freq', textContent: freqLabel });
       var btn = el('button', { className: 'btn-channel' }, [nameSpan, freqSpan]);
       btn.addEventListener('click', function () {
         picker.querySelectorAll('.btn-channel').forEach(function (b) { b.classList.remove('selected'); });

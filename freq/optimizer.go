@@ -128,16 +128,26 @@ func Optimize(pilots []PilotInput, guardBandMHz int, fixedFreqs []int) []Assignm
 		bestCh := pool[0]
 		bestMargin := -(1 << 30)
 
+		// Check if any channel has positive margin (clean slot available).
+		hasCleanSlot := false
+		if p.PreferredFreqMHz > 0 {
+			for _, ch := range pool {
+				if effectiveSeparation(ch.FreqMHz, bw, used, guardBandMHz) >= 0 {
+					hasCleanSlot = true
+					break
+				}
+			}
+		}
+
 		for _, ch := range pool {
 			margin := effectiveSeparation(ch.FreqMHz, bw, used, guardBandMHz)
 
-			// Prefer preferred frequency when margin >= 0 (no conflict).
-			if p.PreferredFreqMHz > 0 && ch.FreqMHz == p.PreferredFreqMHz && margin >= 0 {
-				if margin >= bestMargin {
-					bestCh = ch
-					bestMargin = margin
-					continue
-				}
+			// Prefer preferred frequency when clean, or when all channels require
+			// buddying (pilot is explicitly choosing which channel to share).
+			if p.PreferredFreqMHz > 0 && ch.FreqMHz == p.PreferredFreqMHz && (margin >= 0 || !hasCleanSlot) {
+				bestCh = ch
+				bestMargin = margin
+				break
 			}
 
 			// Prefer previous frequency for stability when margin >= 0.
