@@ -375,7 +375,7 @@
     });
     // Auto uppercase the code input
     $('input-code').addEventListener('input', function (e) {
-      e.target.value = e.target.value.toUpperCase().replace(/[^A-F0-9]/g, '');
+      e.target.value = e.target.value.toUpperCase().replace(/O/g, '0').replace(/I/g, '1').replace(/[^A-F0-9]/g, '');
     });
 
     // Fetch config to show/hide FPVFC link
@@ -492,6 +492,7 @@
       state.sessionCode = sess.ID;
       state.isCreator = true;
       saveState();
+      $('joining-session-hint').classList.add('hidden');
       showScreen('setup');
       showStep('step-callsign');
       $('input-callsign').focus();
@@ -516,6 +517,8 @@
       await apiGet('/api/sessions/' + code);
       state.sessionCode = code;
       saveState();
+      $('joining-session-code').textContent = code;
+      $('joining-session-hint').classList.remove('hidden');
       showScreen('setup');
       showStep('step-callsign');
       $('input-callsign').focus();
@@ -3184,6 +3187,8 @@
         // Need to join this session
         state.sessionCode = code;
         saveState();
+        $('joining-session-code').textContent = code;
+        $('joining-session-hint').classList.remove('hidden');
         showScreen('setup');
         showStep('step-callsign');
         $('input-callsign').focus();

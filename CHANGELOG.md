@@ -4,6 +4,12 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.3.3] - 2026-03-14
+
+### Fixed
+- **Session code O/0 confusion.** Typing "O" in the join code input was silently stripped (hex only allows 0-9, A-F). Now auto-corrects O→0 and I→1 instead of eating the character.
+- **Join vs create ambiguity.** Joining a session by code showed the same callsign screen as creating a new session with no indication you were joining. Now shows "JOINING SESSION XXXXXX" above the callsign prompt.
+
 ## [0.3.2] - 2026-03-13
 
 ### Fixed
