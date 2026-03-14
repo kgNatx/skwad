@@ -59,6 +59,59 @@
     { mw: 1000, dbm: '30 dBm',   guard: 32, channels: 4, tip: 'Full send. 4 unique channels max.' },
   ];
 
+  // ── IMD (Intermodulation Distortion) Helpers ──────────────────
+  function calcIMDProducts(pilots) {
+    var products = [];
+    if (!pilots || pilots.length < 2) return products;
+    var freqs = [];
+    pilots.forEach(function(p) {
+      if (p.AssignedFreqMHz) freqs.push({ idx: freqs.length, freq: p.AssignedFreqMHz, pilotIdx: freqs.length });
+    });
+    for (var i = 0; i < freqs.length; i++) {
+      for (var j = 0; j < freqs.length; j++) {
+        if (i === j) continue;
+        var imd = 2 * freqs[i].freq - freqs[j].freq;
+        if (imd >= 5300 && imd <= 6000) {
+          var hitIdx = -1;
+          for (var k = 0; k < freqs.length; k++) {
+            if (k !== i && k !== j && Math.abs(freqs[k].freq - imd) < 12) {
+              hitIdx = k;
+              break;
+            }
+          }
+          products.push({ freq: imd, hitIdx: hitIdx, sources: [i, j] });
+        }
+      }
+    }
+    return products;
+  }
+
+  function calcIMDScore(pilots) {
+    if (!pilots || pilots.length < 2) return 100;
+    var products = calcIMDProducts(pilots);
+    var hits = 0;
+    var total = 0;
+    var seen = {};
+    products.forEach(function(p) {
+      var key = Math.round(p.freq);
+      if (seen[key]) return;
+      seen[key] = true;
+      total++;
+      if (p.hitIdx >= 0) hits++;
+    });
+    if (total === 0) return 100;
+    return Math.round(100 * (1 - hits / total));
+  }
+
+  function getIMDHitPilots(pilots) {
+    var products = calcIMDProducts(pilots);
+    var hitPilots = {};
+    products.forEach(function(p) {
+      if (p.hitIdx >= 0) hitPilots[p.hitIdx] = true;
+    });
+    return hitPilots;
+  }
+
   // ── Video system display names ────────────────────────────────
   const SYSTEM_LABELS = {
     analog: 'ANALOG',
@@ -1328,6 +1381,17 @@
           badge.classList.add('hidden');
         }
       }
+
+      // IMD badge
+      var imdBadge = $('imd-badge');
+      if (imdBadge && data.pilots.length >= 2) {
+        var imdScore = calcIMDScore(data.pilots);
+        imdBadge.textContent = 'IMD ' + imdScore;
+        imdBadge.className = 'imd-badge ' + (imdScore >= 80 ? 'imd-good' : imdScore >= 50 ? 'imd-fair' : 'imd-poor');
+        imdBadge.classList.remove('hidden');
+      } else if (imdBadge) {
+        imdBadge.classList.add('hidden');
+      }
     } catch (err) {
       // Session may have expired or been deleted
       if (err.message && err.message.includes('not found')) {
@@ -1524,6 +1588,41 @@
       ctx.stroke();
     });
 
+    // Draw IMD indicators
+    var imdProducts = calcIMDProducts(pilots);
+    var imdHitPilots = {};
+    imdProducts.forEach(function(p) {
+      if (p.hitIdx >= 0) imdHitPilots[p.hitIdx] = true;
+    });
+
+    // IMD ticks on baseline
+    var drawnIMD = {};
+    imdProducts.forEach(function(p) {
+      var key = Math.round(p.freq);
+      if (drawnIMD[key]) return;
+      drawnIMD[key] = true;
+      var x = (p.freq - fMin) / fSpan * cw;
+      if (x < 4 || x > cw - 4) return;
+      var isHit = p.hitIdx >= 0;
+      ctx.strokeStyle = isHit ? 'rgba(239,68,68,0.7)' : 'rgba(239,68,68,0.2)';
+      ctx.lineWidth = isHit ? 2 : 1;
+      var tickH = isHit ? 24 : 10;
+      ctx.beginPath();
+      ctx.moveTo(x, baseline);
+      ctx.lineTo(x, baseline - tickH);
+      ctx.stroke();
+      if (isHit) {
+        ctx.fillStyle = 'rgba(239,68,68,0.8)';
+        ctx.beginPath();
+        ctx.moveTo(x, baseline - tickH - 5);
+        ctx.lineTo(x + 4, baseline - tickH);
+        ctx.lineTo(x, baseline - tickH + 5);
+        ctx.lineTo(x - 4, baseline - tickH);
+        ctx.closePath();
+        ctx.fill();
+      }
+    });
+
     // Draw callsign labels
     ctx.font = '700 10px -apple-system, BlinkMacSystemFont, sans-serif';
     ctx.textAlign = 'center';
@@ -1614,7 +1713,10 @@
       }
     });
 
-    pilots.forEach(function (p) {
+    // Compute IMD hit pilots (after sort, so indices match the sorted order)
+    var imdHitSet = getIMDHitPilots(pilots);
+
+    pilots.forEach(function (p, pilotIdx) {
       var card = document.createElement('div');
       card.className = 'pilot-card';
 
@@ -1697,6 +1799,11 @@
       if (p.ID === state.leaderPilotId) {
         var leaderBadge = el('span', { className: 'pilot-leader-badge', textContent: 'LEADER' });
         badgeRow.appendChild(leaderBadge);
+      }
+
+      if (imdHitSet[pilotIdx]) {
+        var imdFlag = el('span', { className: 'pilot-imd-flag', textContent: 'IMD' });
+        badgeRow.appendChild(imdFlag);
       }
 
       info.appendChild(badgeRow);

@@ -1507,3 +1507,10 @@ body {
 
 /* ===== POWER CEILING BADGE ===== */
 .power-ceiling-badge { font-size: 11px; font-weight: 800; color: #f59e0b; letter-spacing: 1px; padding: 2px 8px; border: 1px solid rgba(245,158,11,0.4); border-radius: 6px; white-space: nowrap; }
+
+/* ===== IMD BADGES ===== */
+.imd-badge { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.imd-good { color: #4ade80; border: 1px solid rgba(74,222,128,0.4); }
+.imd-fair { color: #f59e0b; border: 1px solid rgba(245,158,11,0.4); }
+.imd-poor { color: #ef4444; border: 1px solid rgba(239,68,68,0.4); }
+.pilot-imd-flag { font-size: 9px; font-weight: 800; color: #ef4444; letter-spacing: 0.5px; padding: 2px 6px; border: 1px solid rgba(239,68,68,0.3); border-radius: 4px; margin-left: 4px; opacity: 0.8; }
