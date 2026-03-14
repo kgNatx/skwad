@@ -34,12 +34,29 @@
     isCreator: false,
     // True when user is changing video system from within a session
     _changingVideoSystem: false,
+    // Power ceiling set by session creator (mW), 0 = no limit
+    powerCeilingMW: 0,
+    // Slider index in the power step (default 200 mW = index 2)
+    powerStepIndex: 2,
+    // Power ceiling of the session we've joined (from server)
+    sessionPowerCeiling: 0,
   };
 
   // ── Buddy group colors ────────────────────────────────────────
   const BUDDY_COLORS = [
     '', '#ff3333', '#33ff33', '#3399ff', '#ffcc00',
     '#ff66ff', '#00ffcc', '#ff9900', '#cc66ff'
+  ];
+
+  // ── Power ceiling slider steps ────────────────────────────────
+  var POWER_STEPS = [
+    { mw: 25,   dbm: '14 dBm',   guard: 10, channels: 8, tip: 'Pit lane / indoor. Maximum pilot density \u2014 all 8 raceband channels.' },
+    { mw: 100,  dbm: '20 dBm',   guard: 12, channels: 8, tip: 'Low power outdoor. All 8 raceband channels fit comfortably.' },
+    { mw: 200,  dbm: '23 dBm',   guard: 14, channels: 8, tip: 'Standard outdoor group flying. All 8 raceband channels with good margin.' },
+    { mw: 400,  dbm: '26 dBm',   guard: 16, channels: 8, tip: 'Upper limit for full density. All 8 raceband channels, 1 MHz margin.' },
+    { mw: 600,  dbm: '27.8 dBm', guard: 24, channels: 4, tip: 'High power \u2014 only every-other raceband channel is clean.' },
+    { mw: 800,  dbm: '29 dBm',   guard: 28, channels: 4, tip: 'Near-max power. 4 unique channels, buddy up for larger groups.' },
+    { mw: 1000, dbm: '30 dBm',   guard: 32, channels: 4, tip: 'Full send. 4 unique channels max.' },
   ];
 
   // ── Video system display names ────────────────────────────────
@@ -157,6 +174,25 @@
   function showStep(stepId) {
     document.querySelectorAll('.setup-step').forEach((s) => s.classList.add('hidden'));
     $(stepId).classList.remove('hidden');
+    if (stepId === 'step-power') {
+      refreshPowerSliderThumb();
+    }
+  }
+
+  // Called when step-power becomes visible so offsetWidth is valid.
+  function refreshPowerSliderThumb() {
+    var track = $('power-slider-track');
+    if (!track) return;
+    var thumbRadius = 23;
+    var usable = track.offsetWidth - thumbRadius * 2;
+    var pct = state.powerStepIndex / (POWER_STEPS.length - 1);
+    $('power-slider-thumb').style.left = (thumbRadius - 23 + pct * usable) + 'px';
+    var step = POWER_STEPS[state.powerStepIndex];
+    $('power-mw-value').textContent = step.mw;
+    $('power-dbm-value').textContent = step.dbm;
+    $('power-guard-value').textContent = step.guard;
+    $('power-channels-value').textContent = step.channels;
+    $('power-tip').textContent = step.tip;
   }
 
   function showError(elementId, msg) {
@@ -488,19 +524,28 @@
     setLoading(btn, true);
     hideError('landing-error');
     try {
-      var sess = await apiPost('/api/sessions');
-      state.sessionCode = sess.ID;
+      // Defer session creation until after the power ceiling step.
       state.isCreator = true;
-      saveState();
+      state.sessionCode = null;
+      state.powerCeilingMW = 0;
+      state.powerStepIndex = 2;
       $('joining-session-hint').classList.add('hidden');
       showScreen('setup');
       showStep('step-callsign');
       $('input-callsign').focus();
-    } catch (err) {
-      showError('landing-error', 'FAILED TO CREATE SESSION');
     } finally {
       setLoading(btn, false);
     }
+  }
+
+  // Called from the power step buttons — creates the session with the chosen ceiling.
+  async function createSessionWithPower(powerCeilingMW) {
+    var body = {};
+    if (powerCeilingMW > 0) body.power_ceiling_mw = powerCeilingMW;
+    var sess = await apiPost('/api/sessions', body);
+    state.sessionCode = sess.ID;
+    state.powerCeilingMW = powerCeilingMW;
+    saveState();
   }
 
   async function handleJoinByCode() {
@@ -513,9 +558,10 @@
     setLoading(btn, true);
     hideError('landing-error');
     try {
-      // Verify the session exists
-      await apiGet('/api/sessions/' + code);
+      // Verify the session exists and capture power ceiling
+      var data = await apiGet('/api/sessions/' + code);
       state.sessionCode = code;
+      state.sessionPowerCeiling = (data.session && data.session.power_ceiling_mw) || 0;
       saveState();
       $('joining-session-code').textContent = code;
       $('joining-session-hint').classList.remove('hidden');
@@ -544,6 +590,10 @@
       state.callsign = cs;
       if (state.isCreator) {
         showStep('step-leader-info');
+      } else if (state.sessionPowerCeiling > 0) {
+        $('power-alert-mw').textContent = state.sessionPowerCeiling;
+        $('power-alert-mw-bold').textContent = state.sessionPowerCeiling;
+        showStep('step-power-alert');
       } else {
         showStep('step-video');
       }
@@ -559,6 +609,87 @@
   // ── Setup: Step 1.5 — Leader Info ──────────────────────────────
   function initLeaderInfoStep() {
     $('btn-leader-info-got-it').addEventListener('click', function () {
+      showStep('step-power');
+    });
+  }
+
+  // ── Setup: Step 1.75 — Power Ceiling (creators only) ──────────
+  function initPowerStep() {
+    // Build notches
+    var notchContainer = $('power-slider-notches');
+    POWER_STEPS.forEach(function () {
+      var n = document.createElement('div');
+      n.className = 'power-slider-notch';
+      notchContainer.appendChild(n);
+    });
+
+    function updatePowerDisplay(idx) {
+      state.powerStepIndex = idx;
+      var step = POWER_STEPS[idx];
+      var track = $('power-slider-track');
+      var thumbRadius = 23;
+      var usable = track.offsetWidth - thumbRadius * 2;
+      var pct = idx / (POWER_STEPS.length - 1);
+      $('power-slider-thumb').style.left = (thumbRadius - 23 + pct * usable) + 'px';
+      $('power-mw-value').textContent = step.mw;
+      $('power-dbm-value').textContent = step.dbm;
+      $('power-guard-value').textContent = step.guard;
+      $('power-channels-value').textContent = step.channels;
+      $('power-tip').textContent = step.tip;
+    }
+
+    function getStepFromX(clientX) {
+      var rect = $('power-slider-track').getBoundingClientRect();
+      var pct = (clientX - rect.left) / rect.width;
+      pct = Math.max(0, Math.min(1, pct));
+      return Math.round(pct * (POWER_STEPS.length - 1));
+    }
+
+    $('power-slider-track').addEventListener('pointerdown', function (e) {
+      e.preventDefault();
+      this.setPointerCapture(e.pointerId);
+      updatePowerDisplay(getStepFromX(e.clientX));
+    });
+
+    $('power-slider-track').addEventListener('pointermove', function (e) {
+      if (this.hasPointerCapture && this.hasPointerCapture(e.pointerId)) {
+        updatePowerDisplay(getStepFromX(e.clientX));
+      }
+    });
+
+    $('btn-power-next').addEventListener('click', async function () {
+      var btn = this;
+      setLoading(btn, true);
+      try {
+        await createSessionWithPower(POWER_STEPS[state.powerStepIndex].mw);
+        showStep('step-video');
+      } catch (err) {
+        alert('FAILED TO CREATE SESSION');
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+
+    $('btn-power-skip').addEventListener('click', async function () {
+      var btn = this;
+      setLoading(btn, true);
+      try {
+        await createSessionWithPower(0);
+        showStep('step-video');
+      } catch (err) {
+        alert('FAILED TO CREATE SESSION');
+      } finally {
+        setLoading(btn, false);
+      }
+    });
+
+    // Set initial display after DOM is fully ready
+    // (offsetWidth is 0 before the step is visible, so we defer to when shown)
+  }
+
+  // ── Setup: Step 1.25 — Power Ceiling Alert (joiners) ──────────
+  function initPowerAlertStep() {
+    $('btn-power-alert-ok').addEventListener('click', function () {
       showStep('step-video');
     });
   }
@@ -1143,6 +1274,18 @@
           rebalHint.style.display = '';
         } else {
           rebalHint.style.display = 'none';
+        }
+      }
+
+      // Power ceiling badge
+      state.sessionPowerCeiling = data.session.power_ceiling_mw || 0;
+      var badge = $('power-ceiling-badge');
+      if (badge) {
+        if (state.sessionPowerCeiling > 0) {
+          badge.textContent = state.sessionPowerCeiling + ' mW MAX';
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
         }
       }
     } catch (err) {
@@ -3186,12 +3329,19 @@
       } else {
         // Need to join this session
         state.sessionCode = code;
+        state.sessionPowerCeiling = 0;
         saveState();
         $('joining-session-code').textContent = code;
         $('joining-session-hint').classList.remove('hidden');
         showScreen('setup');
         showStep('step-callsign');
         $('input-callsign').focus();
+        // Fetch session in background to get power ceiling for the alert step
+        apiGet('/api/sessions/' + code).then(function (data) {
+          state.sessionPowerCeiling = (data.session && data.session.power_ceiling_mw) || 0;
+        }).catch(function () {
+          state.sessionPowerCeiling = 0;
+        });
       }
       return;
     }
@@ -3357,6 +3507,8 @@
     initLanding();
     initCallsignStep();
     initLeaderInfoStep();
+    initPowerStep();
+    initPowerAlertStep();
     initVideoStep();
     initFollowUpStep();
     initChannelStep();

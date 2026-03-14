@@ -220,3 +220,149 @@ Internal identifiers used in the API and database:
 | Walksnail Std   | `walksnail_std`  | 20 MHz    | FCC toggle |
 | Walksnail Race  | `walksnail_race` | 20 MHz    | Race Band |
 | OpenIPC         | `openipc`        | 20 MHz    | Single channel |
+
+---
+
+## Transmit Power and Channel Separation
+
+The optimizer's guard band — the minimum frequency gap it enforces between pilots beyond their occupied bandwidth — isn't a fixed number. It depends on how much power the VTXs in the session are transmitting. Higher power means more spectral splatter and stronger adjacent-channel interference, which demands wider spacing.
+
+### Common VTX Power Steps
+
+Most FPV video transmitters offer adjustable power in fixed steps. The exact steps vary by manufacturer, but these are the most common:
+
+| Power | dBm | Typical Use |
+|-------|-----|-------------|
+| 25 mW | 14 dBm | Indoor, pit area, crowded racing |
+| 100 mW | 20 dBm | Close-range outdoor, warm-up |
+| 200 mW | 23 dBm | Standard outdoor group flying |
+| 400 mW | 26 dBm | Freestyle, moderate range |
+| 600 mW | 27.8 dBm | Long range |
+| 800 mW | 29 dBm | Extended range |
+| 1000 mW | 30 dBm | Maximum power |
+
+The dBm scale is logarithmic: every +3 dB doubles the power, but it takes +6 dB (4x the power) to double your range. Going from 200 mW to 800 mW is only +6 dB — noticeable, but not transformative for range.
+
+### Why Power Affects Required Spacing
+
+Two factors drive the relationship between TX power and required channel separation:
+
+**1. Spectral splatter.** No VTX transmits a perfectly clean signal on exactly one frequency. Some energy leaks into adjacent frequencies — this is called out-of-band emission or spectral splatter. Higher power amplifiers produce proportionally more splatter because they're driven harder and closer to their nonlinear region. A VTX running at 800 mW has noticeably worse spectral purity than the same VTX at 25 mW.
+
+**2. Receiver filter limitations.** FPV receivers use bandpass filters (typically ~18-20 MHz wide at -3 dB) to reject signals on other channels. These filters have a finite rolloff — they don't brick-wall at the passband edge. The filter attenuates an interfering signal by roughly 20 dB per decade of frequency offset beyond the passband edge. At low power, even modest attenuation is enough. At high power, the interfering signal is strong enough to punch through the filter skirt.
+
+### The Math: Deriving Guard Band from TX Power
+
+The receiver needs a minimum **carrier-to-interference ratio (C/I)** of ~20 dB for clean video. Several factors determine how much frequency separation is needed to achieve that:
+
+- **Capture effect**: Your own quad is typically much closer to your receiver than other pilots' quads. In typical group flying geometry this gives your desired signal a ~20 dB advantage over other pilots' signals.
+- **Filter attenuation**: The receiver's bandpass filter (typically ~20 MHz wide at -3 dB) rejects signals at offset frequencies. Attenuation is approximately `20 × log10(offset / (BW/2))` dB beyond the passband edge.
+- **Spectral splatter**: Higher TX power degrades spectral purity. We model the additional interference as `3 × log10(P_tx / 25)` dB relative to a 25 mW baseline. This is calibrated against the known-good 10 MHz guard band at 25 mW.
+
+The condition for clean video:
+
+```
+filter_attenuation(offset) >= C/I_required - capture_advantage + splatter_penalty
+```
+
+With these calibrated values, the guard band formula becomes:
+
+```
+guard_band = 10 × 10^((3 × log10(P_mW / 25)) / 20)  MHz
+```
+
+This produces 10 MHz at 25 mW (matching the current proven default) and scales gently through the low-power range before steepening at high power.
+
+### Recommended Guard Band by Power Level
+
+The theoretical formula above provides a continuous curve, but in practice we calibrate against a key constraint: **Race Band channels are spaced exactly 37 MHz apart.** This creates a hard cliff — at ≤17 MHz guard band (required spacing ≤37 MHz), all 8 raceband channels are conflict-free. Above 17 MHz, you can only use every-other channel (4 max).
+
+We calibrate so this cliff falls between 400 mW and 600 mW, aligning with community consensus that 400 mW is the upper limit for comfortable group flying:
+
+| Session Power Ceiling | Guard Band | Required Spacing (20 MHz) | Raceband Channels |
+|----------------------|-----------|--------------------------|-------------------|
+| 25 mW | **10 MHz** | 30 MHz | 8 |
+| 100 mW | **12 MHz** | 32 MHz | 8 |
+| 200 mW | **14 MHz** | 34 MHz | 8 |
+| 400 mW | **16 MHz** | 36 MHz | 8 (1 MHz margin) |
+| 600 mW | **24 MHz** | 44 MHz | 4 |
+| 800 mW | **28 MHz** | 48 MHz | 4 |
+| 1000 mW | **32 MHz** | 52 MHz | 4 |
+
+Key observations:
+- **≤400 mW**: All 8 raceband channels remain usable. The guard band grows gently from 10 to 16 MHz, staying safely below the 17 MHz cliff. This matches real-world experience — pilots routinely use adjacent raceband channels at these power levels.
+- **600+ mW**: The cliff hits. Only every-other raceband channel is conflict-free (R1/R3/R5/R7 or R2/R4/R6/R8). This is where leaders should consider the race day channel set feature or accept buddying up.
+- The jump from 400→600 mW is intentionally dramatic — it signals a real change in the interference environment and matches the community rule of thumb: "stay under 200-400 mW for group flying."
+
+### The Raceband Cliff
+
+The sharp transition at 37 MHz required spacing deserves emphasis because it's unintuitive. Race Band was designed with 37 MHz channel spacing — just barely enough for low-to-moderate power group flying. This means:
+
+- At 36 MHz required spacing (400 mW ceiling): 8 channels, 1 MHz margin. Everyone fits.
+- At 38 MHz required spacing: 4 channels. Half the capacity vanishes instantly.
+
+There is no gradual degradation between 8 and 4 on Race Band because the channels are uniformly spaced. With mixed analog bands (R+F+E), the non-uniform spacing provides more intermediate options, but for pure raceband the cliff is real.
+
+For sessions at 600+ mW, the race day channel set feature (#8) becomes essential — the leader should pre-select which 3-4 well-spaced channels to use and let the optimizer buddy up from there.
+
+### Assumptions and Limitations
+
+- The capture advantage (20 dB) assumes typical geometry where your quad is closer to your receiver than other pilots' quads. On a tight race course with stacked quads, this drops to ~10-15 dB, effectively pushing all guard bands wider. A future "race course" mode could account for this.
+- The splatter model is calibrated to match the current 10 MHz default at 25 mW, not measured from specific VTX hardware. Cheap VTXs with poor PA linearity will splatter more.
+- These calculations assume 20 MHz occupied bandwidth. For DJI O3/O4 at 40 or 60 MHz, the bandwidth terms in the spacing formula dominate and the guard band contribution matters less.
+- IMD (intermodulation distortion) is a separate concern not captured by this model. See the IMD section below.
+
+### Impact Summary
+
+The fundamental trade-off: **more power = wider guard band = fewer unique channels = more buddying up.**
+
+For a session leader, the practical question is simple: do you need everyone on a unique channel, or is buddying acceptable? If unique channels matter, keep the power ceiling at 400 mW or below. If power matters more than density, set the ceiling higher and plan for buddying.
+
+---
+
+## Intermodulation Distortion (IMD)
+
+When two VTXs transmit simultaneously, their signals can mix nonlinearly (in the RF front-end of nearby receivers, or even in the transmitters themselves) to produce phantom signals at new frequencies. This is intermodulation distortion.
+
+### How IMD Works
+
+The strongest IMD products are third-order, calculated as:
+
+```
+F_imd = (2 × F1) - F2
+F_imd = (2 × F2) - F1
+```
+
+For example, pilots on 5760 MHz and 5800 MHz produce IMD at:
+- (2 × 5760) - 5800 = **5720 MHz**
+- (2 × 5800) - 5760 = **5840 MHz**
+
+If a third pilot is on 5840 MHz, they'll see interference from this IMD product even though neither of the other two pilots is on their channel.
+
+### IMD Ratings
+
+IMD quality for a set of frequencies is measured on a 0-100 scale, where 100 means no IMD products land near any active channel:
+
+| Pilot Count | Recommended Channel Set | Frequencies (MHz) | IMD Rating |
+|-------------|------------------------|--------------------|-----------|
+| 2 pilots | R1, R8 | 5658, 5917 | 100 |
+| 3 pilots | R1, R4, R7 | 5658, 5769, 5880 | 100 |
+| 4 pilots | R1, R3, R6, R8 | 5658, 5732, 5843, 5917 | 100 |
+| 5 pilots | ET5A | 5665, 5752, 5800, 5866, 5905 | 88 |
+| 6 pilots | IMD 6C (MultiGP standard) | 5658, 5695, 5760, 5800, 5880, 5917 | 29 |
+
+The sharp drop at 6 pilots illustrates why IMD matters: there simply aren't 6 frequencies in the 5.8 GHz band that avoid all third-order products. The IMD 6C set is a practical compromise that minimizes the worst cases.
+
+### IMD vs. Guard Band
+
+IMD and guard band spacing address different problems:
+- **Guard band** prevents direct adjacent-channel bleed from a single interferer
+- **IMD** prevents phantom signals created by the *interaction* of two interferers
+
+A channel can be perfectly spaced from all active channels but still receive IMD interference. Both must be considered for robust multi-pilot sessions.
+
+### References
+
+- [ET's FPV IMD Tools](http://www.etheli.com/IMD/) — IMD calculator and optimal frequency set generator
+- [RCForces 5.8 GHz Guide](https://rcforces.com/blogs/blog5.shtml) — channel tables and IMD-aware pilot recommendations
+- [PhaserFPV Group Flying Guide](https://phaserfpv.com.au/blogs/fpv-news/what-is-the-best-fpv-channels-to-use-when-flying-with-mates) — practical channel sets by group size

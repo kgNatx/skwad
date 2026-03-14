@@ -91,6 +91,16 @@
       <div id="callsign-error" class="error-msg hidden"></div>
     </div>
 
+    <!-- Step 1.25: Power Ceiling Alert (joining a session with a ceiling) -->
+    <div id="step-power-alert" class="setup-step hidden">
+      <h2 class="step-title power-alert-title">POWER CEILING</h2>
+      <div class="power-alert-body">
+        <div class="power-alert-value"><span id="power-alert-mw">200</span> mW</div>
+        <p class="power-alert-text">The session leader has set a transmit power ceiling. Please set your VTX to <strong id="power-alert-mw-bold">200</strong> mW or below for the best experience.</p>
+      </div>
+      <button id="btn-power-alert-ok" class="btn btn-primary btn-large">GOT IT</button>
+    </div>
+
     <!-- Step 1.5: Leader Info (only shown when starting a session) -->
     <div id="step-leader-info" class="setup-step hidden">
       <h2 class="step-title">YOU'RE THE LEADER</h2>
@@ -101,6 +111,40 @@
         <p class="leader-info-item"><strong>Transfer leadership</strong> before you leave &mdash; tap your own row in the roster and hand it off.</p>
       </div>
       <button id="btn-leader-info-got-it" class="btn btn-primary btn-large">GOT IT</button>
+    </div>
+
+    <!-- Step 1.75: Power Ceiling (only for session creators) -->
+    <div id="step-power" class="setup-step hidden">
+      <h2 class="step-title">POWER CEILING</h2>
+      <p class="power-subtitle">Higher power needs wider channel spacing. More power means fewer pilots on separate channels.</p>
+      <div class="power-slider-container">
+        <div class="power-slider-labels">
+          <span class="power-label-left">MORE PILOTS</span>
+          <span class="power-label-right">MORE POWER</span>
+        </div>
+        <div class="power-slider-track" id="power-slider-track">
+          <div class="power-slider-notches" id="power-slider-notches"></div>
+          <div class="power-slider-thumb" id="power-slider-thumb"></div>
+        </div>
+      </div>
+      <div class="power-display">
+        <span class="power-value" id="power-mw-value">200</span>
+        <span class="power-mw-unit">mW</span>
+        <div class="power-dbm" id="power-dbm-value">23 dBm</div>
+      </div>
+      <div class="power-stats">
+        <div class="power-stat">
+          <span class="power-stat-value" id="power-guard-value" style="color:#f59e0b">14</span>
+          <span class="power-stat-label">MHz GUARD</span>
+        </div>
+        <div class="power-stat">
+          <span class="power-stat-value" id="power-channels-value" style="color:#4ade80">8</span>
+          <span class="power-stat-label">CHANNELS</span>
+        </div>
+      </div>
+      <div class="power-tip" id="power-tip"></div>
+      <button id="btn-power-next" class="btn btn-primary btn-large">SET CEILING</button>
+      <button id="btn-power-skip" class="btn btn-secondary btn-large">SKIP (NO LIMIT)</button>
     </div>
 
     <!-- Step 2: Video System -->
@@ -221,6 +265,7 @@
         </div>
         <span id="pilot-count" class="pilot-count"></span>
       </div>
+      <span id="power-ceiling-badge" class="power-ceiling-badge hidden"></span>
     </div>
 
     <div id="channel-change-banner" class="channel-change-banner hidden">
