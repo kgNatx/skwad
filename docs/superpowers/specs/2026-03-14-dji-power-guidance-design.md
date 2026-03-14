@@ -29,7 +29,7 @@ The existing interstitial keeps its current content (mW number + "set your VTX t
 > "DJI pilots: use 20 MHz bandwidth mode for best channel compatibility."
 
 **Visibility rules:**
-- Only shown when `sessionPowerCeiling > 0 && sessionPowerCeiling < 600`
+- Only shown when `state.sessionPowerCeiling > 0 && state.sessionPowerCeiling < 600`
 - At 600+ mW, channels are already sparse (4 raceband max), so bandwidth advice is less relevant
 - Shows for all joiners regardless of video system (video system isn't known yet at this step)
 - Analog/HDZero pilots will see it but can ignore it — not harmful
@@ -38,17 +38,24 @@ The existing interstitial keeps its current content (mW number + "set your VTX t
 
 ### Change 2: Bandwidth button highlighting for DJI O3/O4
 
-When a DJI O3 or O4 pilot reaches the bandwidth selection step in the wizard, and the session has a power ceiling set below 600 mW:
+When a DJI O3 or O4 pilot reaches the bandwidth selection step, and `state.sessionPowerCeiling > 0 && state.sessionPowerCeiling < 600`:
 
-- **20 MHz button**: gets a "RECOMMENDED" label or subtle green indicator
-- **40 MHz and 60 MHz buttons**: get an amber/yellow tint or border
+- **10 MHz and 20 MHz buttons**: get a "RECOMMENDED" label or subtle green indicator
+- **40 MHz button** (O3 and O4): gets an amber/yellow tint or border
+- **60 MHz button** (O4 only): gets an amber/yellow tint or border
 
-This reinforces the interstitial guidance at the point of decision.
+This reinforces the interstitial guidance at the point of decision. Note: O3 offers `[10, 20, 40]` while O4 offers `[10, 20, 40, 60]`.
+
+**Applies to all bandwidth selection paths:**
+- **Join wizard**: `showBandwidthOptions()` during initial join flow
+- **Video system change**: same `showBandwidthOptions()` called when a pilot changes their video system mid-session (the interstitial is NOT re-shown, but the bandwidth button styling applies since the pilot already saw the guidance at join time)
+- **Leader add-pilot dialog**: the add-pilot bandwidth buttons in `showAddPilotOptions()` use a separate code path (`add-pilot-bw-buttons` with `btn-toggle` elements). Apply the same recommended/warning styling here.
 
 **When NOT to highlight:**
-- No power ceiling set (`sessionPowerCeiling === 0`)
+- No power ceiling set (`state.sessionPowerCeiling === 0`)
 - Power ceiling >= 600 mW — channels are already sparse, bandwidth choice is less impactful
 - Non-DJI video systems (they don't see bandwidth buttons anyway)
+- Walksnail is intentionally excluded — it has race mode vs standard mode but doesn't use variable bandwidth in the same way
 
 ### Change 3: Frequency reference documentation
 
@@ -61,7 +68,7 @@ Add a "DJI Dynamic Power Control" section to `frequency-reference.md` covering:
 - Bandwidth is the meaningful lever — 20 MHz vs 40 MHz saves 10 MHz required spacing per neighbor
 - Practical experience: 6-8 mixed pilots fitting on raceband with 20 MHz guidance
 
-Placement: after the "Assumptions and Limitations" section, as a peer to "Transmit Power and Channel Separation."
+Placement: new `## DJI Dynamic Power Control` section (h2) after the `### Assumptions and Limitations` subsection (line 308), as a peer section to `## Transmit Power and Channel Separation` (line 226).
 
 ## What's NOT changing
 
@@ -75,7 +82,7 @@ Placement: after the "Assumptions and Limitations" section, as a peer to "Transm
 | File | Change |
 |------|--------|
 | `static/index.html` | Add DJI guidance line to `step-power-alert` |
-| `static/app.js` | Conditionally show DJI guidance line (ceiling > 0 && < 600); add recommended/warning styling to bandwidth buttons based on session power ceiling |
+| `static/app.js` | Conditionally show DJI guidance line; add recommended/warning styling to bandwidth buttons in join wizard, video system change, and leader add-pilot dialog |
 | `static/style.css` | Styles for DJI guidance text, recommended badge, amber bandwidth warning |
 | `frequency-reference.md` | New "DJI Dynamic Power Control" section |
 | `static/sw.js` | Bump cache version |
