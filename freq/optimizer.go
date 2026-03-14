@@ -37,7 +37,9 @@ type usedEntry struct {
 // Optimize takes a list of pilots and assigns each one a channel that
 // maximizes frequency separation accounting for signal bandwidth.
 // When channels must be shared, it creates buddy groups.
-func Optimize(pilots []PilotInput) []Assignment {
+// guardBandMHz is the minimum guard band between signal edges; pass
+// DefaultGuardBandMHz when no power ceiling is in effect.
+func Optimize(pilots []PilotInput, guardBandMHz int) []Assignment {
 	// Result map keyed by pilot ID for order preservation.
 	results := make(map[int]Assignment, len(pilots))
 
@@ -98,7 +100,7 @@ func Optimize(pilots []PilotInput) []Assignment {
 		bestMargin := -(1 << 30)
 
 		for _, ch := range pool {
-			margin := effectiveSeparation(ch.FreqMHz, bw, used)
+			margin := effectiveSeparation(ch.FreqMHz, bw, used, guardBandMHz)
 
 			// Prefer preferred frequency when margin >= 0 (no conflict).
 			if p.PreferredFreqMHz > 0 && ch.FreqMHz == p.PreferredFreqMHz && margin >= 0 {
@@ -165,7 +167,8 @@ func Optimize(pilots []PilotInput) []Assignment {
 
 // OptimizeWithLocks runs the optimizer but forces pilots in lockedIDs to be
 // pinned at their PrevFreqMHz, regardless of their preference.
-func OptimizeWithLocks(pilots []PilotInput, lockedIDs map[int]bool) []Assignment {
+// guardBandMHz is passed through to Optimize.
+func OptimizeWithLocks(pilots []PilotInput, lockedIDs map[int]bool, guardBandMHz int) []Assignment {
 	modified := make([]PilotInput, len(pilots))
 	for i, p := range pilots {
 		modified[i] = p
@@ -174,7 +177,7 @@ func OptimizeWithLocks(pilots []PilotInput, lockedIDs map[int]bool) []Assignment
 			modified[i].PinnedFreqMHz = p.PrevFreqMHz
 		}
 	}
-	return Optimize(modified)
+	return Optimize(modified, guardBandMHz)
 }
 
 // effectiveSeparation returns the worst-case margin between a candidate
@@ -182,7 +185,7 @@ func OptimizeWithLocks(pilots []PilotInput, lockedIDs map[int]bool) []Assignment
 // the actual center-to-center separation minus the required spacing.
 // Negative values indicate overlap or insufficient guard band.
 // Returns a large positive number if no frequencies are in use.
-func effectiveSeparation(freq, bw int, used []usedEntry) int {
+func effectiveSeparation(freq, bw int, used []usedEntry, guardBandMHz int) int {
 	if len(used) == 0 {
 		return 1<<31 - 1 // MaxInt
 	}
@@ -192,7 +195,7 @@ func effectiveSeparation(freq, bw int, used []usedEntry) int {
 		if d < 0 {
 			d = -d
 		}
-		required := RequiredSpacing(bw, u.bandwidthMHz, DefaultGuardBandMHz)
+		required := RequiredSpacing(bw, u.bandwidthMHz, guardBandMHz)
 		margin := d - required
 		if margin < worstMargin {
 			worstMargin = margin
@@ -223,7 +226,9 @@ type Conflict struct {
 // is less than the sum of half-bandwidths). A "warning" conflict means the
 // separation is less than the required spacing (which includes the guard band)
 // but the signals don't overlap.
-func DetectConflicts(assignments []Assignment) []Conflict {
+// guardBandMHz is the minimum guard band between signal edges; pass
+// DefaultGuardBandMHz when no power ceiling is in effect.
+func DetectConflicts(assignments []Assignment, guardBandMHz int) []Conflict {
 	var conflicts []Conflict
 	for i := 0; i < len(assignments); i++ {
 		for j := i + 1; j < len(assignments); j++ {
@@ -236,7 +241,7 @@ func DetectConflicts(assignments []Assignment) []Conflict {
 			halfA := a.BandwidthMHz / 2
 			halfB := b.BandwidthMHz / 2
 			overlapThreshold := halfA + halfB
-			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz, DefaultGuardBandMHz)
+			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz, guardBandMHz)
 
 			if sep < overlapThreshold {
 				conflicts = append(conflicts, Conflict{
@@ -286,7 +291,10 @@ type DisplacementResult struct {
 //
 //	Level 0: lock all existing, slot new pilot. If clean, done.
 //	Level 1: no clean placement. Build buddy and rebalance options for pilot choice.
-func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) DisplacementResult {
+//
+// guardBandMHz is the minimum guard band between signal edges; pass
+// DefaultGuardBandMHz when no power ceiling is in effect.
+func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput, guardBandMHz int) DisplacementResult {
 	all := make([]PilotInput, len(existing)+1)
 	copy(all, existing)
 	all[len(existing)] = newPilot
@@ -298,10 +306,10 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) Displac
 	}
 
 	// Level 0: lock all existing pilots, only new pilot is flexible.
-	assignments := OptimizeWithLocks(all, allExistingIDs)
+	assignments := OptimizeWithLocks(all, allExistingIDs, guardBandMHz)
 	movedIDs := movedPilotIDs(existing, assignments)
 	movedIDs[newPilot.ID] = true
-	if !hasDangerInvolving(assignments, movedIDs) {
+	if !hasDangerInvolving(assignments, movedIDs, guardBandMHz) {
 		return DisplacementResult{Level: 0, Assignments: assignments}
 	}
 
@@ -322,10 +330,10 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) Displac
 		}
 		delete(tryLocked, pilot.ID)
 
-		assignments = OptimizeWithLocks(all, tryLocked)
+		assignments = OptimizeWithLocks(all, tryLocked, guardBandMHz)
 		movedIDs = movedPilotIDs(existing, assignments)
 		movedIDs[newPilot.ID] = true
-		if !hasDangerInvolving(assignments, movedIDs) {
+		if !hasDangerInvolving(assignments, movedIDs, guardBandMHz) {
 			var moved []int
 			for id := range movedIDs {
 				if id != newPilot.ID {
@@ -351,10 +359,10 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) Displac
 				delete(tryLocked, flexible[i].ID)
 				delete(tryLocked, flexible[j].ID)
 
-				assignments = OptimizeWithLocks(all, tryLocked)
+				assignments = OptimizeWithLocks(all, tryLocked, guardBandMHz)
 				movedIDs = movedPilotIDs(existing, assignments)
 				movedIDs[newPilot.ID] = true
-				if !hasDangerInvolving(assignments, movedIDs) {
+				if !hasDangerInvolving(assignments, movedIDs, guardBandMHz) {
 					var moved []int
 					for id := range movedIDs {
 						if id != newPilot.ID {
@@ -385,8 +393,8 @@ func FindMinimalDisplacement(existing []PilotInput, newPilot PilotInput) Displac
 // hasDangerInvolving returns true if any danger-level conflict involves
 // a pilot in the given set. Pre-existing conflicts between pilots NOT
 // in the set are ignored.
-func hasDangerInvolving(assignments []Assignment, pilotIDs map[int]bool) bool {
-	for _, c := range DetectConflicts(assignments) {
+func hasDangerInvolving(assignments []Assignment, pilotIDs map[int]bool, guardBandMHz int) bool {
+	for _, c := range DetectConflicts(assignments, guardBandMHz) {
 		if c.Level == ConflictDanger {
 			if pilotIDs[c.PilotA] || pilotIDs[c.PilotB] {
 				return true
@@ -459,7 +467,7 @@ func flexibilityScore(p PilotInput) int {
 
 // worstMargin returns the worst effective separation margin across all
 // assignment pairs. Higher is better.
-func worstMargin(assignments []Assignment) int {
+func worstMargin(assignments []Assignment, guardBandMHz int) int {
 	worst := 1<<31 - 1
 	for i := 0; i < len(assignments); i++ {
 		for j := i + 1; j < len(assignments); j++ {
@@ -468,7 +476,7 @@ func worstMargin(assignments []Assignment) int {
 			if sep < 0 {
 				sep = -sep
 			}
-			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz, DefaultGuardBandMHz)
+			required := RequiredSpacing(a.BandwidthMHz, b.BandwidthMHz, guardBandMHz)
 			margin := sep - required
 			if margin < worst {
 				worst = margin

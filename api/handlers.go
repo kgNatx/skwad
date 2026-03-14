@@ -90,7 +90,12 @@ type PilotWithConflicts struct {
 // HandleCreateSession creates a new frequency-coordination session.
 // POST /api/sessions
 func (s *Server) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
-	sess, err := s.DB.CreateSession(0)
+	var req struct {
+		PowerCeilingMW int `json:"power_ceiling_mw"`
+	}
+	json.NewDecoder(r.Body).Decode(&req) // ignore error — empty body is fine
+
+	sess, err := s.DB.CreateSession(req.PowerCeilingMW)
 	if err != nil {
 		http.Error(w, "failed to create session", http.StatusInternalServerError)
 		log.Printf("CreateSession error: %v", err)
@@ -119,8 +124,9 @@ func (s *Server) HandleGetSession(w http.ResponseWriter, r *http.Request, code s
 	}
 
 	// Build assignments for conflict detection.
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
 	assignments := buildAssignments(pilots)
-	conflicts := freq.DetectConflicts(assignments)
+	conflicts := freq.DetectConflicts(assignments, guardBand)
 
 	// Build per-pilot lookup maps.
 	pilotCallsigns := make(map[int]string, len(pilots))
@@ -181,12 +187,13 @@ func (s *Server) HandleGetSession(w http.ResponseWriter, r *http.Request, code s
 // HandleJoinSession adds a pilot to a session.
 // POST /api/sessions/{code}/join
 func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code string) {
-	// Verify session exists.
-	_, err := s.DB.GetSession(code)
+	// Verify session exists and get power ceiling.
+	sess, err := s.DB.GetSession(code)
 	if err != nil {
 		http.Error(w, "session not found", http.StatusNotFound)
 		return
 	}
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
 
 	var req JoinRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -260,7 +267,7 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput)
+	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand)
 
 	// Select the assignment set based on the client's choice.
 	assignments := result.Assignments
@@ -332,11 +339,12 @@ type PreviewResponse struct {
 // Nothing is committed.
 // POST /api/sessions/{code}/preview-join
 func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code string) {
-	_, err := s.DB.GetSession(code)
+	sess, err := s.DB.GetSession(code)
 	if err != nil {
 		http.Error(w, "session not found", http.StatusNotFound)
 		return
 	}
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
 
 	var req JoinRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -382,7 +390,7 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 		AnalogBands:      req.AnalogBands,
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput)
+	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand)
 
 	// Find the new pilot's assignment and build displaced list.
 	var newAssignment freq.Assignment
@@ -495,6 +503,13 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	sess, err := s.DB.GetSession(sessionCode)
+	if err != nil {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
+
 	pilots, err := s.DB.GetActivePilots(sessionCode)
 	if err != nil {
 		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
@@ -524,7 +539,7 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput)
+	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand)
 
 	// Find the changing pilot's assignment and build displaced list.
 	var myAssignment freq.Assignment
@@ -639,6 +654,13 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 	}
 
 	// Graduated escalation: treat the changing pilot as "new".
+	sess, err := s.DB.GetSession(sessionCode)
+	if err != nil {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
+
 	pilots, err := s.DB.GetActivePilots(sessionCode)
 	if err != nil {
 		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
@@ -665,7 +687,7 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput)
+	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand)
 
 	// Select the assignment set based on the client's choice.
 	assignments := result.Assignments
@@ -792,6 +814,13 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 	}
 
 	// Graduated escalation: treat the changing pilot as "new".
+	sess, err := s.DB.GetSession(sessionCode)
+	if err != nil {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
+
 	pilots, err := s.DB.GetActivePilots(sessionCode)
 	if err != nil {
 		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
@@ -814,7 +843,7 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput)
+	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand)
 
 	for _, a := range result.Assignments {
 		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
@@ -966,6 +995,13 @@ func (s *Server) HandlePreviewRebalance(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
+	sess, err := s.DB.GetSession(code)
+	if err != nil {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
+
 	pilots, err := s.DB.GetActivePilots(code)
 	if err != nil {
 		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
@@ -975,8 +1011,8 @@ func (s *Server) HandlePreviewRebalance(w http.ResponseWriter, r *http.Request, 
 	inputs := buildPilotInputs(pilots)
 
 	// Run same two-phase logic as reoptimize but don't save.
-	assignments := freq.Optimize(inputs)
-	conflicts := freq.DetectConflicts(assignments)
+	assignments := freq.Optimize(inputs, guardBand)
+	conflicts := freq.DetectConflicts(assignments, guardBand)
 
 	if len(conflicts) > 0 {
 		conflictPilots := make(map[int]bool)
@@ -990,8 +1026,8 @@ func (s *Server) HandlePreviewRebalance(w http.ResponseWriter, r *http.Request, 
 				cleanIDs[p.ID] = true
 			}
 		}
-		surgical := freq.OptimizeWithLocks(inputs, cleanIDs)
-		surgicalConflicts := freq.DetectConflicts(surgical)
+		surgical := freq.OptimizeWithLocks(inputs, cleanIDs, guardBand)
+		surgicalConflicts := freq.DetectConflicts(surgical, guardBand)
 		if len(surgicalConflicts) < len(conflicts) {
 			assignments = surgical
 		}
@@ -1037,6 +1073,13 @@ func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code
 		return
 	}
 
+	sess, err := s.DB.GetSession(code)
+	if err != nil {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
+
 	// Snapshot before assignments.
 	pilots, err := s.DB.GetActivePilots(code)
 	if err != nil {
@@ -1050,7 +1093,7 @@ func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code
 		beforeFreq[p.ID] = p.AssignedFreqMHz
 	}
 
-	s.reoptimize(code)
+	s.reoptimize(code, guardBand)
 
 	// Snapshot after assignments.
 	pilotsAfter, err := s.DB.GetActivePilots(code)
@@ -1084,7 +1127,7 @@ func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code
 
 	// Check for remaining danger conflicts with detail.
 	assignments := buildAssignments(pilotsAfter)
-	dangerConflicts := freq.DetectConflicts(assignments)
+	dangerConflicts := freq.DetectConflicts(assignments, guardBand)
 
 	// Build lookup maps.
 	pilotMap := make(map[int]db.Pilot, len(pilotsAfter))
@@ -1177,12 +1220,13 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 		return
 	}
 
-	// Verify session exists.
-	_, err := s.DB.GetSession(code)
+	// Verify session exists and get power ceiling.
+	sess, err := s.DB.GetSession(code)
 	if err != nil {
 		http.Error(w, "session not found", http.StatusNotFound)
 		return
 	}
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
 
 	var req JoinRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1238,7 +1282,7 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 		}
 	}
 
-	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput)
+	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand)
 
 	for _, a := range result.Assignments {
 		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
@@ -1268,7 +1312,8 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 
 // reoptimize gets all active pilots for a session, runs the frequency
 // optimizer, and updates each pilot's assignment in the database.
-func (s *Server) reoptimize(sessionCode string) {
+// guardBandMHz is derived from the session's power ceiling.
+func (s *Server) reoptimize(sessionCode string, guardBandMHz int) {
 	pilots, err := s.DB.GetActivePilots(sessionCode)
 	if err != nil {
 		log.Printf("reoptimize: GetActivePilots error: %v", err)
@@ -1281,8 +1326,8 @@ func (s *Server) reoptimize(sessionCode string) {
 	inputs := buildPilotInputs(pilots)
 
 	// Phase 1: surgical -- only move pilots involved in conflicts.
-	assignments := freq.Optimize(inputs)
-	conflicts := freq.DetectConflicts(assignments)
+	assignments := freq.Optimize(inputs, guardBandMHz)
+	conflicts := freq.DetectConflicts(assignments, guardBandMHz)
 
 	if len(conflicts) > 0 {
 		// Identify pilots involved in conflicts.
@@ -1300,8 +1345,8 @@ func (s *Server) reoptimize(sessionCode string) {
 			}
 		}
 
-		surgical := freq.OptimizeWithLocks(inputs, cleanIDs)
-		surgicalConflicts := freq.DetectConflicts(surgical)
+		surgical := freq.OptimizeWithLocks(inputs, cleanIDs, guardBandMHz)
+		surgicalConflicts := freq.DetectConflicts(surgical, guardBandMHz)
 
 		if len(surgicalConflicts) < len(conflicts) {
 			assignments = surgical
