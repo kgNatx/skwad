@@ -1452,5 +1452,41 @@ body {
 .power-alert-text { font-size: 15px; font-weight: 500; color: #aaa; line-height: 1.5; max-width: 300px; margin: 0 auto; }
 .power-alert-text strong { color: #fff; }
 
+.power-alert-dji-hint {
+  font-size: 13px;
+  font-weight: 600;
+  color: #60a5fa;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(96,165,250,0.08);
+  border: 1px solid rgba(96,165,250,0.25);
+  border-radius: 8px;
+  max-width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.4;
+}
+
+/* Bandwidth button recommendation/warning */
+.bw-recommended {
+  border-color: #4ade80 !important;
+  box-shadow: 0 0 0 1px rgba(74,222,128,0.3);
+  position: relative;
+}
+.bw-recommended::after {
+  content: 'RECOMMENDED';
+  display: block;
+  font-size: 9px;
+  font-weight: 800;
+  color: #4ade80;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+.bw-warn {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 1px rgba(245,158,11,0.3);
+  color: #f59e0b !important;
+}
+
 /* ===== POWER CEILING BADGE ===== */
 .power-ceiling-badge { font-size: 11px; font-weight: 800; color: #f59e0b; letter-spacing: 1px; padding: 2px 8px; border: 1px solid rgba(245,158,11,0.4); border-radius: 6px; white-space: nowrap; }
