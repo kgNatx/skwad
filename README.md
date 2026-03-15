@@ -235,7 +235,6 @@ skwad/
   frequency-reference.md  # Complete channel/frequency tables
   docs/
     channel-set-analysis.md  # Fixed channel set spacing analysis
-    plans/                   # Design docs and implementation plans
 ```
 
 ## API
