@@ -31,10 +31,10 @@ The server starts on port 8080 by default. Set `PORT`, `DB_PATH`, and `STATIC_DI
 | System | Channels | Bandwidth | Notes |
 |--------|----------|-----------|-------|
 | **Analog 5.8 GHz** | Up to 32 across 4 bands | 20 MHz | Pilot selects bands: R (Race), F (Fatshark), E (Boscam E), L (Low Race) |
-| **HDZero** | R1–R8 (Race Band) | 20 MHz | Same frequencies as analog Race Band |
+| **HDZero** | R1-R8 (Race Band) | 20 MHz | Same frequencies as analog Race Band |
 | **DJI V1 / Vista** | 4 stock, 8 FCC | 20 MHz | Different center frequencies than Race Band |
-| **DJI O3** | 3 stock, 7 FCC (20 MHz); 1 ch at 40 MHz | 20/40 MHz | 40 MHz: single channel at 5795 MHz |
-| **DJI O4 / O4 Pro** | 3 stock, 7 FCC (20 MHz); 1–3 at 40 MHz; 1 at 60 MHz | 20/40/60 MHz | Race Mode (Goggles 3/N3) uses Race Band |
+| **DJI O3** | 3 stock, 7 FCC (20 MHz); 3 FCC at 40 MHz | 20/40 MHz | |
+| **DJI O4 / O4 Pro** | 3 stock, 7 FCC (20 MHz); 1-3 at 40 MHz; 1 at 60 MHz | 20/40/60 MHz | Race Mode (Goggles 3/N3) uses Race Band |
 | **Walksnail Avatar** | Standard (same as DJI V1) or Race Mode (Race Band) | 20 MHz | FCC unlock applies to standard mode |
 | **OpenIPC** | WiFi-165 | 20 MHz | Single channel at 5825 MHz |
 
@@ -44,18 +44,18 @@ Analog pilots select which VTX bands they have available. Race Band is the defau
 
 | Band | Channels | Range |
 |------|----------|-------|
-| **R** — Race Band | R1–R8 | 5658–5917 MHz |
-| **F** — Fatshark | F1–F8 | 5740–5880 MHz |
-| **E** — Boscam E | E1–E8 | 5645–5945 MHz |
-| **L** — Low Race | L1–L8 | 5362–5621 MHz |
+| **R** - Race Band | R1-R8 | 5658-5917 MHz |
+| **F** - Fatshark | F1-F8 | 5740-5880 MHz |
+| **E** - Boscam E | E1-E8 | 5645-5945 MHz |
+| **L** - Low Race | L1-L8 | 5362-5621 MHz |
 
-When multiple bands are selected, the optimizer merges them with frequency deduplication (R7 and F8 share 5880 MHz). See [docs/frequency-reference.md](docs/frequency-reference.md) for the complete frequency tables.
+When multiple bands are selected, the optimizer merges them with frequency deduplication (R7 and F8 share 5880 MHz). See [frequency-reference.md](frequency-reference.md) for the complete frequency tables.
 
 Available channels depend on the pilot's settings: FCC unlock status, which goggles they use (for DJI O4 Race Mode), bandwidth setting, and selected analog bands. See [fpv-optimizer.md](fpv-optimizer.md) for the optimization logic.
 
 ## How Spacing Works
 
-The optimizer doesn't use a single fixed spacing number. It calculates the required separation for each pair of pilots based on their actual signal widths.
+The optimizer doesn't use a single fixed spacing number. It calculates the required separation for each pair of pilots based on their actual signal widths and the session's power ceiling.
 
 **Occupied bandwidth** is how wide the signal actually is:
 - Analog, HDZero, DJI V1, Walksnail: **20 MHz**
@@ -66,103 +66,131 @@ The optimizer doesn't use a single fixed spacing number. It calculates the requi
 **Required spacing** between two pilots:
 
 ```
-(pilot A bandwidth / 2) + (pilot B bandwidth / 2) + 10 MHz guard band
+(pilot A bandwidth / 2) + (pilot B bandwidth / 2) + guard band
 ```
 
-Examples:
+The guard band depends on the session's power ceiling. Higher TX power means wider guard bands:
+
+| Power Ceiling | Guard Band |
+|---------------|------------|
+| No ceiling (default) | 10 MHz |
+| 25 mW | 10 MHz |
+| 100 mW | 12 MHz |
+| 200 mW | 14 MHz |
+| 400 mW | 16 MHz |
+| 600 mW | 24 MHz |
+| 800 mW | 28 MHz |
+| 1000 mW | 32 MHz |
+
+Examples (at default 10 MHz guard band):
 - Two analog pilots (20 + 20): need **30 MHz** center-to-center
 - Analog next to DJI O3 at 40 MHz (20 + 40): need **40 MHz** center-to-center
 - Two DJI O4 at 40 MHz (40 + 40): need **50 MHz** center-to-center
 - DJI O4 at 60 MHz next to analog (60 + 20): need **50 MHz** center-to-center
 
-The 10 MHz guard band provides a safety margin beyond the signal edges.
-
-For a deeper dive into the optimization logic, frequency tables, and conflict detection, see [fpv-optimizer.md](fpv-optimizer.md).
+At 600 mW, those same pairs need 44, 54, 64, and 64 MHz respectively, which reduces usable raceband channels from 8 to 4.
 
 ## How the Optimizer Works
 
-The optimizer uses **graduated escalation** — it tries the least disruptive solution first, and only moves more pilots if it has to. This runs every time a pilot joins or changes their channel/video system.
+The optimizer uses **graduated escalation** -- it tries the least disruptive solution first, and only escalates if it has to. This runs every time a pilot joins or changes their channel/video system.
 
 ### Level 0: Slot in without moving anyone
 
-Lock all existing pilots in place and try to assign the new pilot to a conflict-free channel. If one exists, done — nobody moves.
+Lock all existing pilots in place and try to assign the new pilot to a conflict-free channel. If one exists, done -- nobody moves.
 
-### Level 1: Unlock one pilot at a time
+### Level 1: Buddy or partial rebalance (pilot's choice)
 
-If Level 0 fails, try unlocking each flexible (non-locked) existing pilot one at a time alongside the new pilot. Pick the solution with the best worst-case margin across all pilots.
+If no clean slot exists, the app builds two options for the pilot to choose from:
 
-### Level 2: Unlock pairs of pilots
+- **Buddy option**: Share a frequency with the most compatible existing pilot. Buddy groups can still fly but need to take turns or accept interference. The UI highlights buddy groups with matching colored borders and "SHARING WITH" labels.
+- **Rebalance option**: Unlock one flexible pilot (or pair), find a clean arrangement by moving the minimum number of pilots.
 
-If single-pilot unlocks aren't enough, try unlocking pairs of flexible pilots. Same best-worst-margin selection.
+The pilot picks which option they prefer.
 
-### Level 3: Buddy suggestion
+### Full rebalance (leader only, separate action)
 
-If no conflict-free assignment exists even with pairs unlocked, find the most compatible pilot to share a frequency with and suggest buddy grouping. Buddy groups can still fly but need to take turns or accept interference. The UI highlights buddy groups with matching colored borders and "SHARING WITH" labels.
-
-### Level 4: Full rebalance (leader only)
-
-The session leader can trigger a full reoptimize that unlocks all flexible pilots and reassigns from scratch. This uses a greedy most-constrained-first algorithm with stability tie-breaking.
+The session leader can trigger a full reoptimize that unlocks all flexible pilots and reassigns from scratch. This uses a two-phase approach: surgical pass first (pin non-conflicting pilots, re-optimize only conflicted ones), full re-optimize fallback. The leader can also adjust or remove the power ceiling during rebalance.
 
 ### Core optimizer (used by all levels)
 
-Fixed-channel pilots (locked VTX or single-channel systems like DJI O3 at 40 MHz) are placed first. Remaining pilots are sorted most-constrained-first and assigned to the channel with the best margin. If a pilot was already on a channel and it still has non-negative margin, they stay put.
+Pinned pilots (set by `OptimizeWithLocks`, never from the database) are placed first. Remaining pilots are sorted most-constrained-first and assigned to the channel with the best margin. Pilots with a preferred channel get it when the margin is non-negative. If a pilot was already on a channel and it still has non-negative margin, they stay put.
 
-**No rebalance on pilot leave** — when a pilot leaves, remaining pilots keep their current channels. This prevents unexpected channel shuffles mid-session.
+**No rebalance on pilot leave** -- when a pilot leaves, remaining pilots keep their current channels. This prevents unexpected channel shuffles mid-session.
+
+### Fixed Channels
+
+The session leader can optionally select a preset channel set (2-5 channels) during session creation. The optimizer constrains all assignments to the fixed set. When all channels are occupied, overflow pilots buddy up on the least-loaded channel. Presets include analog-only, DJI-only, and mixed sets optimized for spacing and IMD.
+
+### Channel Preferences
+
+Pilots choose AUTO-ASSIGN or "I HAVE A PREFERENCE" when joining. Preferences are soft -- the optimizer honors them when possible but can override them for session quality. `PreferredFreqMHz` in the database (0 = auto-assign).
 
 ## Conflict Detection
 
 After optimization, Skwad checks every pair of pilots for conflicts:
 
-- **Danger** (red): Signals actually overlap — center-to-center separation is less than the sum of half-bandwidths. Definite interference.
+- **Danger** (red): Signals actually overlap -- center-to-center separation is less than the sum of half-bandwidths. Definite interference.
 - **Warning** (amber): Separation is less than the required spacing but signals don't overlap. Interference is likely, especially with reflections and multipath.
 
 Conflicts appear on pilot cards showing actual separation vs. required (e.g., "OVERLAP WAYNE (26/40 MHz)").
+
+## IMD Scoring
+
+Third-order intermodulation products (F3 = 2*F1 - F2) are calculated for all pilot pairs and scored using quadratic proximity weighting -- products closer to active channels penalize more heavily. The session header shows an aggregate IMD score (0-100, green/amber/red). IMD products appear as tick marks on the spectrum visualization. Affected pilots get an "IMD" flag with source attribution (tap to see which two pilots create the interference).
+
+IMD is informational -- the optimizer does not use IMD in its channel assignments.
 
 ## User Workflows
 
 ### Starting a Session
 
-1. One pilot taps **START SESSION** — gets a 6-character code
-2. They share the code or QR code with the group
-3. Other pilots scan the QR or enter the code to join
+1. One pilot taps **START SESSION** -- gets a 6-character code
+2. They see a "YOU'RE THE LEADER" info screen with optional session settings:
+   - **Power Ceiling**: Set a TX power limit for the session
+   - **Fixed Channels**: Pick a preset channel set
+3. They share the code or QR code with the group
+4. Other pilots scan the QR or enter the code to join
 
 ### Joining a Session
 
 1. Enter your callsign
-2. Pick your video system (Analog, DJI V1, DJI O3, DJI O4, HDZero, Walksnail, OpenIPC)
-3. Answer follow-up questions based on your system:
-   - **Analog:** Which bands does your VTX support? (R, F, E, L — Race Band pre-selected)
+2. If the session has a power ceiling, see the limit before proceeding
+3. Pick your video system (Analog, DJI V1, DJI O3, DJI O4, HDZero, Walksnail, OpenIPC)
+4. Answer follow-up questions based on your system:
+   - **Analog:** Which bands does your VTX support? (R, F, E, L -- Race Band pre-selected)
    - FCC unlocked? (DJI V1, O3, O4, Walksnail Standard)
    - Which goggles? (DJI O4)
-   - Bandwidth? (DJI O3, O4)
+   - Bandwidth? (DJI O3, O4) -- with recommended/warning indicators when a power ceiling is set
    - Race Mode? (DJI O4 with Goggles 3/N3, Walksnail)
-4. Choose channel preference: **auto-assign** (recommended) or **lock to a specific channel**
-5. Hit JOIN — you get your optimized channel assignment
+5. Choose channel preference: **AUTO-ASSIGN** (recommended) or **I HAVE A PREFERENCE**
+6. Hit JOIN -- you get your optimized channel assignment
 
-The first pilot to join becomes the **session leader** (see Managing Your Session below).
+The first pilot to join becomes the **session leader** (see below).
 
-### Displacement Preview
+### Level 1 Conflict Resolution
 
-If joining or changing channels would require moving existing pilots (escalation Level 1+), a confirmation dialog shows the escalation level, each affected pilot, and where they'd move. At Level 3, the dialog suggests a buddy to share a frequency with. Options:
+If joining or changing channels can't find a clean slot (Level 1), the pilot gets two options:
 
-- **JOIN** (or **CHANGE**) — accept the optimizer's solution including any pilot moves
-- **CANCEL** — back out, nothing changes
+- **Buddy up** with a compatible pilot on a shared frequency
+- **Partial rebalance** -- move one or two flexible pilots to open a clean slot
+
+The pilot picks which approach they prefer. If they cancel, nothing changes.
 
 ### Channel Change Notification
 
-If someone else's join moves your channel, you see a banner showing the change so you can coordinate with your group before switching your VTX.
+If someone else's join or a rebalance moves your channel, you see a dialog showing the change so you can update your VTX.
 
 ### Session Leader
 
 The first pilot to join a session becomes the leader. Leaders have additional controls:
 
-- **Add pilots** — add a phantom pilot with any video system (useful for reserving a channel for someone arriving later)
-- **Remove pilots** — slide-to-confirm on another pilot's card
-- **Change others' channels** — tap another pilot's card to reassign
-- **Rebalance all** — full optimizer rebalance (Level 4), shows confirmation and results
-- **Transfer leadership** — hand off the leader role to another pilot
+- **Add pilots** -- add a phantom pilot with any video system (useful for reserving a channel)
+- **Remove pilots** -- slide-to-confirm on another pilot's card
+- **Change others' channels** -- tap another pilot's card to reassign (force placement, bypasses escalation)
+- **Rebalance all** -- full optimizer rebalance with before/after spectrum preview; optionally adjust the power ceiling
+- **Transfer leadership** -- hand off the leader role to another pilot
 
-Leadership is explicit handoff only — there's no auto-succession or heartbeat.
+Leadership is explicit handoff only -- there's no auto-succession or heartbeat.
 
 ### Managing Your Session
 
@@ -170,9 +198,11 @@ Leadership is explicit handoff only — there's no auto-succession or heartbeat.
 - **Tap another pilot's card** (leader only) to remove, change channel, or transfer leadership
 - **Tap the session code** for a fullscreen QR code
 
+Sessions expire after **12 hours**.
+
 ### Spectrum Visualization
 
-The session footer shows a spectrum visualization of the 5.8 GHz band. Each pilot appears as a bell-curve waveform whose width represents their occupied bandwidth. Colors indicate status: green (you), red (danger), orange (warning), gray (clear). The frequency range dynamically expands when pilots use Low Race band (down to ~5350 MHz) or upper Boscam E channels (up to ~5960 MHz).
+The session footer shows a spectrum visualization of the 5.8 GHz band. Each pilot appears as a bell-curve waveform whose width represents their occupied bandwidth. Colors indicate status: green (you), red (danger), orange (warning), gray (clear). Red tick marks show IMD products, with diamond markers when they land on an active pilot's channel. The frequency range dynamically expands when pilots use Low Race band (down to ~5350 MHz) or upper Boscam E channels (up to ~5960 MHz).
 
 ### Live Updates
 
@@ -184,7 +214,7 @@ Clients poll for changes every 5 seconds. Any pilot joining, leaving, or changin
 skwad/
   main.go              # HTTP server and routing
   freq/
-    tables.go          # Channel tables for all video systems
+    tables.go          # Channel tables, guard band mapping, occupied bandwidth
     optimizer.go       # Frequency assignment and graduated escalation
     *_test.go          # Optimizer and table tests
   api/
@@ -200,24 +230,28 @@ skwad/
     sw.js              # Service worker (network-first caching)
     jsqr.min.js        # QR code scanner fallback library
     changelog.html     # User-facing release notes
+    freq-guide.html    # Interactive frequency guide
+  fpv-optimizer.md     # Optimizer design doc
+  frequency-reference.md  # Complete channel/frequency tables
   docs/
-    frequency-reference.md  # Complete channel/frequency tables
-    fpv-optimizer.md        # Optimizer design doc
+    channel-set-analysis.md  # Fixed channel set spacing analysis
+    plans/                   # Design docs and implementation plans
 ```
 
 ## API
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/sessions` | Create a new session |
-| `GET` | `/api/sessions/{code}` | Get session state (includes `leader_pilot_id`) |
-| `POST` | `/api/sessions/{code}/join` | Join a session (graduated escalation) |
-| `POST` | `/api/sessions/{code}/preview-join` | Preview join — returns level, assignment, displaced, buddy suggestion |
+| `POST` | `/api/sessions` | Create session (accepts `power_ceiling_mw`, `fixed_channels`) |
+| `GET` | `/api/sessions/{code}` | Get session state (includes `leader_pilot_id`, `rebalance_recommended`) |
+| `POST` | `/api/sessions/{code}/join` | Join session (graduated escalation) |
+| `POST` | `/api/sessions/{code}/preview-join` | Preview join -- returns level, assignment, displaced, buddy/rebalance options |
 | `GET` | `/api/sessions/{code}/poll` | Long-poll for version changes |
+| `POST` | `/api/sessions/{code}/preview-rebalance` | Preview rebalance (dry-run) |
 | `POST` | `/api/sessions/{code}/rebalance` | Full reoptimize (leader only) |
-| `POST` | `/api/sessions/{code}/transfer-leader` | Hand off leadership (leader only) |
-| `POST` | `/api/sessions/{code}/add-pilot` | Add a phantom pilot (leader only) |
-| `POST` | `/api/pilots/{id}/preview-channel?session=CODE` | Preview channel change (graduated escalation) |
+| `POST` | `/api/sessions/{code}/transfer-leader` | Transfer leadership (leader only) |
+| `POST` | `/api/sessions/{code}/add-pilot` | Add phantom pilot (leader only) |
+| `POST` | `/api/pilots/{id}/preview-channel?session=CODE` | Preview channel change (dry-run) |
 | `PUT` | `/api/pilots/{id}/channel?session=CODE` | Change channel (graduated escalation) |
 | `PUT` | `/api/pilots/{id}/video-system?session=CODE` | Change video system |
 | `PUT` | `/api/pilots/{id}/callsign?session=CODE` | Change callsign |

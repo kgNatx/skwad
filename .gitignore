@@ -3,6 +3,7 @@ data/
 .playwright-mcp/
 .worktrees/
 .superpowers/
+docs/superpowers/
 
 # Screenshots and mockups
 *.png
