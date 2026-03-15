@@ -182,6 +182,7 @@
           <span>5</span>
         </div>
       </div>
+      <div class="fc-select-hint">TAP A SET TO SELECT</div>
       <div id="fc-set-list" class="fc-set-list"></div>
       <p class="fc-hint">For 6+ pilots, skip this and let the optimizer assign channels.</p>
       <button id="btn-fc-use-set" class="btn btn-primary btn-large" disabled>USE THIS SET</button>
@@ -424,6 +425,7 @@
   <div id="add-pilot" class="action-sheet hidden">
     <div class="action-sheet-content">
       <h3 class="action-sheet-title">ADD PILOT</h3>
+      <div id="add-pilot-fixed-hint" class="add-pilot-fixed-hint hidden"></div>
       <input id="input-add-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20">
       <div class="system-grid" id="add-pilot-systems">
         <button class="btn btn-system btn-add-system" data-add-system="analog">ANALOG 5.8GHz</button>

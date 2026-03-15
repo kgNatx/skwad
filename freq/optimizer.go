@@ -130,13 +130,17 @@ func Optimize(pilots []PilotInput, guardBandMHz int, fixedFreqs []int) []Assignm
 
 		// Check if any channel has positive margin (clean slot available).
 		hasCleanSlot := false
-		if p.PreferredFreqMHz > 0 {
-			for _, ch := range pool {
-				if effectiveSeparation(ch.FreqMHz, bw, used, guardBandMHz) >= 0 {
-					hasCleanSlot = true
-					break
-				}
+		for _, ch := range pool {
+			if effectiveSeparation(ch.FreqMHz, bw, used, guardBandMHz) >= 0 {
+				hasCleanSlot = true
+				break
 			}
+		}
+
+		// Count pilots per frequency for buddy balancing.
+		freqLoad := make(map[int]int)
+		for _, u := range used {
+			freqLoad[u.freqMHz]++
 		}
 
 		for _, ch := range pool {
@@ -157,6 +161,17 @@ func Optimize(pilots []PilotInput, guardBandMHz int, fixedFreqs []int) []Assignm
 					bestMargin = margin
 					continue
 				}
+			}
+
+			// When buddying is unavoidable (all negative), prefer least-loaded channel.
+			if !hasCleanSlot && margin < 0 {
+				load := freqLoad[ch.FreqMHz]
+				bestLoad := freqLoad[bestCh.FreqMHz]
+				if load < bestLoad || (load == bestLoad && margin > bestMargin) {
+					bestCh = ch
+					bestMargin = margin
+				}
+				continue
 			}
 
 			if margin > bestMargin {

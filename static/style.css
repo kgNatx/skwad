@@ -426,10 +426,10 @@ body {
 .session-option-btn.active .session-option-check { color: #33ff33; }
 
 /* ===== FIXED CHANNELS STEP ===== */
-.fc-pilot-display { text-align: center; margin-bottom: 10px; }
-.fc-pilot-count { font-size: 48px; font-weight: 900; display: block; }
+.fc-pilot-display { text-align: center; margin-bottom: 8px; }
+.fc-pilot-count { font-size: 52px; font-weight: 900; display: block; }
 .fc-pilot-label { font-size: 14px; color: #888; font-weight: 800; letter-spacing: 1px; }
-.fc-slider-container { width: 100%; max-width: 340px; margin: 0 auto 12px; padding: 0 8px; }
+.fc-slider-container { width: 100%; max-width: 340px; margin: 0 auto 8px; padding: 0 8px; }
 .fc-slider-track { position: relative; width: 100%; height: 40px; background: linear-gradient(90deg, #1a3a1a, #3a2a1a); border-radius: 20px; cursor: pointer; touch-action: none; user-select: none; -webkit-user-select: none; }
 .fc-slider-notches { position: absolute; top: 0; left: 20px; right: 20px; height: 100%; display: flex; align-items: center; justify-content: space-between; pointer-events: none; }
 .fc-slider-track .power-slider-thumb { top: 2px; width: 36px; height: 36px; }
@@ -447,7 +447,8 @@ body {
 .fc-ch-pill.ch-dji { border-color: rgba(96,165,250,0.3); color: #60a5fa; }
 .fc-ch-pill.ch-multi { border-color: rgba(245,158,11,0.3); color: #f59e0b; }
 .fc-set-spectrum { width: 100%; height: 28px; border-radius: 4px; margin-top: 4px; }
-.fc-hint { font-size: 11px; color: #555; text-align: center; margin: 8px 0 0; text-wrap: balance; }
+.fc-select-hint { font-size: 10px; font-weight: 800; color: #555; letter-spacing: 1px; text-align: center; margin-bottom: 6px; }
+.fc-hint { font-size: 11px; color: #555; text-align: center; margin: 6px 0 0; text-wrap: balance; }
 
 .input-callsign {
   width: 100%;
@@ -1540,6 +1541,7 @@ body {
 
 /* ===== FIXED CHANNELS BADGE ===== */
 .fixed-channels-badge { font-size: 11px; font-weight: 800; color: #33ff33; letter-spacing: 0.5px; padding: 2px 8px; border: 1px solid rgba(51,255,51,0.4); border-radius: 6px; white-space: nowrap; }
+.add-pilot-fixed-hint { font-size: 11px; font-weight: 600; color: #33ff33; padding: 6px 10px; background: rgba(51,255,51,0.05); border: 1px solid rgba(51,255,51,0.2); border-radius: 6px; margin-bottom: 8px; text-align: center; text-wrap: balance; }
 
 /* ===== IMD BADGES ===== */
 .imd-badge { font-size: 11px; font-weight: 800; letter-spacing: 0.5px; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }

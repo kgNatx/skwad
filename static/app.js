@@ -1452,9 +1452,10 @@
   }
 
   function filterPoolToFixedChannels(pool) {
-    if (!state.sessionFixedChannels) return pool;
+    var fcStr = state.sessionFixedChannels || state.fixedChannels;
+    if (!fcStr) return pool;
     try {
-      var fixedChannels = JSON.parse(state.sessionFixedChannels);
+      var fixedChannels = JSON.parse(fcStr);
       var fixedFreqs = {};
       fixedChannels.forEach(function (c) { fixedFreqs[c.freq] = true; });
       var filtered = pool.filter(function (ch) { return fixedFreqs[ch.freq]; });
@@ -1471,7 +1472,7 @@
     clearChildren(picker);
 
     // Count pilots per frequency for fixed session buddy info
-    var isFixedSession = !!state.sessionFixedChannels;
+    var isFixedSession = !!(state.sessionFixedChannels || state.fixedChannels);
     var freqPilotCount = {};
     if (isFixedSession && previewPilots) {
       previewPilots.forEach(function (p) {
@@ -2456,7 +2457,7 @@
     var myBw = state.bandwidthMHz || 0;
 
     // In fixed-channel sessions, show all channels (buddying is expected).
-    var isFixedSession = !!state.sessionFixedChannels;
+    var isFixedSession = !!(state.sessionFixedChannels || state.fixedChannels);
 
     // Count pilots per frequency for buddy info
     var freqPilotCount = {};
@@ -3229,6 +3230,20 @@
     });
     $('add-pilot-options').classList.add('hidden');
     addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0, analogBands: ['R'] };
+
+    // Show fixed channels hint
+    var fcHint = $('add-pilot-fixed-hint');
+    if (fcHint && state.sessionFixedChannels) {
+      try {
+        var channels = JSON.parse(state.sessionFixedChannels);
+        var names = channels.map(function (c) { return c.name; });
+        fcHint.textContent = 'FIXED CHANNELS: ' + names.join(' \u00b7 ');
+        fcHint.classList.remove('hidden');
+      } catch (e) { fcHint.classList.add('hidden'); }
+    } else if (fcHint) {
+      fcHint.classList.add('hidden');
+    }
+
     $('add-pilot').classList.remove('hidden');
     $('input-add-callsign').focus();
   }
