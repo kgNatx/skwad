@@ -632,6 +632,19 @@ F_imd = (2 × F2) - F1</pre>
 
     <p>The sharp drop at 6 pilots illustrates why IMD matters: there simply aren't 6 frequencies in the 5.8 GHz band that avoid all third-order products. The IMD 6C set is a practical compromise that minimizes the worst cases.</p>
 
+    <h3>IMD Scoring Methodology</h3>
+
+    <p>Skwad calculates IMD scores using proximity-weighted quadratic penalties, inspired by <a href="http://www.etheli.com/IMD/">ET's IMD Tools</a>. The approach:</p>
+
+    <ul>
+      <li>Compute all third-order IMD products for every pair of active pilots</li>
+      <li>For each product within 20 MHz of an active channel, calculate: <code>penalty = (20 - distance)&sup2;</code></li>
+      <li>A product landing directly on a channel (0 MHz distance) scores 400 penalty points. A product 15 MHz away scores only 25.</li>
+      <li>Final score: <code>100 - (penalty_sum / (5 &times; pilot_count))</code>, clamped to 0-100</li>
+    </ul>
+
+    <p>This produces a gradient rather than a binary hit/miss &mdash; a product 2 MHz from your channel is a real problem, while one 18 MHz away is barely noticeable. The 20 MHz threshold aligns with typical FPV receiver filter bandwidth.</p>
+
     <h3>IMD vs. Guard Band</h3>
 
     <p>IMD and guard band spacing address different problems:</p>
