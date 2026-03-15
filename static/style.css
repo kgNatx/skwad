@@ -426,6 +426,9 @@ body {
 .session-option-btn.active .session-option-check { color: #33ff33; }
 
 /* ===== FIXED CHANNELS STEP ===== */
+#step-fixed-channels .step-title { margin-top: 4px; font-size: 26px; }
+#step-fixed-channels .power-subtitle { font-size: 15px; margin-bottom: 8px; color: #aaa; }
+#step-fixed-channels { gap: 8px; }
 .fc-pilot-display { text-align: center; margin-bottom: 8px; }
 .fc-pilot-count { font-size: 52px; font-weight: 900; display: block; }
 .fc-pilot-label { font-size: 14px; color: #888; font-weight: 800; letter-spacing: 1px; }
@@ -448,7 +451,7 @@ body {
 .fc-ch-pill.ch-multi { border-color: rgba(245,158,11,0.3); color: #f59e0b; }
 .fc-set-spectrum { width: 100%; height: 32px; border-radius: 4px; margin-top: 4px; }
 .fc-select-hint { font-size: 12px; font-weight: 800; color: #555; letter-spacing: 1px; text-align: center; margin-bottom: 6px; }
-.fc-hint { font-size: 12px; color: #666; text-align: center; margin: 6px 0 0; text-wrap: balance; }
+.fc-hint { font-size: 14px; color: #aaa; font-weight: 600; text-align: center; margin: 6px 0 0; text-wrap: balance; }
 
 .input-callsign {
   width: 100%;
