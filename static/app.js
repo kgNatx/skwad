@@ -1024,10 +1024,30 @@
         header.appendChild(badges);
         card.appendChild(header);
 
-        // Systems
+        // System availability — count usable channels per system type
+        var rbFreqs = { 5658:1, 5695:1, 5732:1, 5769:1, 5806:1, 5843:1, 5880:1, 5917:1 };
+        var djiFreqs = { 5669:1, 5705:1, 5741:1, 5769:1, 5805:1, 5840:1, 5876:1 };
+        var analogCount = 0, djiCount = 0;
+        set.channels.forEach(function (ch) {
+          if (rbFreqs[ch.f]) analogCount++;
+          if (djiFreqs[ch.f]) djiCount++;
+        });
+        var sysText = '';
+        if (analogCount === set.channels.length && djiCount === set.channels.length) {
+          sysText = set.channels.length + ' CH ALL SYSTEMS';
+        } else if (analogCount === set.channels.length) {
+          sysText = analogCount + ' ANALOG/HDZERO';
+        } else if (djiCount === set.channels.length) {
+          sysText = djiCount + ' DJI';
+        } else {
+          var parts = [];
+          if (analogCount > 0) parts.push(analogCount + ' ANALOG');
+          if (djiCount > 0) parts.push(djiCount + ' DJI');
+          sysText = parts.join(' \u00b7 ');
+        }
         var systemsEl = document.createElement('div');
         systemsEl.className = 'fc-set-systems';
-        systemsEl.textContent = set.systems;
+        systemsEl.textContent = sysText;
         card.appendChild(systemsEl);
 
         // Channel pills
