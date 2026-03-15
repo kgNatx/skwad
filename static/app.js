@@ -3239,7 +3239,7 @@
   // Systems that need FCC + bandwidth.
   var BW_SYSTEMS = { dji_o3: [20, 40], dji_o4: [20, 40, 60] };
 
-  var addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0, analogBands: ['R'] };
+  var addPilotState = { system: '', fccUnlocked: false, goggles: '', bandwidthMHz: 0, raceMode: false, analogBands: ['R'] };
 
   function showAddPilotDialog() {
     $('input-add-callsign').value = '';
@@ -3249,7 +3249,7 @@
       b.classList.remove('hidden');
     });
     $('add-pilot-options').classList.add('hidden');
-    addPilotState = { system: '', fccUnlocked: false, bandwidthMHz: 0, analogBands: ['R'] };
+    addPilotState = { system: '', fccUnlocked: false, goggles: '', bandwidthMHz: 0, raceMode: false, analogBands: ['R'] };
 
     // Show fixed channels hint
     var fcHint = $('add-pilot-fixed-hint');
@@ -3275,7 +3275,9 @@
   function showAddPilotOptions(system) {
     addPilotState.system = system;
     addPilotState.fccUnlocked = false;
+    addPilotState.goggles = '';
     addPilotState.bandwidthMHz = 20;
+    addPilotState.raceMode = false;
 
     // FCC toggle
     var needsFCC = FCC_SYSTEMS.indexOf(system) !== -1 || BW_SYSTEMS[system];
@@ -3285,6 +3287,10 @@
     } else {
       $('add-pilot-fcc').classList.add('hidden');
     }
+
+    // Goggles selector (DJI O4 only — shown after FCC selected)
+    $('add-pilot-goggles').classList.add('hidden');
+    document.querySelectorAll('.btn-add-goggles').forEach(function (b) { b.classList.remove('selected'); });
 
     // Bandwidth buttons
     var bwOptions = BW_SYSTEMS[system];
@@ -3301,13 +3307,23 @@
           addPilotState.bandwidthMHz = bw;
           bwContainer.querySelectorAll('.btn-toggle').forEach(function (b) { b.classList.remove('active'); });
           btn.classList.add('active');
+          updateAddPilotRaceMode();
         });
         bwContainer.appendChild(btn);
       });
-      $('add-pilot-bw').classList.remove('hidden');
+      // DJI O4: bandwidth hidden until goggles selected
+      if (system === 'dji_o4') {
+        $('add-pilot-bw').classList.add('hidden');
+      } else {
+        $('add-pilot-bw').classList.remove('hidden');
+      }
     } else {
       $('add-pilot-bw').classList.add('hidden');
     }
+
+    // Race mode (hidden until conditionally shown)
+    $('add-pilot-racemode').classList.add('hidden');
+    document.querySelectorAll('.btn-add-racemode').forEach(function (b) { b.classList.remove('selected'); });
 
     // Analog band buttons
     if (system === 'analog') {
@@ -3321,6 +3337,19 @@
     }
 
     $('add-pilot-options').classList.remove('hidden');
+  }
+
+  function updateAddPilotRaceMode() {
+    if (addPilotState.system !== 'dji_o4') return;
+    // Race Mode requires FCC + Goggles 3 or N3
+    if (addPilotState.fccUnlocked &&
+        (addPilotState.goggles === 'goggles_3' || addPilotState.goggles === 'goggles_n3')) {
+      $('add-pilot-racemode').classList.remove('hidden');
+    } else {
+      $('add-pilot-racemode').classList.add('hidden');
+      addPilotState.raceMode = false;
+      document.querySelectorAll('.btn-add-racemode').forEach(function (b) { b.classList.remove('selected'); });
+    }
   }
 
   function initAddPilotDialog() {
@@ -3349,7 +3378,7 @@
 
         if (SIMPLE_SYSTEMS.indexOf(system) !== -1) {
           // No follow-up needed — add immediately.
-          addPilot(callsign, system, false, 0, ['R']);
+          addPilot(callsign, system, false, '', 0, false, ['R']);
         } else {
           // Show follow-up options below the selected system.
           showAddPilotOptions(system);
@@ -3363,6 +3392,32 @@
         document.querySelectorAll('.btn-add-fcc').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
         addPilotState.fccUnlocked = btn.dataset.addFcc === 'true';
+        // DJI O4: show goggles after FCC
+        if (addPilotState.system === 'dji_o4') {
+          $('add-pilot-goggles').classList.remove('hidden');
+        }
+        updateAddPilotRaceMode();
+      });
+    });
+
+    // Goggles buttons (DJI O4)
+    document.querySelectorAll('.btn-add-goggles').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.btn-add-goggles').forEach(function (b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        addPilotState.goggles = btn.dataset.addGoggles;
+        // Show bandwidth after goggles
+        $('add-pilot-bw').classList.remove('hidden');
+        updateAddPilotRaceMode();
+      });
+    });
+
+    // Race mode buttons (DJI O4)
+    document.querySelectorAll('.btn-add-racemode').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.btn-add-racemode').forEach(function (b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        addPilotState.raceMode = btn.dataset.addRacemode === 'true';
       });
     });
 
@@ -3390,7 +3445,7 @@
         return;
       }
       hideError('add-pilot-error');
-      addPilot(callsign, addPilotState.system, addPilotState.fccUnlocked, addPilotState.bandwidthMHz, addPilotState.analogBands);
+      addPilot(callsign, addPilotState.system, addPilotState.fccUnlocked, addPilotState.goggles, addPilotState.bandwidthMHz, addPilotState.raceMode, addPilotState.analogBands);
     });
 
     $('btn-add-pilot-cancel').addEventListener('click', hideAddPilotDialog);
@@ -3399,13 +3454,15 @@
     });
   }
 
-  async function addPilot(callsign, videoSystem, fccUnlocked, bandwidthMHz, analogBands) {
+  async function addPilot(callsign, videoSystem, fccUnlocked, goggles, bandwidthMHz, raceMode, analogBands) {
     try {
       await apiPost('/api/sessions/' + state.sessionCode + '/add-pilot', {
         callsign: callsign,
         video_system: videoSystem,
         fcc_unlocked: fccUnlocked || false,
+        goggles: goggles || '',
         bandwidth_mhz: bandwidthMHz || 0,
+        race_mode: raceMode || false,
         analog_bands: analogBands || ['R'],
       });
       hideAddPilotDialog();
