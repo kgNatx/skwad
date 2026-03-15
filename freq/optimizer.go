@@ -69,17 +69,11 @@ func Optimize(pilots []PilotInput, guardBandMHz int, fixedFreqs []int) []Assignm
 					filtered = append(filtered, ch)
 				}
 			}
-			if len(filtered) < len(fixedFreqs) {
-				// Pilot's system doesn't cover all fixed channels — supplement
-				// with the missing fixed frequencies so they can be placed on any.
-				have := make(map[int]bool)
-				for _, ch := range filtered {
-					have[ch.FreqMHz] = true
-				}
+			if len(filtered) == 0 {
+				// Pilot's system has no channels in the fixed set — give them
+				// the fixed frequencies directly so they buddy up on the closest match.
 				for _, f := range fixedFreqs {
-					if !have[f] {
-						filtered = append(filtered, Channel{Name: fmt.Sprintf("CH-%d", f), FreqMHz: f})
-					}
+					filtered = append(filtered, Channel{Name: fmt.Sprintf("CH-%d", f), FreqMHz: f})
 				}
 			}
 			pools[id] = filtered
