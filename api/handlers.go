@@ -841,9 +841,12 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 	for _, inp := range inputs {
 		if inp.ID == pilotID {
 			changingPilotInput = inp
-			// Clear prev assignment since video system changed.
-			changingPilotInput.PrevChannel = ""
-			changingPilotInput.PrevFreqMHz = 0
+			// Clear prev assignment since video system changed — unless
+			// fixed channels are set, where the prev freq is still valid.
+			if len(fixedFreqs) == 0 {
+				changingPilotInput.PrevChannel = ""
+				changingPilotInput.PrevFreqMHz = 0
+			}
 		} else {
 			existingInputs = append(existingInputs, inp)
 		}
