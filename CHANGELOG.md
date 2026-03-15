@@ -4,19 +4,31 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
-## [0.6.0] - 2026-03-14
+## [0.6.0] - 2026-03-15
 
 ### Added
 - **Fixed channels.** Session leaders can select a preset channel set (2-5 unique channels) during session creation. The optimizer constrains all assignments to the fixed set, buddying up overflow pilots. Presets include analog-only, DJI-only, and mixed sets optimized for spacing and IMD.
 - **Session options on leader info.** The "YOU'RE THE LEADER" screen now shows optional checkboxes for Power Ceiling and Fixed Channels. Only checked options appear in the wizard — unchecked options are skipped for a faster setup.
-- **Mixed channel set analysis.** Computed optimal channel combinations for mixed analog + DJI sessions. Mixed sets can achieve better spacing than pure raceband at 5 pilots (47 MHz vs 37 MHz).
+- **Per-system channel availability.** Fixed channel set cards show how many channels are usable per system type (e.g., "2 RACEBAND · 4 DJI"), so leaders understand the trade-offs of mixed sets.
+- **Channel picker pilot counts.** In fixed-channel sessions, the channel picker shows how many pilots are already on each channel (e.g., "R1 5658 (2)") to help pilots choose where to buddy up.
+- **Add-pilot fixed channel hint.** The leader's add-pilot dialog shows the active fixed channel set.
 - **Joiner channel restriction.** Pilots joining a fixed-channel session see which channels are available and can only pick from the fixed set. Channel change pickers are also restricted.
 - **Fixed channels badge.** Session header shows "FIXED · N CH" badge when fixed channels are active.
+- **IMD proximity-weighted scoring.** IMD score now uses quadratic proximity weighting (inspired by ET's IMD Tools). Products closer to active channels penalize more heavily. More meaningful 0-100 scale.
+- **Pilot card layout.** Bottom row (IMD flag, conflict/buddy text, leader dot) is now a zero-height overlay — no extra vertical space consumed.
 
 ### Changed
 - **Session creation flow.** Power ceiling step is now optional (only shown when the leader checks the Power Ceiling option). Sessions without options checked go straight from leader info to video system selection.
 - **`CreateSession` accepts fixed_channels.** `POST /api/sessions` now accepts an optional `fixed_channels` JSON string.
 - **Optimizer accepts fixed frequency constraint.** `Optimize()`, `OptimizeWithLocks()`, and `FindMinimalDisplacement()` accept a `fixedFreqs []int` parameter. When set, pilot channel pools are filtered to only include frequencies in the fixed set.
+- **IMD badge placement.** Moved to same line as pilot count in session header.
+
+### Fixed
+- **Buddy preference in fixed sessions.** Optimizer now honors pilot channel preference even when all channels are occupied (buddying unavoidable). Previously ignored preference and picked least-loaded channel.
+- **Even buddy distribution.** When all channels are occupied, optimizer prefers the least-loaded channel instead of picking by margin alone.
+- **Creator channel filter.** `filterPoolToFixedChannels` now checks `state.fixedChannels` (creator flow) in addition to `state.sessionFixedChannels` (joiner flow). Fixes channel picker not being filtered for the session creator.
+- **Video system change in fixed sessions.** Optimizer preserves previous frequency when changing video systems in a fixed-channel session, keeping the pilot on their channel instead of reassigning.
+- **Channel picker in full fixed sessions.** Self-service channel change now shows all fixed channels (with pilot counts) instead of hiding occupied channels and showing an empty picker.
 
 ## [0.5.1] - 2026-03-14
 
