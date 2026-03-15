@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -133,6 +134,50 @@ func (d *DB) migrate() error {
 	if err != nil && !strings.Contains(err.Error(), "duplicate column") {
 		return fmt.Errorf("migrate fixed_channels: %w", err)
 	}
+
+	// Usage metrics columns on sessions.
+	for _, col := range []struct{ name, def string }{
+		{"city", "TEXT DEFAULT ''"},
+		{"region", "TEXT DEFAULT ''"},
+		{"country", "TEXT DEFAULT ''"},
+		{"latitude", "REAL DEFAULT 0"},
+		{"longitude", "REAL DEFAULT 0"},
+		{"peak_pilot_count", "INTEGER DEFAULT 0"},
+		{"total_joins", "INTEGER DEFAULT 0"},
+		{"rebalance_count", "INTEGER DEFAULT 0"},
+		{"channel_change_count", "INTEGER DEFAULT 0"},
+	} {
+		_, err = d.db.Exec(fmt.Sprintf(`ALTER TABLE sessions ADD COLUMN %s %s`, col.name, col.def))
+		if err != nil && !strings.Contains(err.Error(), "duplicate column") {
+			return fmt.Errorf("migrate %s: %w", col.name, err)
+		}
+	}
+
+	// Snapshot table for metrics after session expiry.
+	_, err = d.db.Exec(`CREATE TABLE IF NOT EXISTS session_snapshots (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		session_code TEXT NOT NULL,
+		created_at DATETIME NOT NULL,
+		expired_at DATETIME NOT NULL,
+		duration_minutes INTEGER NOT NULL,
+		peak_pilot_count INTEGER NOT NULL,
+		total_joins INTEGER NOT NULL,
+		rebalance_count INTEGER NOT NULL,
+		channel_change_count INTEGER NOT NULL,
+		video_systems TEXT NOT NULL DEFAULT '{}',
+		power_ceiling_mw INTEGER NOT NULL DEFAULT 0,
+		used_fixed_channels BOOLEAN NOT NULL DEFAULT 0,
+		city TEXT NOT NULL DEFAULT '',
+		region TEXT NOT NULL DEFAULT '',
+		country TEXT NOT NULL DEFAULT '',
+		latitude REAL NOT NULL DEFAULT 0,
+		longitude REAL NOT NULL DEFAULT 0,
+		UNIQUE(session_code, created_at)
+	)`)
+	if err != nil {
+		return fmt.Errorf("create session_snapshots: %w", err)
+	}
+
 	return nil
 }
 
@@ -464,6 +509,275 @@ func (d *DB) DeleteExpiredSessions() (int64, error) {
 		return 0, fmt.Errorf("delete expired sessions: %w", err)
 	}
 	return res.RowsAffected()
+}
+
+// UpdateSessionGeo sets the geolocation fields for a session.
+func (d *DB) UpdateSessionGeo(sessionID, city, region, country string, lat, lng float64) error {
+	_, err := d.db.Exec(
+		`UPDATE sessions SET city = ?, region = ?, country = ?, latitude = ?, longitude = ? WHERE id = ?`,
+		city, region, country, lat, lng, sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("update session geo: %w", err)
+	}
+	return nil
+}
+
+// IncrementJoinCount bumps total_joins and updates peak_pilot_count for a session.
+func (d *DB) IncrementJoinCount(sessionID string) error {
+	_, err := d.db.Exec(
+		`UPDATE sessions SET total_joins = total_joins + 1,
+			peak_pilot_count = MAX(peak_pilot_count,
+				(SELECT COUNT(*) FROM pilots WHERE session_id = ? AND active = TRUE))
+		WHERE id = ?`,
+		sessionID, sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("increment join count: %w", err)
+	}
+	return nil
+}
+
+// IncrementRebalanceCount bumps rebalance_count for a session.
+func (d *DB) IncrementRebalanceCount(sessionID string) error {
+	_, err := d.db.Exec(
+		`UPDATE sessions SET rebalance_count = rebalance_count + 1 WHERE id = ?`,
+		sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("increment rebalance count: %w", err)
+	}
+	return nil
+}
+
+// IncrementChannelChangeCount bumps channel_change_count for a session.
+func (d *DB) IncrementChannelChangeCount(sessionID string) error {
+	_, err := d.db.Exec(
+		`UPDATE sessions SET channel_change_count = channel_change_count + 1 WHERE id = ?`,
+		sessionID,
+	)
+	if err != nil {
+		return fmt.Errorf("increment channel change count: %w", err)
+	}
+	return nil
+}
+
+// SnapshotAndDeleteExpiredSessions creates snapshot rows for expired sessions,
+// then deletes them. All within a single transaction.
+func (d *DB) SnapshotAndDeleteExpiredSessions() (int64, error) {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return 0, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Find expired sessions.
+	rows, err := tx.Query(
+		`SELECT id, created_at, expires_at, COALESCE(power_ceiling_mw, 0),
+			COALESCE(fixed_channels, ''), COALESCE(city, ''), COALESCE(region, ''),
+			COALESCE(country, ''), COALESCE(latitude, 0), COALESCE(longitude, 0),
+			COALESCE(peak_pilot_count, 0), COALESCE(total_joins, 0),
+			COALESCE(rebalance_count, 0), COALESCE(channel_change_count, 0)
+		FROM sessions WHERE expires_at <= datetime('now')`,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("query expired sessions: %w", err)
+	}
+
+	type expiredSession struct {
+		id, fixedChannels, city, region, country                    string
+		createdAt, expiresAt                                        time.Time
+		powerCeilingMW, peakPilots, totalJoins, rebalances, changes int
+		lat, lng                                                    float64
+	}
+	var expired []expiredSession
+
+	for rows.Next() {
+		var s expiredSession
+		if err := rows.Scan(&s.id, &s.createdAt, &s.expiresAt, &s.powerCeilingMW,
+			&s.fixedChannels, &s.city, &s.region, &s.country, &s.lat, &s.lng,
+			&s.peakPilots, &s.totalJoins, &s.rebalances, &s.changes); err != nil {
+			rows.Close()
+			return 0, fmt.Errorf("scan expired session: %w", err)
+		}
+		expired = append(expired, s)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("iterate expired sessions: %w", err)
+	}
+
+	if len(expired) == 0 {
+		return 0, nil
+	}
+
+	// Snapshot each session.
+	for _, s := range expired {
+		// Build video system summary from all pilots (active or not).
+		vsRows, err := tx.Query(
+			`SELECT video_system, COUNT(*) FROM pilots WHERE session_id = ? GROUP BY video_system`,
+			s.id,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("query video systems for %s: %w", s.id, err)
+		}
+
+		vsSummary := make(map[string]int)
+		for vsRows.Next() {
+			var vs string
+			var count int
+			if err := vsRows.Scan(&vs, &count); err != nil {
+				vsRows.Close()
+				return 0, fmt.Errorf("scan video system: %w", err)
+			}
+			vsSummary[vs] = count
+		}
+		vsRows.Close()
+
+		vsJSON, _ := json.Marshal(vsSummary)
+
+		durationMinutes := int(s.expiresAt.Sub(s.createdAt).Minutes())
+		usedFixed := s.fixedChannels != "" && s.fixedChannels != "[]"
+
+		_, err = tx.Exec(
+			`INSERT OR IGNORE INTO session_snapshots
+				(session_code, created_at, expired_at, duration_minutes,
+				peak_pilot_count, total_joins, rebalance_count, channel_change_count,
+				video_systems, power_ceiling_mw, used_fixed_channels,
+				city, region, country, latitude, longitude)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			s.id, s.createdAt, s.expiresAt, durationMinutes,
+			s.peakPilots, s.totalJoins, s.rebalances, s.changes,
+			string(vsJSON), s.powerCeilingMW, usedFixed,
+			s.city, s.region, s.country, s.lat, s.lng,
+		)
+		if err != nil {
+			return 0, fmt.Errorf("insert snapshot for %s: %w", s.id, err)
+		}
+	}
+
+	// Delete expired sessions (cascade deletes pilots).
+	res, err := tx.Exec(`DELETE FROM sessions WHERE expires_at <= datetime('now')`)
+	if err != nil {
+		return 0, fmt.Errorf("delete expired sessions: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("commit tx: %w", err)
+	}
+
+	return res.RowsAffected()
+}
+
+// UsageLocation represents a geographic location with session count.
+type UsageLocation struct {
+	City    string  `json:"city"`
+	Region  string  `json:"region"`
+	Country string  `json:"country"`
+	Lat     float64 `json:"lat"`
+	Lng     float64 `json:"lng"`
+	Count   int     `json:"count"`
+}
+
+// UsageStats holds aggregate metrics from session snapshots.
+type UsageStats struct {
+	TotalSessions             int                `json:"total_sessions"`
+	TotalPilotsJoined         int                `json:"total_pilots_joined"`
+	AvgPilotsPerSession       float64            `json:"avg_pilots_per_session"`
+	PeakSessionSize           int                `json:"peak_session_size"`
+	AvgSessionDurationMinutes float64            `json:"avg_session_duration_minutes"`
+	VideoSystemBreakdown      map[string]int     `json:"video_system_breakdown"`
+	TotalRebalances           int                `json:"total_rebalances"`
+	TotalChannelChanges       int                `json:"total_channel_changes"`
+	SessionsWithPowerCeiling  float64            `json:"sessions_with_power_ceiling_pct"`
+	SessionsWithFixedChannels float64            `json:"sessions_with_fixed_channels_pct"`
+	Locations                 []UsageLocation    `json:"locations"`
+}
+
+// GetUsageStats computes aggregate metrics from session_snapshots.
+func (d *DB) GetUsageStats() (*UsageStats, error) {
+	stats := &UsageStats{
+		VideoSystemBreakdown: make(map[string]int),
+	}
+
+	// Core aggregates.
+	err := d.db.QueryRow(`
+		SELECT COUNT(*),
+			COALESCE(SUM(total_joins), 0),
+			COALESCE(MAX(peak_pilot_count), 0),
+			COALESCE(SUM(rebalance_count), 0),
+			COALESCE(SUM(channel_change_count), 0)
+		FROM session_snapshots
+	`).Scan(&stats.TotalSessions, &stats.TotalPilotsJoined,
+		&stats.PeakSessionSize, &stats.TotalRebalances, &stats.TotalChannelChanges)
+	if err != nil {
+		return nil, fmt.Errorf("query core stats: %w", err)
+	}
+
+	if stats.TotalSessions == 0 {
+		stats.Locations = []UsageLocation{}
+		return stats, nil
+	}
+
+	// Averages (exclude unused sessions).
+	d.db.QueryRow(`
+		SELECT COALESCE(AVG(peak_pilot_count), 0)
+		FROM session_snapshots WHERE total_joins > 0
+	`).Scan(&stats.AvgPilotsPerSession)
+
+	d.db.QueryRow(`
+		SELECT COALESCE(AVG(duration_minutes), 0)
+		FROM session_snapshots WHERE total_joins > 0
+	`).Scan(&stats.AvgSessionDurationMinutes)
+
+	// Feature adoption percentages.
+	var withPower, withFixed int
+	d.db.QueryRow(`SELECT COUNT(*) FROM session_snapshots WHERE power_ceiling_mw > 0`).Scan(&withPower)
+	d.db.QueryRow(`SELECT COUNT(*) FROM session_snapshots WHERE used_fixed_channels = 1`).Scan(&withFixed)
+	stats.SessionsWithPowerCeiling = float64(withPower) / float64(stats.TotalSessions) * 100
+	stats.SessionsWithFixedChannels = float64(withFixed) / float64(stats.TotalSessions) * 100
+
+	// Video system breakdown via json_each.
+	vsRows, err := d.db.Query(`
+		SELECT j.key, SUM(j.value)
+		FROM session_snapshots, json_each(video_systems) j
+		WHERE video_systems != '{}'
+		GROUP BY j.key
+	`)
+	if err == nil {
+		defer vsRows.Close()
+		for vsRows.Next() {
+			var system string
+			var count int
+			if vsRows.Scan(&system, &count) == nil {
+				stats.VideoSystemBreakdown[system] = count
+			}
+		}
+	}
+
+	// Locations grouped by city.
+	locRows, err := d.db.Query(`
+		SELECT city, region, country, AVG(latitude), AVG(longitude), COUNT(*)
+		FROM session_snapshots
+		WHERE city != ''
+		GROUP BY city, region, country
+		ORDER BY COUNT(*) DESC
+	`)
+	if err == nil {
+		defer locRows.Close()
+		for locRows.Next() {
+			var loc UsageLocation
+			if locRows.Scan(&loc.City, &loc.Region, &loc.Country, &loc.Lat, &loc.Lng, &loc.Count) == nil {
+				stats.Locations = append(stats.Locations, loc)
+			}
+		}
+	}
+
+	if stats.Locations == nil {
+		stats.Locations = []UsageLocation{}
+	}
+
+	return stats, nil
 }
 
 // generateCode produces a 6-character uppercase hex string using crypto/rand.

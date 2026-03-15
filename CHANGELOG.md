@@ -4,6 +4,18 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.6.1] - 2026-03-15
+
+### Added
+- **Usage dashboard.** Anonymous aggregate usage stats are now collected (session counts, pilot counts, video system distribution, feature adoption) and displayed at `/usage`. Sessions are snapshotted on expiry — no personal data is stored. Includes a map showing where sessions have been hosted via IP geolocation (city-level, looked up on session creation from ip-api.com).
+- **Session activity counters.** Sessions now track `total_joins`, `peak_pilot_count`, `rebalance_count`, and `channel_change_count` via lightweight `UPDATE ... SET col = col + 1` calls in existing handlers. `HandleAddPilot` also increments join counters.
+- **`GET /api/usage` endpoint.** Returns aggregate metrics from `session_snapshots` table. Video system breakdown uses SQLite `json_each()` for server-side aggregation. Locations grouped by city.
+- **`session_snapshots` table.** Created during migration. `UNIQUE(session_code, created_at)` prevents double-snapshots. Populated transactionally by `SnapshotAndDeleteExpiredSessions()` before cascade-deleting expired sessions.
+- **Geolocation on session creation.** `HandleCreateSession` fires an async goroutine to look up the client IP via `ip-api.com` (5s timeout). Private IPs are skipped. Results stored on the session row and carried into the snapshot.
+
+### Changed
+- **Cleanup job.** `DeleteExpiredSessions()` replaced by `SnapshotAndDeleteExpiredSessions()` — snapshots metrics before deleting, all within a single SQLite transaction.
+
 ## [0.6.0] - 2026-03-15
 
 ### Added

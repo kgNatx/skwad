@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>SKWAD Usage</title>
+  <link rel="icon" type="image/svg+xml" href="/skwad-icon.svg">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      line-height: 1.4;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .header img {
+      width: 36px;
+      height: 36px;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .header p {
+      color: #888;
+      font-size: 13px;
+      text-align: right;
+      text-wrap: balance;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .stat-card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      color: #4ade80;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    .section {
+      max-width: 800px;
+      margin: 0 auto 28px;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      color: #ccc;
+    }
+
+    #map {
+      height: 350px;
+      border-radius: 12px;
+      border: 1px solid #2a2a2a;
+      overflow: hidden;
+    }
+
+    .bar-chart {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .bar-label {
+      width: 100px;
+      font-size: 13px;
+      font-weight: 700;
+      text-align: right;
+      color: #ccc;
+      flex-shrink: 0;
+    }
+
+    .bar-track {
+      flex: 1;
+      height: 28px;
+      background: #1a1a1a;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      min-width: 2px;
+      transition: width 0.5s ease;
+    }
+
+    .bar-count {
+      width: 50px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #888;
+      flex-shrink: 0;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .feature-card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .feature-pct {
+      font-size: 28px;
+      font-weight: 800;
+      color: #fbbf24;
+    }
+
+    .feature-label {
+      font-size: 13px;
+      color: #888;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #555;
+      padding: 60px 20px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .loading {
+      text-align: center;
+      color: #555;
+      padding: 60px 20px;
+      font-size: 16px;
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      padding-bottom: 40px;
+    }
+
+    .back-link a {
+      color: #4ade80;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    /* Leaflet popup styling for dark theme */
+    .leaflet-popup-content-wrapper {
+      background: #1a1a1a;
+      color: #fff;
+      border-radius: 8px;
+      font-family: inherit;
+    }
+    .leaflet-popup-tip {
+      background: #1a1a1a;
+    }
+    .leaflet-popup-content {
+      margin: 10px 14px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 480px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .stat-value { font-size: 26px; }
+      .bar-label { width: 80px; font-size: 12px; }
+      #map { height: 280px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <img src="/skwad-icon.svg" alt="SKWAD">
+    <h1>Usage</h1>
+  </div>
+  <p>Aggregate stats from all Skwad sessions</p>
+</div>
+
+<div id="loading" class="loading">Loading...</div>
+<div id="empty" class="empty-state" style="display:none">No sessions recorded yet. Stats will appear after the first session expires.</div>
+<div id="content" style="display:none">
+
+  <div class="stats-grid" id="stats-grid"></div>
+
+  <div class="section" id="map-section">
+    <div class="section-title">Sessions Around the World</div>
+    <div id="map"></div>
+  </div>
+
+  <div class="section" id="vs-section">
+    <div class="section-title">Video Systems</div>
+    <div class="bar-chart" id="vs-chart"></div>
+  </div>
+
+  <div class="section" id="feature-section">
+    <div class="section-title">Feature Adoption</div>
+    <div class="feature-grid" id="feature-grid"></div>
+  </div>
+
+</div>
+
+<div class="back-link"><a href="/">Back to Skwad</a></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function() {
+  const VIDEO_SYSTEM_NAMES = {
+    analog: 'Analog',
+    dji_v1: 'DJI V1',
+    dji_o3: 'DJI O3',
+    dji_o4: 'DJI O4',
+    hdzero: 'HDZero',
+    walksnail: 'Walksnail',
+    openipc: 'OpenIPC'
+  };
+
+  const BAR_COLORS = [
+    '#4ade80', '#fbbf24', '#f87171', '#60a5fa',
+    '#c084fc', '#fb923c', '#22d3ee'
+  ];
+
+  function el(tag, cls) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    return e;
+  }
+
+  function fmtDuration(minutes) {
+    const h = Math.floor(minutes / 60);
+    const m = Math.round(minutes % 60);
+    if (h === 0) return m + 'm';
+    return h + 'h ' + m + 'm';
+  }
+
+  function addStatCard(parent, value, label) {
+    const card = el('div', 'stat-card');
+    const valEl = el('div', 'stat-value');
+    valEl.textContent = value;
+    const labEl = el('div', 'stat-label');
+    labEl.textContent = label;
+    card.appendChild(valEl);
+    card.appendChild(labEl);
+    parent.appendChild(card);
+  }
+
+  function addBarRow(parent, name, count, maxCount, color) {
+    const row = el('div', 'bar-row');
+
+    const label = el('div', 'bar-label');
+    label.textContent = name;
+    row.appendChild(label);
+
+    const track = el('div', 'bar-track');
+    const fill = el('div', 'bar-fill');
+    fill.style.width = (count / maxCount * 100) + '%';
+    fill.style.background = color;
+    track.appendChild(fill);
+    row.appendChild(track);
+
+    const countEl = el('div', 'bar-count');
+    countEl.textContent = count;
+    row.appendChild(countEl);
+
+    parent.appendChild(row);
+  }
+
+  function addFeatureCard(parent, value, label) {
+    const card = el('div', 'feature-card');
+    const pctEl = el('div', 'feature-pct');
+    pctEl.textContent = value;
+    const labEl = el('div', 'feature-label');
+    labEl.textContent = label;
+    card.appendChild(pctEl);
+    card.appendChild(labEl);
+    parent.appendChild(card);
+  }
+
+  async function load() {
+    const loadingEl = document.getElementById('loading');
+    const emptyEl = document.getElementById('empty');
+    const contentEl = document.getElementById('content');
+
+    try {
+      const resp = await fetch('/api/usage');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+
+      loadingEl.style.display = 'none';
+
+      if (data.total_sessions === 0) {
+        emptyEl.style.display = '';
+        return;
+      }
+
+      contentEl.style.display = '';
+
+      // Stat cards
+      const grid = document.getElementById('stats-grid');
+      addStatCard(grid, data.total_sessions, 'Sessions');
+      addStatCard(grid, data.total_pilots_joined, 'Pilots Joined');
+      addStatCard(grid, data.avg_pilots_per_session.toFixed(1), 'Avg per Session');
+      addStatCard(grid, data.peak_session_size, 'Largest Session');
+      addStatCard(grid, fmtDuration(data.avg_session_duration_minutes), 'Avg Duration');
+
+      // Map
+      if (data.locations && data.locations.length > 0) {
+        const map = L.map('map', { scrollWheelZoom: false });
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          attribution: '\u00a9 CARTO',
+          subdomains: 'abcd',
+          maxZoom: 19
+        }).addTo(map);
+
+        const markers = [];
+        const maxCount = Math.max(...data.locations.map(l => l.count));
+
+        data.locations.forEach(function(loc) {
+          const radius = Math.max(6, Math.min(20, (loc.count / maxCount) * 20));
+          const marker = L.circleMarker([loc.lat, loc.lng], {
+            radius: radius,
+            fillColor: '#4ade80',
+            color: '#1a1a1a',
+            weight: 2,
+            fillOpacity: 0.8
+          }).addTo(map);
+
+          // Build popup with safe DOM methods
+          const popupDiv = document.createElement('div');
+          const strong = document.createElement('strong');
+          let locLabel = loc.city || '';
+          if (loc.region) locLabel += ', ' + loc.region;
+          if (loc.country) locLabel += ' ' + loc.country;
+          strong.textContent = locLabel;
+          popupDiv.appendChild(strong);
+          popupDiv.appendChild(document.createElement('br'));
+          popupDiv.appendChild(document.createTextNode(
+            loc.count + ' session' + (loc.count !== 1 ? 's' : '')
+          ));
+          marker.bindPopup(popupDiv);
+
+          markers.push(marker);
+        });
+
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.3));
+      } else {
+        document.getElementById('map-section').style.display = 'none';
+      }
+
+      // Video system bars
+      const vs = data.video_system_breakdown || {};
+      const vsEntries = Object.entries(vs).sort(function(a, b) { return b[1] - a[1]; });
+      if (vsEntries.length > 0) {
+        const maxVS = vsEntries[0][1];
+        const chart = document.getElementById('vs-chart');
+        vsEntries.forEach(function(entry, i) {
+          const name = VIDEO_SYSTEM_NAMES[entry[0]] || entry[0];
+          addBarRow(chart, name, entry[1], maxVS, BAR_COLORS[i % BAR_COLORS.length]);
+        });
+      } else {
+        document.getElementById('vs-section').style.display = 'none';
+      }
+
+      // Feature adoption
+      const featureGrid = document.getElementById('feature-grid');
+      addFeatureCard(featureGrid, data.sessions_with_power_ceiling_pct.toFixed(0) + '%', 'Use Power Ceiling');
+      addFeatureCard(featureGrid, data.sessions_with_fixed_channels_pct.toFixed(0) + '%', 'Use Fixed Channels');
+
+      if (data.total_sessions > 0 && data.total_rebalances > 0) {
+        addFeatureCard(featureGrid,
+          (data.total_rebalances / data.total_sessions * 100).toFixed(0) + '%',
+          'Rebalance Rate');
+      }
+
+      if (data.total_sessions > 0 && data.total_channel_changes > 0) {
+        addFeatureCard(featureGrid,
+          (data.total_channel_changes / data.total_sessions).toFixed(1),
+          'Avg Ch. Changes / Session');
+      }
+
+    } catch (err) {
+      loadingEl.textContent = 'Failed to load usage data.';
+      console.error('Usage fetch error:', err);
+    }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

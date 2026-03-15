@@ -38,16 +38,16 @@ func main() {
 	}
 	defer database.Close()
 
-	// Start background cleanup of expired sessions.
+	// Start background cleanup of expired sessions (snapshots metrics before deleting).
 	go func() {
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
 		for range ticker.C {
-			deleted, err := database.DeleteExpiredSessions()
+			deleted, err := database.SnapshotAndDeleteExpiredSessions()
 			if err != nil {
 				log.Printf("Cleanup error: %v", err)
 			} else if deleted > 0 {
-				log.Printf("Cleaned up %d expired session(s)", deleted)
+				log.Printf("Cleaned up %d expired session(s) (snapshots saved)", deleted)
 			}
 		}
 	}()
@@ -71,6 +71,7 @@ func main() {
 	})
 
 	// API routes.
+	mux.HandleFunc("GET /api/usage", srv.HandleUsage)
 	mux.HandleFunc("POST /api/sessions", srv.HandleCreateSession)
 
 	mux.HandleFunc("GET /api/sessions/{code}", func(w http.ResponseWriter, r *http.Request) {
@@ -182,6 +183,12 @@ func main() {
 			return
 		}
 		srv.HandleDeactivatePilot(w, r, pilotID, sessionCode)
+	})
+
+	// Usage dashboard page.
+	mux.HandleFunc("GET /usage", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		http.ServeFile(w, r, staticDir+"/usage.html")
 	})
 
 	// Client-side routing: serve index.html for /s/{code} paths.

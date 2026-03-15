@@ -4,13 +4,78 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kyleg/skwad/db"
 	"github.com/kyleg/skwad/freq"
 )
+
+// geoClient is a shared HTTP client with a short timeout for IP geolocation.
+var geoClient = &http.Client{Timeout: 5 * time.Second}
+
+// isPrivateIP checks if an IP is private/loopback and should skip geolocation.
+func isPrivateIP(ipStr string) bool {
+	ip := net.ParseIP(ipStr)
+	if ip == nil {
+		return true
+	}
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified()
+}
+
+// clientIP extracts the client's IP from the request, checking X-Forwarded-For first.
+func clientIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.SplitN(xff, ",", 2)
+		return strings.TrimSpace(parts[0])
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// lookupGeoAsync does an IP geolocation lookup in a goroutine and updates the session.
+func (s *Server) lookupGeoAsync(sessionID string, r *http.Request) {
+	ip := clientIP(r)
+	if isPrivateIP(ip) {
+		return
+	}
+
+	go func() {
+		resp, err := geoClient.Get(fmt.Sprintf("http://ip-api.com/json/%s?fields=city,region,countryCode,lat,lon", ip))
+		if err != nil {
+			log.Printf("Geo lookup error for %s: %v", ip, err)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("Geo lookup returned %d for %s", resp.StatusCode, ip)
+			return
+		}
+
+		var geo struct {
+			City    string  `json:"city"`
+			Region  string  `json:"region"`
+			Country string  `json:"countryCode"`
+			Lat     float64 `json:"lat"`
+			Lng     float64 `json:"lon"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&geo); err != nil {
+			log.Printf("Geo decode error for %s: %v", ip, err)
+			return
+		}
+
+		if err := s.DB.UpdateSessionGeo(sessionID, geo.City, geo.Region, geo.Country, geo.Lat, geo.Lng); err != nil {
+			log.Printf("Geo DB update error for session %s: %v", sessionID, err)
+		}
+	}()
+}
 
 // joinBands converts a slice of band codes to a comma-separated string.
 // Returns "R" if the slice is empty (default to Race Band).
@@ -102,6 +167,8 @@ func (s *Server) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 		log.Printf("CreateSession error: %v", err)
 		return
 	}
+
+	s.lookupGeoAsync(sess.ID, r)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -286,6 +353,11 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 
 	if err := s.DB.IncrementVersion(code); err != nil {
 		log.Printf("IncrementVersion error: %v", err)
+	}
+
+	// Update usage counters.
+	if err := s.DB.IncrementJoinCount(code); err != nil {
+		log.Printf("IncrementJoinCount error: %v", err)
 	}
 
 	// First pilot becomes leader.
@@ -780,6 +852,10 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 		log.Printf("IncrementVersion error: %v", err)
 	}
 
+	if err := s.DB.IncrementChannelChangeCount(sessionCode); err != nil {
+		log.Printf("IncrementChannelChangeCount error: %v", err)
+	}
+
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -1149,6 +1225,10 @@ func (s *Server) HandleRebalanceAll(w http.ResponseWriter, r *http.Request, code
 
 	s.reoptimize(code, guardBand, fixedFreqs)
 
+	if err := s.DB.IncrementRebalanceCount(code); err != nil {
+		log.Printf("IncrementRebalanceCount error: %v", err)
+	}
+
 	// Snapshot after assignments.
 	pilotsAfter, err := s.DB.GetActivePilots(code)
 	if err != nil {
@@ -1349,6 +1429,10 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 		log.Printf("IncrementVersion error: %v", err)
 	}
 
+	if err := s.DB.IncrementJoinCount(code); err != nil {
+		log.Printf("IncrementJoinCount error: %v", err)
+	}
+
 	// Re-fetch the pilot to get the updated assignment.
 	pilots, err = s.DB.GetActivePilots(code)
 	if err == nil {
@@ -1418,4 +1502,18 @@ func (s *Server) reoptimize(sessionCode string, guardBandMHz int, fixedFreqs []i
 	if err := s.DB.IncrementVersion(sessionCode); err != nil {
 		log.Printf("reoptimize: IncrementVersion error: %v", err)
 	}
+}
+
+// HandleUsage returns aggregate usage metrics.
+// GET /api/usage
+func (s *Server) HandleUsage(w http.ResponseWriter, r *http.Request) {
+	stats, err := s.DB.GetUsageStats()
+	if err != nil {
+		http.Error(w, "failed to get usage stats", http.StatusInternalServerError)
+		log.Printf("GetUsageStats error: %v", err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
 }
