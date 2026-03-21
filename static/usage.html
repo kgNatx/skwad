@@ -227,6 +227,48 @@
       font-weight: 600;
     }
 
+    .map-legend {
+      background: rgba(10, 10, 10, 0.85);
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .map-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .map-legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .map-legend-dot.active {
+      background: #fbbf24;
+      box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+    }
+    .map-legend-dot.past {
+      background: #4ade80;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 0.6; }
+      100% { transform: scale(2.5); opacity: 0; }
+    }
+    .pulse-marker {
+      border-radius: 50%;
+      animation: pulse-ring 2s ease-out infinite;
+    }
+
     @media (max-width: 480px) {
       .stats-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -374,8 +416,11 @@
       addStatCard(grid, fmtDuration(data.avg_session_duration_minutes), 'Avg Duration');
 
       // Map
-      if (data.locations && data.locations.length > 0) {
-        const map = L.map('map', { scrollWheelZoom: false });
+      var hasLocations = data.locations && data.locations.length > 0;
+      var hasActive = data.active_locations && data.active_locations.length > 0;
+
+      if (hasLocations || hasActive) {
+        const map = L.map('map', { scrollWheelZoom: true });
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
           attribution: '\u00a9 CARTO',
           subdomains: 'abcd',
@@ -383,36 +428,118 @@
         }).addTo(map);
 
         const markers = [];
-        const maxCount = Math.max(...data.locations.map(l => l.count));
+        const allLocs = (data.locations || []).concat(data.active_locations || []);
+        const maxCount = Math.max.apply(null, allLocs.map(function(l) { return l.count; }).concat([1]));
 
-        data.locations.forEach(function(loc) {
-          const radius = Math.max(6, Math.min(20, (loc.count / maxCount) * 20));
-          const marker = L.circleMarker([loc.lat, loc.lng], {
-            radius: radius,
+        function locPopup(loc, label) {
+          var div = document.createElement('div');
+          var strong = document.createElement('strong');
+          var locName = loc.city || '';
+          if (loc.region) locName += ', ' + loc.region;
+          if (loc.country) locName += ' ' + loc.country;
+          strong.textContent = locName;
+          div.appendChild(strong);
+          div.appendChild(document.createElement('br'));
+          div.appendChild(document.createTextNode(
+            loc.count + ' ' + label + (loc.count !== 1 ? 's' : '')
+          ));
+          return div;
+        }
+
+        // Past session dots — green with glow
+        (data.locations || []).forEach(function(loc) {
+          var r = Math.max(6, Math.min(20, (loc.count / maxCount) * 20));
+
+          // Outer glow
+          L.circleMarker([loc.lat, loc.lng], {
+            radius: r + 4,
             fillColor: '#4ade80',
-            color: '#1a1a1a',
-            weight: 2,
-            fillOpacity: 0.8
+            fillOpacity: 0.15,
+            stroke: false,
+            interactive: false
           }).addTo(map);
 
-          // Build popup with safe DOM methods
-          const popupDiv = document.createElement('div');
-          const strong = document.createElement('strong');
-          let locLabel = loc.city || '';
-          if (loc.region) locLabel += ', ' + loc.region;
-          if (loc.country) locLabel += ' ' + loc.country;
-          strong.textContent = locLabel;
-          popupDiv.appendChild(strong);
-          popupDiv.appendChild(document.createElement('br'));
-          popupDiv.appendChild(document.createTextNode(
-            loc.count + ' session' + (loc.count !== 1 ? 's' : '')
-          ));
-          marker.bindPopup(popupDiv);
-
+          // Main dot
+          var marker = L.circleMarker([loc.lat, loc.lng], {
+            radius: r,
+            fillColor: '#4ade80',
+            color: 'rgba(74, 222, 128, 0.4)',
+            weight: 2,
+            fillOpacity: 0.7
+          }).addTo(map);
+          marker.bindPopup(locPopup(loc, 'session'));
           markers.push(marker);
         });
 
-        const group = L.featureGroup(markers);
+        // Active session dots — amber with animated pulse
+        (data.active_locations || []).forEach(function(loc) {
+          var r = Math.max(6, Math.min(20, (loc.count / maxCount) * 20));
+
+          // Animated pulse ring via divIcon
+          var pulseSize = (r + 8) * 2;
+          var pulseDiv = document.createElement('div');
+          pulseDiv.className = 'pulse-marker';
+          pulseDiv.style.width = pulseSize + 'px';
+          pulseDiv.style.height = pulseSize + 'px';
+          pulseDiv.style.background = 'rgba(251,191,36,0.3)';
+          var pulseIcon = L.divIcon({
+            className: '',
+            iconSize: [pulseSize, pulseSize],
+            iconAnchor: [pulseSize / 2, pulseSize / 2],
+            html: pulseDiv.outerHTML
+          });
+          L.marker([loc.lat, loc.lng], { icon: pulseIcon, interactive: false }).addTo(map);
+
+          // Outer glow
+          L.circleMarker([loc.lat, loc.lng], {
+            radius: r + 4,
+            fillColor: '#fbbf24',
+            fillOpacity: 0.2,
+            stroke: false,
+            interactive: false
+          }).addTo(map);
+
+          // Main dot
+          var marker = L.circleMarker([loc.lat, loc.lng], {
+            radius: r,
+            fillColor: '#fbbf24',
+            color: 'rgba(251, 191, 36, 0.5)',
+            weight: 2,
+            fillOpacity: 0.9
+          }).addTo(map);
+          marker.bindPopup(locPopup(loc, 'active session'));
+          markers.push(marker);
+        });
+
+        // Legend control
+        var legend = L.control({ position: 'bottomright' });
+        legend.onAdd = function() {
+          var container = document.createElement('div');
+          container.className = 'map-legend';
+
+          if (hasActive) {
+            var activeItem = document.createElement('div');
+            activeItem.className = 'map-legend-item';
+            var activeDot = document.createElement('div');
+            activeDot.className = 'map-legend-dot active';
+            activeItem.appendChild(activeDot);
+            activeItem.appendChild(document.createTextNode(' Active'));
+            container.appendChild(activeItem);
+          }
+
+          var pastItem = document.createElement('div');
+          pastItem.className = 'map-legend-item';
+          var pastDot = document.createElement('div');
+          pastDot.className = 'map-legend-dot past';
+          pastItem.appendChild(pastDot);
+          pastItem.appendChild(document.createTextNode(' Past'));
+          container.appendChild(pastItem);
+
+          return container;
+        };
+        legend.addTo(map);
+
+        var group = L.featureGroup(markers);
         map.fitBounds(group.getBounds().pad(0.3));
       } else {
         document.getElementById('map-section').style.display = 'none';

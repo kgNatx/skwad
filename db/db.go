@@ -692,6 +692,7 @@ type UsageStats struct {
 	SessionsWithPowerCeiling  float64            `json:"sessions_with_power_ceiling_pct"`
 	SessionsWithFixedChannels float64            `json:"sessions_with_fixed_channels_pct"`
 	Locations                 []UsageLocation    `json:"locations"`
+	ActiveLocations           []UsageLocation    `json:"active_locations"`
 }
 
 // GetUsageStats computes aggregate metrics from session_snapshots.
@@ -775,6 +776,28 @@ func (d *DB) GetUsageStats() (*UsageStats, error) {
 
 	if stats.Locations == nil {
 		stats.Locations = []UsageLocation{}
+	}
+
+	// Active session locations (from live sessions table).
+	activeRows, err := d.db.Query(`
+		SELECT city, region, country, AVG(latitude), AVG(longitude), COUNT(*)
+		FROM sessions
+		WHERE city != '' AND expires_at > datetime('now')
+		GROUP BY city, region, country
+		ORDER BY COUNT(*) DESC
+	`)
+	if err == nil {
+		defer activeRows.Close()
+		for activeRows.Next() {
+			var loc UsageLocation
+			if activeRows.Scan(&loc.City, &loc.Region, &loc.Country, &loc.Lat, &loc.Lng, &loc.Count) == nil {
+				stats.ActiveLocations = append(stats.ActiveLocations, loc)
+			}
+		}
+	}
+
+	if stats.ActiveLocations == nil {
+		stats.ActiveLocations = []UsageLocation{}
 	}
 
 	return stats, nil
