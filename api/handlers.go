@@ -26,8 +26,12 @@ func isPrivateIP(ipStr string) bool {
 	return ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified()
 }
 
-// clientIP extracts the client's IP from the request, checking X-Forwarded-For first.
+// clientIP extracts the client's IP from the request.
+// Checks CF-Connecting-IP (Cloudflare Tunnel), then X-Forwarded-For, then RemoteAddr.
 func clientIP(r *http.Request) string {
+	if cfIP := r.Header.Get("CF-Connecting-IP"); cfIP != "" {
+		return strings.TrimSpace(cfIP)
+	}
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		parts := strings.SplitN(xff, ",", 2)
 		return strings.TrimSpace(parts[0])
