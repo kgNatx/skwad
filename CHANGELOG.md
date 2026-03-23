@@ -4,6 +4,25 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.6.2] - 2026-03-23
+
+### Added
+- **Internationalization (i18n).** Skwad now supports 14 languages: English, German, Italian, Bulgarian, Traditional Chinese, Korean, Japanese, French, Spanish, Brazilian Portuguese, Simplified Chinese, Thai, Dutch, and Polish. Zero-dependency i18n module (~130 lines) with `t()` / `tPlural()` for parameterized strings and CLDR-compliant pluralization via `Intl.PluralRules`. Translation files are JSON in `static/locales/`. Language auto-detected from browser, persisted in localStorage, switchable via footer dropdown.
+- **Language picker.** Dropdown in the landing page and QR overlay footers. Shows language names in their native script (e.g., Deutsch, 日本語, ไทย).
+- **GitHub issue template for translation requests.** `.github/ISSUE_TEMPLATE/translation-request.yml` lets community members request new languages or submit corrections.
+- **"Help Translate" section in README.md.**
+
+### Changed
+- `static/index.html`: 168 elements tagged with `data-i18n` attributes for static text translation.
+- `static/app.js`: All dynamic strings replaced with `t()` / `tPlural()` calls. `POWER_STEPS.tip` → `tipKey`, `SYSTEM_LABELS` → `SYSTEM_LABEL_KEYS` with key-based lookup.
+- `static/style.css`: `.bw-recommended::after` uses `content: attr(data-label)` instead of hardcoded English. Language picker styles added.
+- `static/usage.html`: Stat labels, map popups, feature cards, and error messages use `t()` / `tPlural()`.
+- `static/sw.js`: `i18n.js` added to precache, cache bumped to `skwad-v33`.
+- `static/changelog.html` / `static/freq-guide.html`: Navigational chrome (title, h1, back link) tagged for translation.
+
+### Removed
+- `seed-usage-data.sh` — no longer needed.
+
 ## [0.6.1] - 2026-03-15
 
 ### Added

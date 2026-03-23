@@ -1517,7 +1517,7 @@ body {
   justify-content: center;
 }
 .bw-recommended::after {
-  content: 'RECOMMENDED';
+  content: attr(data-label);
   font-size: 8px;
   font-weight: 800;
   color: #4ade80;
@@ -1553,3 +1553,8 @@ body {
 .imd-poor { color: #ef4444; border: 1px solid rgba(239,68,68,0.4); }
 .pilot-imd-flag { font-size: 8px; font-weight: 800; color: #ef4444; letter-spacing: 0.5px; padding: 1px 5px; border: 1px solid rgba(239,68,68,0.3); border-radius: 4px; opacity: 0.7; flex-shrink: 0; }
 .imd-source-info { font-size: 12px; font-weight: 600; color: #ef4444; padding: 8px 12px; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; margin-bottom: 12px; text-align: center; text-wrap: balance; }
+
+/* ===== LANGUAGE PICKER ===== */
+.lang-picker { margin-top: 8px; }
+.lang-select { background: rgba(255,255,255,0.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 8px center; color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 4px 24px 4px 8px; font-size: 13px; font-family: inherit; cursor: pointer; -webkit-appearance: none; appearance: none; }
+.lang-select option { background: #1a1a1a; color: #fff; }

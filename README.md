@@ -264,6 +264,15 @@ Leader-only endpoints check the `X-Pilot-ID` request header against the session'
 - **Frontend:** Vanilla HTML/CSS/JS, no build step, installable as a PWA
 - **Database:** SQLite with WAL mode
 
+## Help Translate Skwad
+
+Skwad supports 14 languages. To request a new language or fix a translation:
+
+1. Open an issue using the [Translation Request](../../issues/new?template=translation-request.yml) template
+2. Or submit a PR with a new `static/locales/{lang-code}.json` file based on `static/locales/en.json`
+
+See `static/locales/en.json` for the complete list of translatable strings.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).

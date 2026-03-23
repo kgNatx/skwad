@@ -28,14 +28,14 @@
   <div id="screen-landing" class="screen">
     <div class="landing-content">
       <img src="/skwad-icon.svg" alt="SKWAD" class="landing-icon">
-      <h1 class="landing-title">SKWAD</h1>
-      <p class="landing-subtitle">FPV FREQUENCY COORDINATOR</p>
+      <h1 class="landing-title" data-i18n="APP_NAME">SKWAD</h1>
+      <p class="landing-subtitle" data-i18n="APP_SUBTITLE">FPV FREQUENCY COORDINATOR</p>
       <div class="landing-buttons">
-        <button id="btn-start" class="btn btn-primary btn-large">START SESSION</button>
-        <p class="session-expiry-hint">Sessions last 12 hours</p>
+        <button id="btn-start" class="btn btn-primary btn-large" data-i18n="BTN_START_SESSION">START SESSION</button>
+        <p class="session-expiry-hint" data-i18n="SESSION_EXPIRY_HINT">Sessions last 12 hours</p>
         <div class="join-row">
-          <button id="btn-join" class="btn btn-secondary btn-large join-row-btn">JOIN SESSION</button>
-          <button id="btn-scan-qr" class="btn-scan-qr hidden" aria-label="Scan QR code">
+          <button id="btn-join" class="btn btn-secondary btn-large join-row-btn" data-i18n="BTN_JOIN_SESSION">JOIN SESSION</button>
+          <button id="btn-scan-qr" class="btn-scan-qr hidden" aria-label="Scan QR code" data-i18n-aria="BTN_SCAN_QR_ARIA">
             <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
               <rect x="1" y="1" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
               <rect x="4" y="4" width="4" height="4"/>
@@ -53,27 +53,28 @@
         </div>
       </div>
       <div id="join-input-area" class="join-input-area hidden">
-        <input id="input-code" type="text" class="input-code" maxlength="6" placeholder="ENTER CODE" autocapitalize="characters" autocomplete="off" spellcheck="false">
-        <button id="btn-go" class="btn btn-primary btn-go">GO</button>
+        <input id="input-code" type="text" class="input-code" maxlength="6" placeholder="ENTER CODE" autocapitalize="characters" autocomplete="off" spellcheck="false" data-i18n-placeholder="INPUT_CODE_PLACEHOLDER">
+        <button id="btn-go" class="btn btn-primary btn-go" data-i18n="BTN_GO">GO</button>
       </div>
       <div id="landing-error" class="error-msg hidden"></div>
       <div id="recent-sessions" class="recent-sessions hidden">
-        <div class="recent-sessions-label">RECENT SESSIONS</div>
+        <div class="recent-sessions-label" data-i18n="RECENT_SESSIONS_LABEL">RECENT SESSIONS</div>
         <div id="recent-sessions-list" class="recent-sessions-list"></div>
       </div>
       <div id="install-banner" class="install-banner hidden">
-        <p class="install-text">INSTALL SKWAD FOR QUICK ACCESS</p>
-        <p id="ios-install-hint" class="install-hint hidden">TAP SHARE, THEN "ADD TO HOME SCREEN"</p>
+        <p class="install-text" data-i18n="INSTALL_BANNER_TEXT">INSTALL SKWAD FOR QUICK ACCESS</p>
+        <p id="ios-install-hint" class="install-hint hidden" data-i18n="IOS_INSTALL_HINT">TAP SHARE, THEN "ADD TO HOME SCREEN"</p>
         <div class="install-buttons">
-          <button id="btn-install" class="btn btn-primary">INSTALL</button>
-          <button id="btn-install-dismiss" class="btn btn-secondary">NOT NOW</button>
+          <button id="btn-install" class="btn btn-primary" data-i18n="BTN_INSTALL">INSTALL</button>
+          <button id="btn-install-dismiss" class="btn btn-secondary" data-i18n="BTN_INSTALL_DISMISS">NOT NOW</button>
         </div>
       </div>
       <!-- Keep this footer in sync with the QR overlay footer -->
       <div class="landing-footer">
-        <div><a href="/changelog.html" class="footer-link">What's New</a> · <a href="/freq-guide.html" class="footer-link">Freq Guide</a></div>
-        <div><a href="https://github.com/kgNatx/skwad" class="footer-link">SKWAD</a> is a free service from <a href="https://atxfpv.org" class="footer-link">ATXFPV.org</a></div>
-        <div id="fpvfc-link" class="hidden">Please support the <a href="https://fpvfc.org/take-action" class="footer-link">FPV Freedom Coalition</a></div>
+        <div><a href="/changelog.html" class="footer-link" data-i18n="FOOTER_WHATS_NEW">What's New</a> · <a href="/freq-guide.html" class="footer-link" data-i18n="FOOTER_FREQ_GUIDE">Freq Guide</a></div>
+        <div><a href="https://github.com/kgNatx/skwad" class="footer-link">SKWAD</a> <span data-i18n="FOOTER_FREE_SERVICE">is a free service from</span> <a href="https://atxfpv.org" class="footer-link">ATXFPV.org</a></div>
+        <div id="fpvfc-link" class="hidden"><span data-i18n="FOOTER_SUPPORT_PREFIX">Please support the</span> <a href="https://fpvfc.org/take-action" class="footer-link" data-i18n="FOOTER_FPVFC">FPV Freedom Coalition</a></div>
+        <div class="lang-picker"><select id="lang-select" class="lang-select"></select></div>
       </div>
     </div>
   </div>
@@ -83,11 +84,11 @@
 
     <!-- Step 1: Callsign -->
     <div id="step-callsign" class="setup-step">
-      <div id="joining-session-hint" class="joining-hint hidden">JOINING SESSION <span id="joining-session-code"></span></div>
-      <h2 class="step-title">YOUR CALLSIGN</h2>
-      <input id="input-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20">
-      <button id="btn-callsign-next" class="btn btn-primary btn-large">NEXT</button>
-      <button id="btn-callsign-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <div id="joining-session-hint" class="joining-hint hidden"><span data-i18n="JOINING_SESSION">JOINING SESSION</span> <span id="joining-session-code"></span></div>
+      <h2 class="step-title" data-i18n="STEP_CALLSIGN_TITLE">YOUR CALLSIGN</h2>
+      <input id="input-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" data-i18n-placeholder="INPUT_CALLSIGN_PLACEHOLDER">
+      <button id="btn-callsign-next" class="btn btn-primary btn-large" data-i18n="BTN_NEXT">NEXT</button>
+      <button id="btn-callsign-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
       <div id="callsign-error" class="error-msg hidden"></div>
     </div>
 
@@ -97,53 +98,53 @@
       <div class="power-alert-body">
         <div id="power-alert-value-row" class="power-alert-value"><span id="power-alert-mw">200</span> mW</div>
         <p id="power-alert-text" class="power-alert-text">The session leader has set a transmit power ceiling. Please set your VTX to <strong id="power-alert-mw-bold">200</strong> mW or below for the best experience.</p>
-        <p id="power-alert-dji-hint" class="power-alert-dji-hint hidden">DJI pilots: use 20 MHz bandwidth for best channel compatibility.</p>
+        <p id="power-alert-dji-hint" class="power-alert-dji-hint hidden" data-i18n="POWER_ALERT_DJI_HINT">DJI pilots: use 20 MHz bandwidth for best channel compatibility.</p>
         <p id="power-alert-fixed-hint" class="power-alert-dji-hint hidden"></p>
       </div>
-      <button id="btn-power-alert-ok" class="btn btn-primary btn-large">GOT IT</button>
+      <button id="btn-power-alert-ok" class="btn btn-primary btn-large" data-i18n="BTN_GOT_IT">GOT IT</button>
     </div>
 
     <!-- Step 1.5: Leader Info (only shown when starting a session) -->
     <div id="step-leader-info" class="setup-step hidden">
-      <h2 class="step-title">YOU'RE THE LEADER</h2>
+      <h2 class="step-title" data-i18n="STEP_LEADER_TITLE">YOU'RE THE LEADER</h2>
       <div class="leader-info-body">
-        <p class="leader-info-item"><strong>Move pilots</strong> between channels by tapping their row.</p>
-        <p class="leader-info-item"><strong>Add pilots</strong> manually if someone doesn't have the app.</p>
-        <p class="leader-info-item"><strong>Rebalance all</strong> to re-optimize the whole group at once.</p>
-        <p class="leader-info-item"><strong>Transfer leadership</strong> before you leave &mdash; tap your own row in the roster and hand it off.</p>
+        <p class="leader-info-item"><strong data-i18n="LEADER_INFO_MOVE_BOLD">Move pilots</strong><span data-i18n="LEADER_INFO_MOVE_TEXT"> between channels by tapping their row.</span></p>
+        <p class="leader-info-item"><strong data-i18n="LEADER_INFO_ADD_BOLD">Add pilots</strong><span data-i18n="LEADER_INFO_ADD_TEXT"> manually if someone doesn't have the app.</span></p>
+        <p class="leader-info-item"><strong data-i18n="LEADER_INFO_REBALANCE_BOLD">Rebalance all</strong><span data-i18n="LEADER_INFO_REBALANCE_TEXT"> to re-optimize the whole group at once.</span></p>
+        <p class="leader-info-item"><strong data-i18n="LEADER_INFO_TRANSFER_BOLD">Transfer leadership</strong><span data-i18n="LEADER_INFO_TRANSFER_TEXT"> before you leave &mdash; tap your own row in the roster and hand it off.</span></p>
       </div>
       <div class="session-options">
-        <div class="session-options-label">SESSION OPTIONS</div>
+        <div class="session-options-label" data-i18n="SESSION_OPTIONS_LABEL">SESSION OPTIONS</div>
         <button id="opt-power-ceiling" class="session-option-btn" data-option="power">
           <span class="session-option-check">&#x2610;</span>
-          <span class="session-option-text">POWER CEILING</span>
+          <span class="session-option-text" data-i18n="OPT_POWER_CEILING">POWER CEILING</span>
         </button>
         <button id="opt-fixed-channels" class="session-option-btn" data-option="channels">
           <span class="session-option-check">&#x2610;</span>
-          <span class="session-option-text">FIXED CHANNELS</span>
+          <span class="session-option-text" data-i18n="OPT_FIXED_CHANNELS">FIXED CHANNELS</span>
         </button>
       </div>
-      <button id="btn-leader-info-got-it" class="btn btn-primary btn-large">GOT IT</button>
+      <button id="btn-leader-info-got-it" class="btn btn-primary btn-large" data-i18n="BTN_GOT_IT">GOT IT</button>
     </div>
 
     <!-- Step 1.75: Power Ceiling (only for session creators) -->
     <div id="step-power" class="setup-step hidden">
-      <h2 class="step-title">POWER CEILING</h2>
-      <p class="power-subtitle">Higher power needs wider channel spacing. More power means fewer pilots on separate channels.</p>
+      <h2 class="step-title" data-i18n="STEP_POWER_TITLE">POWER CEILING</h2>
+      <p class="power-subtitle" data-i18n="POWER_SUBTITLE">Higher power needs wider channel spacing. More power means fewer pilots on separate channels.</p>
       <div class="power-hero-stats">
         <div class="power-hero-stat">
           <span class="power-hero-value" id="power-mw-value">200</span>
-          <span class="power-hero-unit">mW</span>
+          <span class="power-hero-unit" data-i18n="UNIT_MW">mW</span>
         </div>
         <div class="power-hero-stat">
           <span class="power-hero-value" id="power-guard-value" style="color:#f59e0b">14</span>
-          <span class="power-hero-unit" style="color:#b08a3e">MHz GUARD</span>
+          <span class="power-hero-unit" style="color:#b08a3e" data-i18n="UNIT_MHZ_GUARD">MHz GUARD</span>
         </div>
       </div>
       <div class="power-slider-container">
         <div class="power-slider-labels">
-          <span class="power-label-left">MORE PILOTS</span>
-          <span class="power-label-right">MORE POWER</span>
+          <span class="power-label-left" data-i18n="LABEL_MORE_PILOTS">MORE PILOTS</span>
+          <span class="power-label-right" data-i18n="LABEL_MORE_POWER">MORE POWER</span>
         </div>
         <div class="power-slider-track" id="power-slider-track">
           <div class="power-slider-notches" id="power-slider-notches"></div>
@@ -151,26 +152,26 @@
         </div>
       </div>
       <div class="power-spectrum-preview">
-        <div class="power-spectrum-label">CHANNEL SPACING (20 MHz PILOT)</div>
+        <div class="power-spectrum-label" data-i18n="POWER_SPECTRUM_LABEL">CHANNEL SPACING (20 MHz PILOT)</div>
         <div class="power-spectrum-bar" id="power-spectrum-bar"></div>
         <div class="power-spectrum-legend">
-          <span><span class="power-legend-dot power-legend-bw"></span>BANDWIDTH</span>
-          <span><span class="power-legend-dot power-legend-guard"></span>GUARD BAND</span>
+          <span><span class="power-legend-dot power-legend-bw"></span><span data-i18n="LEGEND_BANDWIDTH">BANDWIDTH</span></span>
+          <span><span class="power-legend-dot power-legend-guard"></span><span data-i18n="LEGEND_GUARD_BAND">GUARD BAND</span></span>
         </div>
       </div>
       <div class="power-tip" id="power-tip"></div>
-      <p class="power-guidance-note">Guidance only — pilots must configure their own VTX.</p>
-      <button id="btn-power-next" class="btn btn-primary btn-large">SET CEILING</button>
-      <button id="btn-power-skip" class="btn btn-secondary btn-large">SKIP (NO LIMIT)</button>
+      <p class="power-guidance-note" data-i18n="POWER_GUIDANCE_NOTE">Guidance only — pilots must configure their own VTX.</p>
+      <button id="btn-power-next" class="btn btn-primary btn-large" data-i18n="BTN_SET_CEILING">SET CEILING</button>
+      <button id="btn-power-skip" class="btn btn-secondary btn-large" data-i18n="BTN_SKIP_NO_LIMIT">SKIP (NO LIMIT)</button>
     </div>
 
     <!-- Step 1.85: Fixed Channels (only for session creators who opted in) -->
     <div id="step-fixed-channels" class="setup-step hidden">
-      <h2 class="step-title">FIXED CHANNELS</h2>
-      <p class="power-subtitle">Wider spacing for higher power and cleaner video. Extra pilots buddy up on shared channels.</p>
+      <h2 class="step-title" data-i18n="STEP_FIXED_CHANNELS_TITLE">FIXED CHANNELS</h2>
+      <p class="power-subtitle" data-i18n="FIXED_CHANNELS_SUBTITLE">Wider spacing for higher power and cleaner video. Extra pilots buddy up on shared channels.</p>
       <div class="fc-pilot-display">
         <span class="fc-pilot-count" id="fc-pilot-count">4</span>
-        <span class="fc-pilot-label">UNIQUE CHANNELS</span>
+        <span class="fc-pilot-label" data-i18n="FC_UNIQUE_CHANNELS">UNIQUE CHANNELS</span>
       </div>
       <div class="fc-slider-container">
         <div class="fc-slider-track" id="fc-slider-track">
@@ -182,26 +183,26 @@
           <span>5</span>
         </div>
       </div>
-      <div class="fc-select-hint">TAP A SET TO SELECT</div>
+      <div class="fc-select-hint" data-i18n="FC_SELECT_HINT">TAP A SET TO SELECT</div>
       <div id="fc-set-list" class="fc-set-list"></div>
-      <p class="fc-hint">For 6+ pilots, skip this and let the optimizer assign channels.</p>
-      <button id="btn-fc-use-set" class="btn btn-primary btn-large" disabled>USE THIS SET</button>
-      <button id="btn-fc-skip" class="btn btn-secondary btn-large">SKIP</button>
+      <p class="fc-hint" data-i18n="FC_SKIP_HINT">For 6+ pilots, skip this and let the optimizer assign channels.</p>
+      <button id="btn-fc-use-set" class="btn btn-primary btn-large" disabled data-i18n="BTN_USE_THIS_SET">USE THIS SET</button>
+      <button id="btn-fc-skip" class="btn btn-secondary btn-large" data-i18n="BTN_SKIP">SKIP</button>
     </div>
 
     <!-- Step 2: Video System -->
     <div id="step-video" class="setup-step hidden">
-      <h2 class="step-title">VIDEO SYSTEM</h2>
+      <h2 class="step-title" data-i18n="STEP_VIDEO_TITLE">VIDEO SYSTEM</h2>
       <div class="system-grid">
-        <button class="btn btn-system" data-system="analog">ANALOG 5.8GHz</button>
-        <button class="btn btn-system" data-system="dji_v1">DJI V1 / VISTA</button>
-        <button class="btn btn-system" data-system="dji_o3">DJI O3</button>
-        <button class="btn btn-system" data-system="dji_o4">DJI O4 / O4 PRO</button>
-        <button class="btn btn-system" data-system="hdzero">HDZERO</button>
-        <button class="btn btn-system" data-system="walksnail">WALKSNAIL AVATAR</button>
-        <button class="btn btn-system" data-system="openipc">OPENIPC / OTHER</button>
+        <button class="btn btn-system" data-system="analog" data-i18n="VS_ANALOG">ANALOG 5.8GHz</button>
+        <button class="btn btn-system" data-system="dji_v1" data-i18n="VS_DJI_V1">DJI V1 / VISTA</button>
+        <button class="btn btn-system" data-system="dji_o3" data-i18n="VS_DJI_O3">DJI O3</button>
+        <button class="btn btn-system" data-system="dji_o4" data-i18n="VS_DJI_O4">DJI O4 / O4 PRO</button>
+        <button class="btn btn-system" data-system="hdzero" data-i18n="VS_HDZERO">HDZERO</button>
+        <button class="btn btn-system" data-system="walksnail" data-i18n="VS_WALKSNAIL">WALKSNAIL AVATAR</button>
+        <button class="btn btn-system" data-system="openipc" data-i18n="VS_OPENIPC">OPENIPC / OTHER</button>
       </div>
-      <button id="btn-video-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-video-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
 
     <!-- Step 3: System-specific follow-ups -->
@@ -209,71 +210,71 @@
       <h2 id="followup-title" class="step-title"></h2>
 
       <div id="followup-fcc" class="followup-group hidden">
-        <p class="followup-label">FCC UNLOCKED?</p>
+        <p class="followup-label" data-i18n="LABEL_FCC_UNLOCKED">FCC UNLOCKED?</p>
         <div class="btn-row">
-          <button class="btn btn-option" data-fcc="true">YES</button>
-          <button class="btn btn-option" data-fcc="false">NO</button>
+          <button class="btn btn-option" data-fcc="true" data-i18n="BTN_YES">YES</button>
+          <button class="btn btn-option" data-fcc="false" data-i18n="BTN_NO">NO</button>
         </div>
       </div>
 
       <div id="followup-goggles" class="followup-group hidden">
-        <p class="followup-label">WHICH GOGGLES?</p>
+        <p class="followup-label" data-i18n="LABEL_WHICH_GOGGLES">WHICH GOGGLES?</p>
         <div class="system-grid">
-          <button class="btn btn-option" data-goggles="goggles_3">GOGGLES 3</button>
-          <button class="btn btn-option" data-goggles="goggles_n3">GOGGLES N3</button>
-          <button class="btn btn-option" data-goggles="goggles_2">GOGGLES 2</button>
-          <button class="btn btn-option" data-goggles="integra">INTEGRA</button>
+          <button class="btn btn-option" data-goggles="goggles_3" data-i18n="GOGGLES_3">GOGGLES 3</button>
+          <button class="btn btn-option" data-goggles="goggles_n3" data-i18n="GOGGLES_N3">GOGGLES N3</button>
+          <button class="btn btn-option" data-goggles="goggles_2" data-i18n="GOGGLES_2">GOGGLES 2</button>
+          <button class="btn btn-option" data-goggles="integra" data-i18n="GOGGLES_INTEGRA">INTEGRA</button>
         </div>
       </div>
 
       <div id="followup-bandwidth" class="followup-group hidden">
-        <p class="followup-label">BANDWIDTH</p>
+        <p class="followup-label" data-i18n="LABEL_BANDWIDTH">BANDWIDTH</p>
         <div id="bandwidth-buttons" class="btn-row"></div>
       </div>
 
       <div id="followup-racemode" class="followup-group hidden">
-        <p class="followup-label">RACE MODE?</p>
+        <p class="followup-label" data-i18n="LABEL_RACE_MODE">RACE MODE?</p>
         <div class="btn-row">
-          <button class="btn btn-option" data-racemode="true">YES</button>
-          <button class="btn btn-option" data-racemode="false">NO</button>
+          <button class="btn btn-option" data-racemode="true" data-i18n="BTN_YES">YES</button>
+          <button class="btn btn-option" data-racemode="false" data-i18n="BTN_NO">NO</button>
         </div>
       </div>
 
       <div id="followup-walksnail-mode" class="followup-group hidden">
-        <p class="followup-label">MODE</p>
+        <p class="followup-label" data-i18n="LABEL_MODE">MODE</p>
         <div class="btn-row">
-          <button class="btn btn-option" data-wsmode="standard">STANDARD</button>
-          <button class="btn btn-option" data-wsmode="race">RACE MODE</button>
+          <button class="btn btn-option" data-wsmode="standard" data-i18n="WALKSNAIL_STANDARD">STANDARD</button>
+          <button class="btn btn-option" data-wsmode="race" data-i18n="WALKSNAIL_RACE_MODE">RACE MODE</button>
         </div>
       </div>
 
       <div id="followup-analog-bands" class="followup-group hidden">
-        <p class="followup-label">VTX BANDS</p>
+        <p class="followup-label" data-i18n="LABEL_VTX_BANDS">VTX BANDS</p>
         <div class="btn-row" id="analog-band-buttons">
-          <button class="btn btn-option analog-band-btn selected" data-band="R">R (RACE)</button>
-          <button class="btn btn-option analog-band-btn" data-band="F">F (FATSHARK)</button>
-          <button class="btn btn-option analog-band-btn" data-band="E">E (BOSCAM)</button>
-          <button class="btn btn-option analog-band-btn" data-band="L">L (LOW RACE)</button>
+          <button class="btn btn-option analog-band-btn selected" data-band="R" data-i18n="BAND_R_RACE">R (RACE)</button>
+          <button class="btn btn-option analog-band-btn" data-band="F" data-i18n="BAND_F_FATSHARK">F (FATSHARK)</button>
+          <button class="btn btn-option analog-band-btn" data-band="E" data-i18n="BAND_E_BOSCAM">E (BOSCAM)</button>
+          <button class="btn btn-option analog-band-btn" data-band="L" data-i18n="BAND_L_LOWRACE">L (LOW RACE)</button>
         </div>
-        <p class="followup-helper" id="analog-bands-helper">NOT SURE? JUST USE RACE BAND</p>
+        <p class="followup-helper" id="analog-bands-helper" data-i18n="ANALOG_BANDS_HELPER">NOT SURE? JUST USE RACE BAND</p>
       </div>
 
-      <button id="btn-followup-next" class="btn btn-primary btn-large hidden">NEXT</button>
-      <button id="btn-followup-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-followup-next" class="btn btn-primary btn-large hidden" data-i18n="BTN_NEXT">NEXT</button>
+      <button id="btn-followup-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
 
     <!-- Step 4: Channel Preference -->
     <div id="step-channel" class="setup-step hidden">
-      <h2 class="step-title">CHANNEL PREFERENCE</h2>
+      <h2 class="step-title" data-i18n="STEP_CHANNEL_TITLE">CHANNEL PREFERENCE</h2>
       <div class="channel-pref">
-        <button id="btn-auto-assign" class="btn btn-secondary btn-large channel-pref-btn active">AUTO-ASSIGN</button>
-        <button id="btn-have-preference" class="btn btn-secondary btn-large channel-pref-btn">I HAVE A PREFERENCE</button>
+        <button id="btn-auto-assign" class="btn btn-secondary btn-large channel-pref-btn active" data-i18n="BTN_AUTO_ASSIGN">AUTO-ASSIGN</button>
+        <button id="btn-have-preference" class="btn btn-secondary btn-large channel-pref-btn" data-i18n="BTN_HAVE_PREFERENCE">I HAVE A PREFERENCE</button>
       </div>
-      <p id="preference-hint" class="preference-hint" style="display:none">This is just a preference -- sometimes we shuffle to fit everyone.</p>
+      <p id="preference-hint" class="preference-hint" style="display:none" data-i18n="PREFERENCE_HINT">This is just a preference -- sometimes we shuffle to fit everyone.</p>
       <canvas id="spectrum-preview" class="spectrum-canvas hidden"></canvas>
       <div id="channel-picker" class="channel-picker hidden"></div>
       <button id="btn-join-session" class="btn btn-primary btn-large btn-join-final">JOIN</button>
-      <button id="btn-channel-back" class="btn btn-secondary btn-large">BACK</button>
+      <button id="btn-channel-back" class="btn btn-secondary btn-large" data-i18n="BTN_BACK">BACK</button>
       <div id="join-error" class="error-msg hidden"></div>
     </div>
   </div>
@@ -281,7 +282,7 @@
   <!-- Session View -->
   <div id="screen-session" class="screen hidden">
     <div class="session-header">
-      <div id="session-code-display" class="session-code" title="Tap to share">
+      <div id="session-code-display" class="session-code" title="Tap to share" data-i18n-title="TAP_TO_SHARE">
         <svg class="session-code-qr-icon" viewBox="0 0 24 24" fill="currentColor">
           <rect x="1" y="1" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="2"/>
           <rect x="4" y="4" width="4" height="4"/>
@@ -297,13 +298,13 @@
         </svg>
         <div class="session-code-info">
           <span id="session-code-text"></span>
-          <span class="tap-hint">TAP TO SHARE</span>
+          <span class="tap-hint" data-i18n="TAP_TO_SHARE">TAP TO SHARE</span>
         </div>
       </div>
       <div class="live-indicator">
         <div class="live-status">
           <span class="live-dot"></span>
-          <span class="live-text">LIVE</span>
+          <span class="live-text" data-i18n="LIVE">LIVE</span>
         </div>
         <div class="pilot-count-row"><span id="pilot-count" class="pilot-count"></span> <span id="imd-badge" class="imd-badge hidden"></span></div>
         <span id="power-ceiling-badge" class="power-ceiling-badge hidden"></span>
@@ -315,14 +316,14 @@
       <div class="channel-change-banner-text">
         <span id="banner-message"></span>
       </div>
-      <button id="btn-banner-dismiss" class="btn btn-primary channel-change-banner-btn">GOT IT</button>
+      <button id="btn-banner-dismiss" class="btn btn-primary channel-change-banner-btn" data-i18n="BTN_GOT_IT">GOT IT</button>
     </div>
 
     <div id="leader-controls" class="leader-controls hidden">
-      <button id="btn-rebalance-all" class="btn btn-secondary btn-leader">REBALANCE ALL</button>
-      <button id="btn-add-pilot" class="btn btn-secondary btn-leader">ADD PILOT</button>
+      <button id="btn-rebalance-all" class="btn btn-secondary btn-leader" data-i18n="BTN_REBALANCE_ALL">REBALANCE ALL</button>
+      <button id="btn-add-pilot" class="btn btn-secondary btn-leader" data-i18n="BTN_ADD_PILOT">ADD PILOT</button>
     </div>
-    <p id="rebalance-hint" class="rebalance-hint" style="display:none">Rebalance recommended</p>
+    <p id="rebalance-hint" class="rebalance-hint" style="display:none" data-i18n="REBALANCE_HINT">Rebalance recommended</p>
 
     <div id="pilot-list" class="pilot-list"></div>
 
@@ -334,23 +335,23 @@
   <!-- Pilot Action Sheet (self) -->
   <div id="pilot-actions" class="action-sheet hidden">
     <div class="action-sheet-content">
-      <h3 class="action-sheet-title">OPTIONS</h3>
+      <h3 class="action-sheet-title" data-i18n="PILOT_OPTIONS_TITLE">OPTIONS</h3>
       <div id="self-imd-info" class="imd-source-info hidden"></div>
-      <button id="btn-change-channel" class="btn btn-secondary btn-large">CHANGE CHANNEL / VIDEO</button>
-      <button id="btn-change-callsign" class="btn btn-secondary btn-large">CHANGE CALLSIGN</button>
-      <button id="btn-leave-rotation" class="btn btn-danger btn-large">LEAVE SESSION</button>
-      <button id="btn-action-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-change-channel" class="btn btn-secondary btn-large" data-i18n="BTN_CHANGE_CHANNEL_VIDEO">CHANGE CHANNEL / VIDEO</button>
+      <button id="btn-change-callsign" class="btn btn-secondary btn-large" data-i18n="BTN_CHANGE_CALLSIGN">CHANGE CALLSIGN</button>
+      <button id="btn-leave-rotation" class="btn btn-danger btn-large" data-i18n="BTN_LEAVE_SESSION">LEAVE SESSION</button>
+      <button id="btn-action-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <!-- Callsign Change -->
   <div id="callsign-change" class="action-sheet hidden">
     <div class="action-sheet-content">
-      <h3 class="action-sheet-title">CHANGE CALLSIGN</h3>
-      <input id="input-new-callsign" type="text" class="input-callsign" placeholder="NEW CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20">
+      <h3 class="action-sheet-title" data-i18n="CALLSIGN_CHANGE_TITLE">CHANGE CALLSIGN</h3>
+      <input id="input-new-callsign" type="text" class="input-callsign" placeholder="NEW CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" data-i18n-placeholder="INPUT_NEW_CALLSIGN">
       <div id="callsign-change-error" class="error-msg hidden"></div>
-      <button id="btn-callsign-save" class="btn btn-primary btn-large">SAVE</button>
-      <button id="btn-callsign-change-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-callsign-save" class="btn btn-primary btn-large" data-i18n="BTN_SAVE">SAVE</button>
+      <button id="btn-callsign-change-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
@@ -359,44 +360,44 @@
     <div class="action-sheet-content">
       <h3 id="other-pilot-name" class="action-sheet-title"></h3>
       <div id="other-imd-info" class="imd-source-info hidden"></div>
-      <button id="btn-change-other-channel" class="btn btn-secondary btn-large hidden">CHANGE CHANNEL</button>
+      <button id="btn-change-other-channel" class="btn btn-secondary btn-large hidden" data-i18n="BTN_CHANGE_CHANNEL">CHANGE CHANNEL</button>
       <button id="btn-transfer-leader" class="btn btn-secondary btn-large hidden">TRANSFER LEADERSHIP</button>
       <div class="slide-remove-track" id="slide-remove-track">
         <div class="slide-remove-handle" id="slide-remove-handle"></div>
-        <span class="slide-remove-label">SLIDE TO REMOVE</span>
+        <span class="slide-remove-label" data-i18n="SLIDE_TO_REMOVE">SLIDE TO REMOVE</span>
       </div>
-      <button id="btn-other-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-other-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <!-- Preference Override Dialog -->
   <div id="override-dialog" class="action-sheet" style="display:none">
     <div class="action-sheet-content">
-      <h3 id="override-title">PREFERENCE OVERRIDDEN</h3>
+      <h3 id="override-title" data-i18n="OVERRIDE_TITLE">PREFERENCE OVERRIDDEN</h3>
       <p id="override-reason" class="override-reason-text"></p>
       <canvas id="override-spectrum" width="600" height="100"></canvas>
-      <button id="btn-override-ok" class="btn btn-primary btn-large">GOT IT</button>
+      <button id="btn-override-ok" class="btn btn-primary btn-large" data-i18n="BTN_GOT_IT">GOT IT</button>
     </div>
   </div>
 
   <!-- Level 1 Choice Dialog -->
   <div id="choice-dialog" class="action-sheet" style="display:none">
     <div class="action-sheet-content">
-      <h3>NO CLEAN CHANNEL AVAILABLE</h3>
-      <p class="choice-subtitle">Pick an option:</p>
+      <h3 data-i18n="CHOICE_TITLE">NO CLEAN CHANNEL AVAILABLE</h3>
+      <p class="choice-subtitle" data-i18n="CHOICE_SUBTITLE">Pick an option:</p>
       <div id="choice-options"></div>
-      <button id="btn-choice-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-choice-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <!-- Displacement Confirmation -->
   <div id="displacement-confirm" class="action-sheet hidden">
     <div class="action-sheet-content">
-      <h3 class="action-sheet-title">HEADS UP</h3>
+      <h3 class="action-sheet-title" data-i18n="DISPLACEMENT_TITLE">HEADS UP</h3>
       <div id="displacement-list" class="displacement-list"></div>
-      <p class="displacement-note">VERIFY WITH THEM BEFORE CONTINUING</p>
-      <button id="btn-displacement-confirm" class="btn btn-primary btn-large">JOIN</button>
-      <button id="btn-displacement-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <p class="displacement-note" data-i18n="DISPLACEMENT_VERIFY">VERIFY WITH THEM BEFORE CONTINUING</p>
+      <button id="btn-displacement-confirm" class="btn btn-primary btn-large" data-i18n="BTN_JOIN">JOIN</button>
+      <button id="btn-displacement-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
@@ -406,66 +407,66 @@
       <h3 class="action-sheet-title">NO CLEAR CHANNEL</h3>
       <p id="buddy-suggestion-text" class="buddy-suggestion-text"></p>
       <button id="btn-buddy-up" class="btn btn-primary btn-large">BUDDY UP</button>
-      <button id="btn-buddy-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-buddy-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <!-- Leader Leave Dialog -->
   <div id="leader-leave" class="action-sheet hidden">
     <div class="action-sheet-content">
-      <h3 class="action-sheet-title">YOU ARE THE LEADER</h3>
-      <p class="leader-leave-text">HAND OFF LEADERSHIP BEFORE LEAVING, OR LEAVE WITHOUT A LEADER.</p>
+      <h3 class="action-sheet-title" data-i18n="LEADER_LEAVE_TITLE">YOU ARE THE LEADER</h3>
+      <p class="leader-leave-text" data-i18n="LEADER_LEAVE_TEXT">HAND OFF LEADERSHIP BEFORE LEAVING, OR LEAVE WITHOUT A LEADER.</p>
       <div id="leader-leave-pilots" class="leader-leave-pilots"></div>
-      <button id="btn-leave-anyway" class="btn btn-danger btn-large">LEAVE ANYWAY</button>
-      <button id="btn-leader-leave-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-leave-anyway" class="btn btn-danger btn-large" data-i18n="BTN_LEAVE_ANYWAY">LEAVE ANYWAY</button>
+      <button id="btn-leader-leave-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <!-- Add Pilot (Leader) -->
   <div id="add-pilot" class="action-sheet hidden">
     <div class="action-sheet-content">
-      <h3 class="action-sheet-title">ADD PILOT</h3>
+      <h3 class="action-sheet-title" data-i18n="ADD_PILOT_TITLE">ADD PILOT</h3>
       <div id="add-pilot-fixed-hint" class="add-pilot-fixed-hint hidden"></div>
-      <input id="input-add-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20">
+      <input id="input-add-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" data-i18n-placeholder="INPUT_CALLSIGN_PLACEHOLDER">
       <div class="system-grid" id="add-pilot-systems">
-        <button class="btn btn-system btn-add-system" data-add-system="analog">ANALOG 5.8GHz</button>
-        <button class="btn btn-system btn-add-system" data-add-system="dji_v1">DJI V1 / VISTA</button>
-        <button class="btn btn-system btn-add-system" data-add-system="dji_o3">DJI O3</button>
-        <button class="btn btn-system btn-add-system" data-add-system="dji_o4">DJI O4 / O4 PRO</button>
-        <button class="btn btn-system btn-add-system" data-add-system="hdzero">HDZERO</button>
-        <button class="btn btn-system btn-add-system" data-add-system="walksnail_std">WALKSNAIL</button>
-        <button class="btn btn-system btn-add-system" data-add-system="openipc">OPENIPC / OTHER</button>
+        <button class="btn btn-system btn-add-system" data-add-system="analog" data-i18n="VS_ANALOG">ANALOG 5.8GHz</button>
+        <button class="btn btn-system btn-add-system" data-add-system="dji_v1" data-i18n="VS_DJI_V1">DJI V1 / VISTA</button>
+        <button class="btn btn-system btn-add-system" data-add-system="dji_o3" data-i18n="VS_DJI_O3">DJI O3</button>
+        <button class="btn btn-system btn-add-system" data-add-system="dji_o4" data-i18n="VS_DJI_O4">DJI O4 / O4 PRO</button>
+        <button class="btn btn-system btn-add-system" data-add-system="hdzero" data-i18n="VS_HDZERO">HDZERO</button>
+        <button class="btn btn-system btn-add-system" data-add-system="walksnail_std" data-i18n="VS_WALKSNAIL_SHORT">WALKSNAIL</button>
+        <button class="btn btn-system btn-add-system" data-add-system="openipc" data-i18n="VS_OPENIPC">OPENIPC / OTHER</button>
       </div>
       <div id="add-pilot-options" class="add-pilot-options hidden">
         <div id="add-pilot-fcc" class="add-pilot-option-row hidden">
-          <label class="toggle-label">FCC UNLOCKED?</label>
+          <label class="toggle-label" data-i18n="LABEL_FCC_UNLOCKED">FCC UNLOCKED?</label>
           <div class="btn-row">
-            <button class="btn btn-option btn-add-fcc" data-add-fcc="true">YES</button>
-            <button class="btn btn-option btn-add-fcc" data-add-fcc="false">NO</button>
+            <button class="btn btn-option btn-add-fcc" data-add-fcc="true" data-i18n="BTN_YES">YES</button>
+            <button class="btn btn-option btn-add-fcc" data-add-fcc="false" data-i18n="BTN_NO">NO</button>
           </div>
         </div>
         <div id="add-pilot-goggles" class="add-pilot-option-row hidden">
-          <label class="toggle-label">WHICH GOGGLES?</label>
+          <label class="toggle-label" data-i18n="LABEL_WHICH_GOGGLES">WHICH GOGGLES?</label>
           <div class="btn-row">
-            <button class="btn btn-option btn-add-goggles" data-add-goggles="goggles_3">GOGGLES 3</button>
-            <button class="btn btn-option btn-add-goggles" data-add-goggles="goggles_n3">GOGGLES N3</button>
-            <button class="btn btn-option btn-add-goggles" data-add-goggles="goggles_2">GOGGLES 2</button>
-            <button class="btn btn-option btn-add-goggles" data-add-goggles="integra">INTEGRA</button>
+            <button class="btn btn-option btn-add-goggles" data-add-goggles="goggles_3" data-i18n="GOGGLES_3">GOGGLES 3</button>
+            <button class="btn btn-option btn-add-goggles" data-add-goggles="goggles_n3" data-i18n="GOGGLES_N3">GOGGLES N3</button>
+            <button class="btn btn-option btn-add-goggles" data-add-goggles="goggles_2" data-i18n="GOGGLES_2">GOGGLES 2</button>
+            <button class="btn btn-option btn-add-goggles" data-add-goggles="integra" data-i18n="GOGGLES_INTEGRA">INTEGRA</button>
           </div>
         </div>
         <div id="add-pilot-bw" class="add-pilot-option-row hidden">
-          <label class="toggle-label">BANDWIDTH</label>
+          <label class="toggle-label" data-i18n="LABEL_BANDWIDTH">BANDWIDTH</label>
           <div id="add-pilot-bw-buttons" class="bw-buttons"></div>
         </div>
         <div id="add-pilot-racemode" class="add-pilot-option-row hidden">
-          <label class="toggle-label">RACE MODE?</label>
+          <label class="toggle-label" data-i18n="LABEL_RACE_MODE">RACE MODE?</label>
           <div class="btn-row">
-            <button class="btn btn-option btn-add-racemode" data-add-racemode="true">YES</button>
-            <button class="btn btn-option btn-add-racemode" data-add-racemode="false">NO</button>
+            <button class="btn btn-option btn-add-racemode" data-add-racemode="true" data-i18n="BTN_YES">YES</button>
+            <button class="btn btn-option btn-add-racemode" data-add-racemode="false" data-i18n="BTN_NO">NO</button>
           </div>
         </div>
         <div id="add-pilot-bands" class="add-pilot-option-row hidden">
-          <label class="toggle-label">VTX BANDS</label>
+          <label class="toggle-label" data-i18n="LABEL_VTX_BANDS">VTX BANDS</label>
           <div id="add-pilot-band-buttons" class="btn-row">
             <button class="btn btn-toggle add-band-btn active" data-add-band="R">R</button>
             <button class="btn btn-toggle add-band-btn" data-add-band="F">F</button>
@@ -473,20 +474,20 @@
             <button class="btn btn-toggle add-band-btn" data-add-band="L">L</button>
           </div>
         </div>
-        <button id="btn-add-pilot-confirm" class="btn btn-primary btn-large">ADD TO SESSION</button>
+        <button id="btn-add-pilot-confirm" class="btn btn-primary btn-large" data-i18n="BTN_ADD_TO_SESSION">ADD TO SESSION</button>
       </div>
       <div id="add-pilot-error" class="error-msg hidden"></div>
-      <button id="btn-add-pilot-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-add-pilot-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <!-- Rebalance Confirmation -->
   <div id="rebalance-confirm" class="action-sheet hidden">
     <div class="action-sheet-content">
-      <h3 class="action-sheet-title">REBALANCE ALL</h3>
+      <h3 class="action-sheet-title" data-i18n="REBALANCE_CONFIRM_TITLE">REBALANCE ALL</h3>
       <div class="rebalance-power-section">
         <div class="rebalance-power-header">
-          <span class="rebalance-power-label">POWER CEILING</span>
+          <span class="rebalance-power-label" data-i18n="REBALANCE_POWER_LABEL">POWER CEILING</span>
           <span class="rebalance-power-value" id="rebalance-power-value">NO LIMIT</span>
         </div>
         <div class="rebalance-slider-track" id="rebalance-slider-track">
@@ -494,46 +495,46 @@
           <div class="power-slider-thumb" id="rebalance-slider-thumb"></div>
         </div>
         <div class="rebalance-power-labels">
-          <span style="color:#4ade80">MORE PILOTS</span>
-          <span style="color:#f97316">NO LIMIT</span>
+          <span style="color:#4ade80" data-i18n="LABEL_MORE_PILOTS">MORE PILOTS</span>
+          <span style="color:#f97316" data-i18n="NO_LIMIT">NO LIMIT</span>
         </div>
       </div>
-      <div class="spectrum-label">CURRENT</div>
+      <div class="spectrum-label" data-i18n="LABEL_CURRENT">CURRENT</div>
       <canvas id="spectrum-rebalance-before" class="spectrum-canvas"></canvas>
-      <div class="spectrum-label">PROPOSED</div>
+      <div class="spectrum-label" data-i18n="LABEL_PROPOSED">PROPOSED</div>
       <canvas id="spectrum-rebalance-after" class="spectrum-canvas"></canvas>
-      <p class="rebalance-confirm-text">PILOTS MAY NEED TO CHANGE THEIR VTX CHANNEL.</p>
-      <button id="btn-rebalance-confirm" class="btn btn-primary btn-large">REBALANCE</button>
-      <button id="btn-rebalance-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <p class="rebalance-confirm-text" data-i18n="REBALANCE_VTX_NOTE">PILOTS MAY NEED TO CHANGE THEIR VTX CHANNEL.</p>
+      <button id="btn-rebalance-confirm" class="btn btn-primary btn-large" data-i18n="BTN_REBALANCE">REBALANCE</button>
+      <button id="btn-rebalance-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <!-- Rebalance Result -->
   <div id="rebalance-result" class="action-sheet hidden">
     <div class="action-sheet-content">
-      <h3 class="action-sheet-title">REBALANCE COMPLETE</h3>
+      <h3 class="action-sheet-title" data-i18n="REBALANCE_COMPLETE">REBALANCE COMPLETE</h3>
       <div id="rebalance-result-list" class="displacement-list"></div>
-      <button id="btn-rebalance-result-ok" class="btn btn-primary btn-large">GOT IT</button>
+      <button id="btn-rebalance-result-ok" class="btn btn-primary btn-large" data-i18n="BTN_GOT_IT">GOT IT</button>
     </div>
   </div>
 
   <!-- Channel Change Options (self) -->
   <div id="channel-change-options" class="action-sheet" style="display:none">
     <div class="action-sheet-content">
-      <h3 class="action-sheet-title">CHANGE CHANNEL</h3>
-      <button id="btn-cco-video-system" class="btn btn-secondary btn-large">CHANGE VIDEO SYSTEM</button>
-      <button id="btn-cco-auto-assign" class="btn btn-secondary btn-large">AUTO-ASSIGN NEW</button>
-      <button id="btn-cco-preference" class="btn btn-secondary btn-large">I HAVE A PREFERENCE</button>
-      <button id="btn-cco-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <h3 class="action-sheet-title" data-i18n="CHANNEL_CHANGE_OPTIONS_TITLE">CHANGE CHANNEL</h3>
+      <button id="btn-cco-video-system" class="btn btn-secondary btn-large" data-i18n="BTN_CHANGE_VIDEO_SYSTEM">CHANGE VIDEO SYSTEM</button>
+      <button id="btn-cco-auto-assign" class="btn btn-secondary btn-large" data-i18n="BTN_AUTO_ASSIGN_NEW">AUTO-ASSIGN NEW</button>
+      <button id="btn-cco-preference" class="btn btn-secondary btn-large" data-i18n="BTN_HAVE_PREFERENCE">I HAVE A PREFERENCE</button>
+      <button id="btn-cco-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <!-- Moved-by-rebalance Notification -->
   <div id="moved-dialog" class="action-sheet" style="display:none">
     <div class="action-sheet-content">
-      <h3 id="moved-dialog-title">YOU'VE BEEN MOVED</h3>
+      <h3 id="moved-dialog-title" data-i18n="MOVED_TITLE">YOU'VE BEEN MOVED</h3>
       <p id="moved-dialog-message"></p>
-      <button id="moved-dialog-ok" class="btn btn-primary btn-large">GOT IT</button>
+      <button id="moved-dialog-ok" class="btn btn-primary btn-large" data-i18n="BTN_GOT_IT">GOT IT</button>
     </div>
   </div>
 
@@ -542,26 +543,27 @@
     <div class="action-sheet-content">
       <h3 id="channel-change-title" class="action-sheet-title">SELECT CHANNEL</h3>
       <canvas id="spectrum-change" class="spectrum-canvas"></canvas>
-      <button id="btn-auto-reassign" class="btn btn-primary btn-large">AUTO-ASSIGN BEST</button>
+      <button id="btn-auto-reassign" class="btn btn-primary btn-large" data-i18n="BTN_AUTO_ASSIGN_BEST">AUTO-ASSIGN BEST</button>
       <div id="channel-change-picker" class="channel-picker"></div>
-      <button id="btn-confirm-channel-change" class="btn btn-primary btn-large hidden">USE THIS CHANNEL</button>
-      <button id="btn-change-video-system" class="btn btn-secondary btn-large">CHANGE VIDEO SYSTEM</button>
-      <button id="btn-channel-change-cancel" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-confirm-channel-change" class="btn btn-primary btn-large hidden" data-i18n="BTN_USE_THIS_CHANNEL">USE THIS CHANNEL</button>
+      <button id="btn-change-video-system" class="btn btn-secondary btn-large" data-i18n="BTN_CHANGE_VIDEO_SYSTEM">CHANGE VIDEO SYSTEM</button>
+      <button id="btn-channel-change-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <!-- QR Code Overlay -->
   <div id="qr-overlay" class="qr-overlay hidden">
     <div class="qr-content">
-      <h2 class="qr-title">SCAN TO JOIN</h2>
+      <h2 class="qr-title" data-i18n="QR_SCAN_TO_JOIN">SCAN TO JOIN</h2>
       <canvas id="qr-canvas" class="qr-canvas"></canvas>
       <p id="qr-url" class="qr-url"></p>
-      <button id="btn-qr-close" class="btn btn-secondary btn-large">CLOSE</button>
+      <button id="btn-qr-close" class="btn btn-secondary btn-large" data-i18n="BTN_CLOSE">CLOSE</button>
       <!-- Keep this footer in sync with the landing page footer -->
       <div class="landing-footer qr-footer">
-        <div><a href="/changelog.html" class="footer-link">What's New</a> · <a href="/freq-guide.html" class="footer-link">Freq Guide</a></div>
-        <div><a href="https://github.com/kgNatx/skwad" class="footer-link">SKWAD</a> is a free service from <a href="https://atxfpv.org" class="footer-link">ATXFPV.org</a></div>
-        <div id="fpvfc-link-qr" class="hidden">Please support the <a href="https://fpvfc.org/take-action" class="footer-link">FPV Freedom Coalition</a></div>
+        <div><a href="/changelog.html" class="footer-link" data-i18n="FOOTER_WHATS_NEW">What's New</a> · <a href="/freq-guide.html" class="footer-link" data-i18n="FOOTER_FREQ_GUIDE">Freq Guide</a></div>
+        <div><a href="https://github.com/kgNatx/skwad" class="footer-link">SKWAD</a> <span data-i18n="FOOTER_FREE_SERVICE">is a free service from</span> <a href="https://atxfpv.org" class="footer-link">ATXFPV.org</a></div>
+        <div id="fpvfc-link-qr" class="hidden"><span data-i18n="FOOTER_SUPPORT_PREFIX">Please support the</span> <a href="https://fpvfc.org/take-action" class="footer-link" data-i18n="FOOTER_FPVFC">FPV Freedom Coalition</a></div>
+        <div class="lang-picker"><select id="lang-select-qr" class="lang-select"></select></div>
       </div>
     </div>
   </div>
@@ -569,15 +571,16 @@
   <!-- QR Scanner Overlay -->
   <div id="qr-scanner" class="qr-scanner-overlay hidden">
     <div class="qr-scanner-content">
-      <h2 class="qr-scanner-title">SCAN QR CODE</h2>
+      <h2 class="qr-scanner-title" data-i18n="QR_SCANNER_TITLE">SCAN QR CODE</h2>
       <div class="qr-scanner-viewfinder">
         <video id="qr-video" class="qr-video" playsinline></video>
       </div>
-      <button id="btn-scanner-close" class="btn btn-secondary btn-large">CANCEL</button>
+      <button id="btn-scanner-close" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
   </div>
 
   <script src="/jsqr.min.js"></script>
+  <script src="/i18n.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

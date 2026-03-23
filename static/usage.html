@@ -284,37 +284,38 @@
 <div class="header">
   <div class="header-left">
     <img src="/skwad-icon.svg" alt="SKWAD">
-    <h1>Usage</h1>
+    <h1 data-i18n="USAGE_TITLE">Usage</h1>
   </div>
-  <p>Aggregate stats from all Skwad sessions</p>
+  <p data-i18n="USAGE_SUBTITLE">Aggregate stats from all Skwad sessions</p>
 </div>
 
-<div id="loading" class="loading">Loading...</div>
-<div id="empty" class="empty-state" style="display:none">No sessions recorded yet. Stats will appear after the first session expires.</div>
+<div id="loading" class="loading" data-i18n="USAGE_LOADING">Loading...</div>
+<div id="empty" class="empty-state" style="display:none" data-i18n="USAGE_EMPTY">No sessions recorded yet. Stats will appear after the first session expires.</div>
 <div id="content" style="display:none">
 
   <div class="stats-grid" id="stats-grid"></div>
 
   <div class="section" id="map-section">
-    <div class="section-title">Sessions Around the World</div>
+    <div class="section-title" data-i18n="USAGE_MAP_TITLE">Sessions Around the World</div>
     <div id="map"></div>
   </div>
 
   <div class="section" id="vs-section">
-    <div class="section-title">Video Systems</div>
+    <div class="section-title" data-i18n="USAGE_VS_TITLE">Video Systems</div>
     <div class="bar-chart" id="vs-chart"></div>
   </div>
 
   <div class="section" id="feature-section">
-    <div class="section-title">Feature Adoption</div>
+    <div class="section-title" data-i18n="USAGE_FEATURE_TITLE">Feature Adoption</div>
     <div class="feature-grid" id="feature-grid"></div>
   </div>
 
 </div>
 
-<div class="back-link"><a href="/">Back to Skwad</a></div>
+<div class="back-link"><a href="/" data-i18n="USAGE_BACK">Back to Skwad</a></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/i18n.js"></script>
 <script>
 (function() {
   const VIDEO_SYSTEM_NAMES = {
@@ -409,11 +410,11 @@
 
       // Stat cards
       const grid = document.getElementById('stats-grid');
-      addStatCard(grid, data.total_sessions, 'Sessions');
-      addStatCard(grid, data.total_pilots_joined, 'Pilots Joined');
-      addStatCard(grid, data.avg_pilots_per_session.toFixed(1), 'Avg per Session');
-      addStatCard(grid, data.peak_session_size, 'Largest Session');
-      addStatCard(grid, fmtDuration(data.avg_session_duration_minutes), 'Avg Duration');
+      addStatCard(grid, data.total_sessions, t('STAT_SESSIONS'));
+      addStatCard(grid, data.total_pilots_joined, t('STAT_PILOTS_JOINED'));
+      addStatCard(grid, data.avg_pilots_per_session.toFixed(1), t('STAT_AVG_PER_SESSION'));
+      addStatCard(grid, data.peak_session_size, t('STAT_LARGEST_SESSION'));
+      addStatCard(grid, fmtDuration(data.avg_session_duration_minutes), t('STAT_AVG_DURATION'));
 
       // Map
       var hasLocations = data.locations && data.locations.length > 0;
@@ -441,7 +442,7 @@
           div.appendChild(strong);
           div.appendChild(document.createElement('br'));
           div.appendChild(document.createTextNode(
-            loc.count + ' ' + label + (loc.count !== 1 ? 's' : '')
+            tPlural(label, loc.count)
           ));
           return div;
         }
@@ -467,7 +468,7 @@
             weight: 2,
             fillOpacity: 0.7
           }).addTo(map);
-          marker.bindPopup(locPopup(loc, 'session'));
+          marker.bindPopup(locPopup(loc, 'MAP_SESSION'));
           markers.push(marker);
         });
 
@@ -507,7 +508,7 @@
             weight: 2,
             fillOpacity: 0.9
           }).addTo(map);
-          marker.bindPopup(locPopup(loc, 'active session'));
+          marker.bindPopup(locPopup(loc, 'MAP_ACTIVE'));
           markers.push(marker);
         });
 
@@ -523,7 +524,7 @@
             var activeDot = document.createElement('div');
             activeDot.className = 'map-legend-dot active';
             activeItem.appendChild(activeDot);
-            activeItem.appendChild(document.createTextNode(' Active'));
+            activeItem.appendChild(document.createTextNode(' ' + t('MAP_LEGEND_ACTIVE')));
             container.appendChild(activeItem);
           }
 
@@ -532,7 +533,7 @@
           var pastDot = document.createElement('div');
           pastDot.className = 'map-legend-dot past';
           pastItem.appendChild(pastDot);
-          pastItem.appendChild(document.createTextNode(' Past'));
+          pastItem.appendChild(document.createTextNode(' ' + t('MAP_LEGEND_PAST')));
           container.appendChild(pastItem);
 
           return container;
@@ -561,23 +562,23 @@
 
       // Feature adoption
       const featureGrid = document.getElementById('feature-grid');
-      addFeatureCard(featureGrid, data.sessions_with_power_ceiling_pct.toFixed(0) + '%', 'Use Power Ceiling');
-      addFeatureCard(featureGrid, data.sessions_with_fixed_channels_pct.toFixed(0) + '%', 'Use Fixed Channels');
+      addFeatureCard(featureGrid, data.sessions_with_power_ceiling_pct.toFixed(0) + '%', t('FEAT_POWER_CEILING'));
+      addFeatureCard(featureGrid, data.sessions_with_fixed_channels_pct.toFixed(0) + '%', t('FEAT_FIXED_CHANNELS'));
 
       if (data.total_sessions > 0 && data.total_rebalances > 0) {
         addFeatureCard(featureGrid,
           (data.total_rebalances / data.total_sessions * 100).toFixed(0) + '%',
-          'Rebalance Rate');
+          t('FEAT_REBALANCE_RATE'));
       }
 
       if (data.total_sessions > 0 && data.total_channel_changes > 0) {
         addFeatureCard(featureGrid,
           (data.total_channel_changes / data.total_sessions).toFixed(1),
-          'Avg Ch. Changes / Session');
+          t('FEAT_AVG_CHANNEL_CHANGES'));
       }
 
     } catch (err) {
-      loadingEl.textContent = 'Failed to load usage data.';
+      loadingEl.textContent = t('USAGE_LOAD_ERROR');
       console.error('Usage fetch error:', err);
     }
   }

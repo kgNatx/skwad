@@ -1,0 +1,42 @@
+name: Translation Request
+description: Request a new language or submit corrections to existing translations
+title: "[i18n] "
+labels: ["i18n", "translation"]
+body:
+  - type: dropdown
+    id: request-type
+    attributes:
+      label: Request Type
+      options:
+        - New language
+        - Correction to existing translation
+    validations:
+      required: true
+  - type: input
+    id: language
+    attributes:
+      label: Language
+      description: The language name and ISO 639-1 code (e.g., "Turkish (tr)")
+      placeholder: "Turkish (tr)"
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: |
+        For new languages: We will create the translation file. If you would like to contribute the translation yourself, attach a translated copy of static/locales/en.json.
+
+        For corrections: List the key(s) and the corrected translation(s).
+      placeholder: |
+        Key: BTN_START_SESSION
+        Current: "OTURUM BAŞLAT"
+        Corrected: "OTURUM OLUŞTUR"
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I can provide/review translations for this language

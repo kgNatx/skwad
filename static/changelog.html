@@ -114,9 +114,20 @@
 </head>
 <body>
   <div class="container">
-    <a href="/" class="back-link">&larr; Back to Skwad</a>
+    <a href="/" class="back-link" data-i18n="USAGE_BACK">&larr; Back to Skwad</a>
 
-    <h1>What's New</h1>
+    <h1 data-i18n="CHANGELOG_H1">What's New</h1>
+
+    <div class="version">
+      <div class="version-header">v0.6.2</div>
+      <div class="version-date">March 23, 2026</div>
+
+      <h3>New</h3>
+      <ul>
+        <li><strong>14 languages!</strong> Skwad now speaks English, German, Italian, Bulgarian, Traditional Chinese, Korean, Japanese, French, Spanish, Portuguese, Simplified Chinese, Thai, Dutch, and Polish. Your language is auto-detected from your browser, or pick one from the dropdown in the footer.</li>
+        <li><strong>Help us translate.</strong> Know a language we don't support yet? Open an issue on GitHub to request it or submit a translation.</li>
+      </ul>
+    </div>
 
     <div class="version">
       <div class="version-header">v0.6.1</div>
@@ -363,5 +374,6 @@
       </ul>
     </div>
   </div>
+<script src="/i18n.js"></script>
 </body>
 </html>

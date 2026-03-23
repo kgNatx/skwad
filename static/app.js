@@ -58,13 +58,13 @@
 
   // ── Power ceiling slider steps ────────────────────────────────
   var POWER_STEPS = [
-    { mw: 25,   dbm: '14 dBm',   guard: 10, channels: 8, tip: 'Pit lane / indoor. Maximum pilot density \u2014 all 8 raceband channels.' },
-    { mw: 100,  dbm: '20 dBm',   guard: 12, channels: 8, tip: 'Low power outdoor. All 8 raceband channels fit comfortably.' },
-    { mw: 200,  dbm: '23 dBm',   guard: 14, channels: 8, tip: 'Standard outdoor group flying. All 8 raceband channels with good margin.' },
-    { mw: 400,  dbm: '26 dBm',   guard: 16, channels: 8, tip: 'Upper limit for full density. All 8 raceband channels, 1 MHz margin.' },
-    { mw: 600,  dbm: '27.8 dBm', guard: 24, channels: 4, tip: 'High power \u2014 only every-other raceband channel is clean.' },
-    { mw: 800,  dbm: '29 dBm',   guard: 28, channels: 4, tip: 'Near-max power. 4 unique channels, buddy up for larger groups.' },
-    { mw: 1000, dbm: '30 dBm',   guard: 32, channels: 4, tip: 'Full send. 4 unique channels max.' },
+    { mw: 25,   dbm: '14 dBm',   guard: 10, channels: 8, tipKey: 'POWER_TIP_25MW' },
+    { mw: 100,  dbm: '20 dBm',   guard: 12, channels: 8, tipKey: 'POWER_TIP_100MW' },
+    { mw: 200,  dbm: '23 dBm',   guard: 14, channels: 8, tipKey: 'POWER_TIP_200MW' },
+    { mw: 400,  dbm: '26 dBm',   guard: 16, channels: 8, tipKey: 'POWER_TIP_400MW' },
+    { mw: 600,  dbm: '27.8 dBm', guard: 24, channels: 4, tipKey: 'POWER_TIP_600MW' },
+    { mw: 800,  dbm: '29 dBm',   guard: 28, channels: 4, tipKey: 'POWER_TIP_800MW' },
+    { mw: 1000, dbm: '30 dBm',   guard: 32, channels: 4, tipKey: 'POWER_TIP_1000MW' },
   ];
 
   // ── Fixed channel sets ────────────────────────────────────────
@@ -169,7 +169,7 @@
     var parts = sources.map(function(s) {
       return s.a.Callsign + ' + ' + s.b.Callsign;
     });
-    return 'IMD from ' + parts.join(', ');
+    return t('IMD_FROM', { sources: parts.join(', ') });
   }
 
   function getIMDHitPilots(pilots) {
@@ -182,15 +182,15 @@
   }
 
   // ── Video system display names ────────────────────────────────
-  const SYSTEM_LABELS = {
-    analog: 'ANALOG',
-    dji_v1: 'DJI V1',
-    dji_o3: 'DJI O3',
-    dji_o4: 'DJI O4',
-    hdzero: 'HDZERO',
-    walksnail_std: 'WALKSNAIL',
-    walksnail_race: 'WALKSNAIL RACE',
-    openipc: 'OPENIPC',
+  const SYSTEM_LABEL_KEYS = {
+    analog: 'SYS_ANALOG',
+    dji_v1: 'SYS_DJI_V1',
+    dji_o3: 'SYS_DJI_O3',
+    dji_o4: 'SYS_DJI_O4',
+    hdzero: 'SYS_HDZERO',
+    walksnail_std: 'SYS_WALKSNAIL',
+    walksnail_race: 'SYS_WALKSNAIL_RACE',
+    openipc: 'SYS_OPENIPC',
   };
 
   // ── Channel tables (mirrors Go freq/tables.go) ────────────────
@@ -313,7 +313,7 @@
     var step = POWER_STEPS[state.powerStepIndex];
     $('power-mw-value').textContent = step.mw;
     $('power-guard-value').textContent = step.guard;
-    $('power-tip').textContent = step.tip;
+    $('power-tip').textContent = t(step.tipKey);
     renderPowerSpectrum(step.guard);
   }
 
@@ -333,7 +333,7 @@
     var seg2 = document.createElement('div');
     seg2.className = 'power-spectrum-segment power-seg-guard';
     seg2.style.width = guardPct + '%';
-    seg2.textContent = guard + ' MHz';
+    seg2.textContent = guard + ' ' + t('UNIT_MHZ');
     bar.appendChild(seg2);
     var seg3 = document.createElement('div');
     seg3.className = 'power-spectrum-segment power-seg-bw';
@@ -405,7 +405,7 @@
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text.trim() || ('HTTP ' + res.status));
+      throw new Error(text.trim() || t('ERR_HTTP', { status: res.status }));
     }
     return res.json();
   }
@@ -418,7 +418,7 @@
     const res = await fetch(path, opts);
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text.trim() || ('HTTP ' + res.status));
+      throw new Error(text.trim() || t('ERR_HTTP', { status: res.status }));
     }
     return res.json();
   }
@@ -431,7 +431,7 @@
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text.trim() || ('HTTP ' + res.status));
+      throw new Error(text.trim() || t('ERR_HTTP', { status: res.status }));
     }
   }
 
@@ -443,7 +443,7 @@
     const res = await fetch(path, { method: 'DELETE', headers: headers });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text.trim() || ('HTTP ' + res.status));
+      throw new Error(text.trim() || t('ERR_HTTP', { status: res.status }));
     }
   }
 
@@ -596,7 +596,7 @@
       })
       .catch(function () {
         closeQRScanner();
-        showError('landing-error', 'CAMERA ACCESS DENIED');
+        showError('landing-error', t('ERR_CAMERA_DENIED'));
       });
   }
 
@@ -712,7 +712,7 @@
       await createSessionWithPower(state.pendingPowerMW > 0 ? state.pendingPowerMW : 0);
       showStep('step-video');
     } catch (err) {
-      alert('FAILED TO CREATE SESSION');
+      alert(t('ERR_CREATE_FAILED'));
     } finally {
       setLoading(btn, false);
     }
@@ -721,7 +721,7 @@
   async function handleJoinByCode() {
     var code = $('input-code').value.trim().toUpperCase();
     if (code.length !== 6) {
-      showError('landing-error', 'CODE MUST BE 6 CHARACTERS');
+      showError('landing-error', t('ERR_CODE_LENGTH'));
       return;
     }
     var btn = $('btn-go');
@@ -740,7 +740,7 @@
       showStep('step-callsign');
       $('input-callsign').focus();
     } catch (err) {
-      showError('landing-error', 'SESSION NOT FOUND');
+      showError('landing-error', t('ERR_SESSION_NOT_FOUND'));
     } finally {
       setLoading(btn, false);
     }
@@ -754,7 +754,7 @@
     $('btn-callsign-next').addEventListener('click', function () {
       var cs = $('input-callsign').value.trim();
       if (!cs) {
-        showError('callsign-error', 'ENTER YOUR CALLSIGN');
+        showError('callsign-error', t('ERR_CALLSIGN_EMPTY'));
         return;
       }
       hideError('callsign-error');
@@ -766,7 +766,7 @@
         var alertTitle = $('power-alert-title');
         var alertValueRow = $('power-alert-value-row');
         var alertText = $('power-alert-text');
-        if (alertTitle) alertTitle.textContent = 'POWER CEILING';
+        if (alertTitle) alertTitle.textContent = t('POWER_ALERT_TITLE');
         if (alertValueRow) alertValueRow.classList.remove('hidden');
         if (alertText) alertText.classList.remove('hidden');
         $('power-alert-mw').textContent = state.sessionPowerCeiling;
@@ -780,7 +780,7 @@
             try {
               var fcList = JSON.parse(state.sessionFixedChannels);
               var fcNames = fcList.map(function (c) { return c.name; });
-              fixedHint.textContent = 'This session uses fixed channels: ' + fcNames.join(', ');
+              fixedHint.textContent = t('FIXED_CHANNELS_HINT', { channels: fcNames.join(', ') });
               fixedHint.classList.remove('hidden');
             } catch (e) { fixedHint.classList.add('hidden'); }
           } else {
@@ -793,7 +793,7 @@
         alertTitle = $('power-alert-title');
         alertValueRow = $('power-alert-value-row');
         alertText = $('power-alert-text');
-        if (alertTitle) alertTitle.textContent = 'SESSION CHANNELS';
+        if (alertTitle) alertTitle.textContent = t('SESSION_CHANNELS_TITLE');
         if (alertValueRow) alertValueRow.classList.add('hidden');
         if (alertText) alertText.classList.add('hidden');
         $('power-alert-dji-hint').classList.add('hidden');
@@ -802,7 +802,7 @@
           try {
             fcList = JSON.parse(state.sessionFixedChannels);
             fcNames = fcList.map(function (c) { return c.name; });
-            fixedHint.textContent = 'This session uses fixed channels: ' + fcNames.join(', ');
+            fixedHint.textContent = t('FIXED_CHANNELS_HINT', { channels: fcNames.join(', ') });
             fixedHint.classList.remove('hidden');
           } catch (e) { fixedHint.classList.add('hidden'); }
         }
@@ -865,7 +865,7 @@
       $('power-slider-thumb').style.left = (thumbRadius - 23 + pct * usable) + 'px';
       $('power-mw-value').textContent = step.mw;
       $('power-guard-value').textContent = step.guard;
-      $('power-tip').textContent = step.tip;
+      $('power-tip').textContent = t(step.tipKey);
       renderPowerSpectrum(step.guard);
     }
 
@@ -1005,19 +1005,20 @@
         header.className = 'fc-set-header';
         var nameEl = document.createElement('span');
         nameEl.className = 'fc-set-name';
-        nameEl.textContent = set.name;
+        var FC_NAME_KEYS = { 'MAX SPREAD': 'FC_SET_MAX_SPREAD', 'DJI SPREAD': 'FC_SET_DJI_SPREAD', 'IMD CLEAN': 'FC_SET_IMD_CLEAN', 'MIXED CLEAN': 'FC_SET_MIXED_CLEAN', 'MIXED OPTIMAL': 'FC_SET_MIXED_OPTIMAL', 'RACEBAND 5': 'FC_SET_RACEBAND_5', 'DJI 5': 'FC_SET_DJI_5', 'ET5A': 'FC_SET_ET5A' };
+        nameEl.textContent = FC_NAME_KEYS[set.name] ? t(FC_NAME_KEYS[set.name]) : set.name;
         header.appendChild(nameEl);
         var badges = document.createElement('div');
         badges.className = 'fc-set-badges';
         var imdBadge = document.createElement('span');
         imdBadge.className = 'fc-set-badge';
-        imdBadge.textContent = 'IMD ' + set.imd;
+        imdBadge.textContent = t('FC_IMD_BADGE', { score: set.imd });
         imdBadge.style.borderColor = set.imd >= 90 ? '#4ade8066' : (set.imd >= 60 ? '#f59e0b66' : '#f9713166');
         imdBadge.style.color = set.imd >= 90 ? '#4ade80' : (set.imd >= 60 ? '#f59e0b' : '#f97316');
         badges.appendChild(imdBadge);
         var powerBadge = document.createElement('span');
         powerBadge.className = 'fc-set-badge';
-        powerBadge.textContent = set.power;
+        powerBadge.textContent = set.power === 'ANY POWER' ? t('FC_POWER_ANY') : set.power;
         powerBadge.style.borderColor = set.powerColor + '66';
         powerBadge.style.color = set.powerColor;
         badges.appendChild(powerBadge);
@@ -1036,13 +1037,13 @@
         });
         var sysText = '';
         if (rbCount === set.channels.length) {
-          sysText = set.channels.length + ' CH \u2014 ALL RACEBAND SYSTEMS';
+          sysText = t('FC_SYSTEMS_ALL_RACEBAND', { count: set.channels.length });
         } else if (djiStdCount === set.channels.length) {
-          sysText = djiStdCount + ' CH \u2014 DJI STANDARD';
+          sysText = t('FC_SYSTEMS_DJI_STANDARD', { count: djiStdCount });
         } else {
           var parts = [];
-          if (rbCount > 0) parts.push(rbCount + ' RACEBAND');
-          if (djiStdCount > 0) parts.push(djiStdCount + ' DJI');
+          if (rbCount > 0) parts.push(t('FC_SYSTEMS_RACEBAND_PARTIAL', { rCount: rbCount }));
+          if (djiStdCount > 0) parts.push(t('FC_SYSTEMS_DJI_PARTIAL', { dCount: djiStdCount }));
           sysText = parts.join(' \u00b7 ');
         }
         var systemsEl = document.createElement('div');
@@ -1170,7 +1171,7 @@
     showStep('step-followup');
 
     if (system === 'analog') {
-      $('followup-title').textContent = 'ANALOG SETTINGS';
+      $('followup-title').textContent = t('FOLLOWUP_TITLE_ANALOG');
       $('followup-analog-bands').classList.remove('hidden');
       $('btn-followup-next').classList.remove('hidden');
       state.analogBands = ['R'];
@@ -1178,16 +1179,16 @@
         b.classList.toggle('selected', b.dataset.band === 'R');
       });
     } else if (system === 'walksnail') {
-      $('followup-title').textContent = 'WALKSNAIL SETTINGS';
+      $('followup-title').textContent = t('FOLLOWUP_TITLE_WALKSNAIL');
       $('followup-walksnail-mode').classList.remove('hidden');
     } else if (system === 'dji_v1') {
-      $('followup-title').textContent = 'DJI V1 SETTINGS';
+      $('followup-title').textContent = t('FOLLOWUP_TITLE_DJI_V1');
       $('followup-fcc').classList.remove('hidden');
     } else if (system === 'dji_o3') {
-      $('followup-title').textContent = 'DJI O3 SETTINGS';
+      $('followup-title').textContent = t('FOLLOWUP_TITLE_DJI_O3');
       $('followup-fcc').classList.remove('hidden');
     } else if (system === 'dji_o4') {
-      $('followup-title').textContent = 'DJI O4 SETTINGS';
+      $('followup-title').textContent = t('FOLLOWUP_TITLE_DJI_O4');
       $('followup-fcc').classList.remove('hidden');
     }
   }
@@ -1315,6 +1316,7 @@
     if (!shouldWarnBandwidth()) return;
     if (bw <= 20) {
       btn.classList.add('bw-recommended');
+      btn.setAttribute('data-label', t('BW_RECOMMENDED'));
     } else {
       btn.classList.add('bw-warn');
     }
@@ -1327,7 +1329,7 @@
     options.forEach(function (bw) {
       var btn = document.createElement('button');
       btn.className = 'btn btn-option';
-      btn.textContent = bw + ' MHz';
+      btn.textContent = t('BW_MHZ', { bw: bw });
       applyBandwidthHint(btn, bw);
       btn.addEventListener('click', function () {
         container.querySelectorAll('.btn-option').forEach(function (b) { b.classList.remove('selected'); });
@@ -1367,7 +1369,7 @@
         preferred_frequency_mhz: state.preferredFreqMHz,
       });
     } catch (err) {
-      showError('join-error', 'FAILED TO UPDATE: ' + (err.message || '').toUpperCase());
+      showError('join-error', t('ERR_UPDATE_FAILED', { error: (err.message || '').toUpperCase() }));
       setLoading(btn, false);
       return;
     }
@@ -1392,7 +1394,7 @@
     $('spectrum-preview').classList.add('hidden');
     var hint = $('preference-hint');
     if (hint) hint.style.display = 'none';
-    $('btn-join-session').textContent = state._changingVideoSystem ? 'UPDATE' : 'JOIN';
+    $('btn-join-session').textContent = state._changingVideoSystem ? t('BTN_UPDATE') : t('BTN_JOIN');
     renderChannelPicker();
     updateJoinButtonState();
     // Pre-fetch existing pilots for spectrum preview
@@ -1413,7 +1415,7 @@
     // Include hypothetical self in pilot list for IMD preview
     var pilotsForIMD = previewPilots;
     if (freq > 0) {
-      pilotsForIMD = previewPilots.concat([{ AssignedFreqMHz: freq, VideoSystem: sys, BandwidthMHz: bw, Callsign: 'YOU', ID: -1 }]);
+      pilotsForIMD = previewPilots.concat([{ AssignedFreqMHz: freq, VideoSystem: sys, BandwidthMHz: bw, Callsign: t('SPECTRUM_YOU'), ID: -1 }]);
     }
     renderSpectrum(pilotsForIMD, 'spectrum-preview', freq, bw);
   }
@@ -1584,9 +1586,9 @@
     } catch (err) {
       var msg = err.message || '';
       if (msg.includes('callsign already')) {
-        showError('join-error', 'CALLSIGN ALREADY IN SESSION');
+        showError('join-error', t('ERR_CALLSIGN_IN_SESSION'));
       } else {
-        showError('join-error', 'FAILED TO JOIN: ' + msg.toUpperCase());
+        showError('join-error', t('ERR_JOIN_FAILED', { error: msg.toUpperCase() }));
       }
     } finally {
       setLoading(btn, false);
@@ -1605,9 +1607,9 @@
     } catch (err) {
       var msg = err.message || '';
       if (msg.includes('callsign already')) {
-        showError('join-error', 'CALLSIGN ALREADY IN SESSION');
+        showError('join-error', t('ERR_CALLSIGN_IN_SESSION'));
       } else {
-        showError('join-error', 'FAILED TO JOIN: ' + msg.toUpperCase());
+        showError('join-error', t('ERR_JOIN_FAILED', { error: msg.toUpperCase() }));
       }
     } finally {
       setLoading(btn, false);
@@ -1641,13 +1643,11 @@
       var buddyBtn = document.createElement('button');
       buddyBtn.className = 'btn btn-secondary btn-large buddy-choice-btn';
       var strong1 = document.createElement('strong');
-      strong1.textContent = 'BUDDY UP';
+      strong1.textContent = t('CHOICE_BUDDY_UP');
       buddyBtn.appendChild(strong1);
       buddyBtn.appendChild(document.createElement('br'));
       buddyBtn.appendChild(document.createTextNode(
-        'Share ' + preview.buddy_option.channel +
-        ' (' + preview.buddy_option.freq_mhz + ' MHz) with ' +
-        preview.buddy_option.callsign
+        t('CHOICE_BUDDY_SHARE', { channel: preview.buddy_option.channel, freq: preview.buddy_option.freq_mhz, callsign: preview.buddy_option.callsign })
       ));
       buddyBtn.onclick = function () {
         $('choice-dialog').style.display = 'none';
@@ -1660,15 +1660,14 @@
       var rebalBtn = document.createElement('button');
       rebalBtn.className = 'btn btn-secondary btn-large rebalance-choice-btn';
       var strong2 = document.createElement('strong');
-      strong2.textContent = 'PARTIAL REBALANCE';
+      strong2.textContent = t('CHOICE_PARTIAL_REBALANCE');
       rebalBtn.appendChild(strong2);
       rebalBtn.appendChild(document.createElement('br'));
       var movedText = preview.rebalance_option.displaced.map(function (d) {
-        return 'Move ' + d.callsign + ' from ' + d.old_channel + ' to ' + d.new_channel;
+        return t('CHOICE_MOVE', { callsign: d.callsign, oldChannel: d.old_channel, newChannel: d.new_channel });
       }).join(', ');
       rebalBtn.appendChild(document.createTextNode(
-        movedText + '. You get ' + preview.rebalance_option.assignment.channel +
-        ' (' + preview.rebalance_option.assignment.freq_mhz + ' MHz)'
+        movedText + '. ' + t('CHOICE_YOU_GET', { channel: preview.rebalance_option.assignment.channel, freq: preview.rebalance_option.assignment.freq_mhz })
       ));
       rebalBtn.onclick = function () {
         $('choice-dialog').style.display = 'none';
@@ -1775,7 +1774,7 @@
       var badge = $('power-ceiling-badge');
       if (badge) {
         if (state.sessionPowerCeiling > 0) {
-          badge.textContent = state.sessionPowerCeiling + ' mW MAX';
+          badge.textContent = t('POWER_BADGE', { power: state.sessionPowerCeiling });
           badge.classList.remove('hidden');
         } else {
           badge.classList.add('hidden');
@@ -1787,7 +1786,7 @@
       if (fcBadge && state.sessionFixedChannels) {
         try {
           var fcParsed = JSON.parse(state.sessionFixedChannels);
-          fcBadge.textContent = 'FIXED \u00b7 ' + fcParsed.length + ' CH';
+          fcBadge.textContent = t('FIXED_BADGE', { count: fcParsed.length });
           fcBadge.classList.remove('hidden');
         } catch (e) { fcBadge.classList.add('hidden'); }
       } else if (fcBadge) {
@@ -1798,7 +1797,7 @@
       var imdBadge = $('imd-badge');
       if (imdBadge && data.pilots.length >= 2) {
         var imdScore = calcIMDScore(data.pilots);
-        imdBadge.textContent = 'IMD ' + imdScore;
+        imdBadge.textContent = t('IMD_BADGE', { score: imdScore });
         imdBadge.className = 'imd-badge ' + (imdScore >= 80 ? 'imd-good' : imdScore >= 50 ? 'imd-fair' : 'imd-poor');
         imdBadge.classList.remove('hidden');
       } else if (imdBadge) {
@@ -1816,8 +1815,8 @@
 
   // ── Channel Change Banner ──────────────────────────────────
   function showChannelChangeBanner(oldChannel, oldFreq, newChannel, newFreq) {
-    var msg = 'YOUR CHANNEL CHANGED: ' + oldChannel + ' (' + oldFreq + ') \u2192 ' +
-      newChannel + ' (' + newFreq + ')\nCOORDINATE WITH YOUR GROUP BEFORE SWITCHING';
+    var msg = t('BANNER_CHANNEL_CHANGED', { oldChannel: oldChannel, oldFreq: oldFreq, newChannel: newChannel, newFreq: newFreq }) +
+      '\n' + t('BANNER_COORDINATE');
     $('banner-message').textContent = msg;
     $('channel-change-banner').classList.remove('hidden');
   }
@@ -2082,7 +2081,7 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText('YOU', centerX, peakY - 3);
+    ctx.fillText(t('SPECTRUM_YOU'), centerX, peakY - 3);
   }
 
   function roundRect(ctx, x, y, w, h, r) {
@@ -2105,10 +2104,10 @@
 
     if (!pilots || pilots.length === 0) {
       var emptyDiv = el('div', { className: 'empty-state' }, [
-        el('div', { className: 'empty-state-text', textContent: 'WAITING FOR PILOTS...' })
+        el('div', { className: 'empty-state-text', textContent: t('WAITING_FOR_PILOTS') })
       ]);
       container.appendChild(emptyDiv);
-      $('pilot-count').textContent = '0 PILOTS';
+      $('pilot-count').textContent = t('PILOT_COUNT_ZERO');
       renderSpectrum([]);
       return;
     }
@@ -2170,7 +2169,7 @@
       var freqEl = el('div', { className: 'pilot-freq' });
       if (p.AssignedFreqMHz) {
         freqEl.appendChild(document.createTextNode(String(p.AssignedFreqMHz)));
-        freqEl.appendChild(el('span', { className: 'pilot-freq-unit', textContent: ' MHz' }));
+        freqEl.appendChild(el('span', { className: 'pilot-freq-unit', textContent: ' ' + t('UNIT_MHZ') }));
       } else {
         freqEl.textContent = '\u2014';
       }
@@ -2184,7 +2183,7 @@
       if (channelLabel) fitText(chEl, 15, 10);
       var freqBlockChildren = [freqEl, chEl];
       if (buddyIdx > 0) {
-        freqBlockChildren.push(el('span', { className: 'pilot-buddy-badge buddy-badge-' + buddyIdx, textContent: 'BUDDIES' }));
+        freqBlockChildren.push(el('span', { className: 'pilot-buddy-badge buddy-badge-' + buddyIdx, textContent: t('BADGE_BUDDIES') }));
       }
       var freqBlock = el('div', { className: 'pilot-freq-block' }, freqBlockChildren);
       card.appendChild(freqBlock);
@@ -2199,17 +2198,17 @@
 
       // Badge row: system badge + YOU badge
       var badgeRow = el('div', { className: 'pilot-badge-row' });
-      var sysLabel = SYSTEM_LABELS[p.VideoSystem] || p.VideoSystem.toUpperCase();
+      var sysLabel = SYSTEM_LABEL_KEYS[p.VideoSystem] ? t(SYSTEM_LABEL_KEYS[p.VideoSystem]) : p.VideoSystem.toUpperCase();
       var badge = el('span', { className: 'pilot-system-badge', textContent: sysLabel });
       badgeRow.appendChild(badge);
 
       if (isMe) {
-        var youBadge = el('span', { className: 'pilot-you-badge', textContent: 'YOU' });
+        var youBadge = el('span', { className: 'pilot-you-badge', textContent: t('BADGE_YOU') });
         badgeRow.appendChild(youBadge);
       }
 
       if (p.ID === state.leaderPilotId) {
-        var leaderBadge = el('span', { className: 'pilot-leader-badge', textContent: 'LEADER' });
+        var leaderBadge = el('span', { className: 'pilot-leader-badge', textContent: t('BADGE_LEADER') });
         badgeRow.appendChild(leaderBadge);
       }
 
@@ -2227,7 +2226,7 @@
         var bottomRow = el('div', { className: 'pilot-bottom-row' });
 
         if (hasIMD) {
-          bottomRow.appendChild(el('span', { className: 'pilot-imd-flag', textContent: 'IMD' }));
+          bottomRow.appendChild(el('span', { className: 'pilot-imd-flag', textContent: t('BADGE_IMD') }));
         }
 
         var statusText = el('div', { className: 'pilot-status-text' });
@@ -2238,7 +2237,7 @@
           if (buddies.length > 0) {
             statusText.appendChild(el('span', {
               className: 'pilot-buddy-info buddy-text-' + buddyIdx,
-              textContent: 'SHARING WITH: ' + buddies.join(', ')
+              textContent: t('SHARING_WITH', { callsigns: buddies.join(', ') })
             }));
           }
         }
@@ -2249,7 +2248,7 @@
           var req = c.required_mhz || c.RequiredMHz || 0;
           statusText.appendChild(el('span', {
             className: 'pilot-conflict conflict-' + level,
-            textContent: (level === 'danger' ? 'OVERLAP' : 'CLOSE TO') + ' ' + otherName + ' (' + sep + '/' + req + ' MHz)'
+            textContent: level === 'danger' ? t('CONFLICT_OVERLAP', { callsign: otherName, sep: sep, req: req }) : t('CONFLICT_CLOSE_TO', { callsign: otherName, sep: sep, req: req })
           }));
         });
         bottomRow.appendChild(statusText);
@@ -2265,7 +2264,7 @@
     });
 
     var count = pilots.length;
-    $('pilot-count').textContent = count + ' PILOT' + (count !== 1 ? 'S' : '');
+    $('pilot-count').textContent = tPlural('PILOT_COUNT', count);
     renderSpectrum(pilots);
   }
 
@@ -2431,9 +2430,9 @@
     var msg = $('moved-dialog-message');
     while (msg.firstChild) msg.removeChild(msg.firstChild);
 
-    var text = 'You\'ve been moved to ' + channel + ' (' + freqMHz + ' MHz) to make room.';
+    var text = t('MOVED_TO_TEXT', { channel: channel, freq: freqMHz });
     if (leaderName) {
-      text += ' Talk to ' + leaderName + ', the session leader, if you have questions.';
+      text += ' ' + t('MOVED_TALK_TO_LEADER', { leaderName: leaderName });
     }
     msg.appendChild(document.createTextNode(text));
 
@@ -2462,7 +2461,7 @@
     // Include hypothetical self at candidate freq for IMD preview
     var pilotsForIMD = others;
     if (freq > 0) {
-      pilotsForIMD = others.concat([{ AssignedFreqMHz: freq, VideoSystem: sys, BandwidthMHz: bw, Callsign: state.callsign || 'YOU', ID: state.pilotId }]);
+      pilotsForIMD = others.concat([{ AssignedFreqMHz: freq, VideoSystem: sys, BandwidthMHz: bw, Callsign: state.callsign || t('SPECTRUM_YOU'), ID: state.pilotId }]);
     }
     renderSpectrum(pilotsForIMD, 'spectrum-change', freq, bw);
   }
@@ -2519,7 +2518,7 @@
     });
     adaptPickerGrid(picker);
 
-    $('channel-change-title').textContent = 'SELECT CHANNEL';
+    $('channel-change-title').textContent = t('SELECT_CHANNEL');
     $('btn-auto-reassign').className = 'btn btn-primary btn-large';
     $('btn-auto-reassign').classList.remove('hidden');
     // Video system change is now in the options dialog, hide it from picker
@@ -2739,7 +2738,7 @@
     adaptPickerGrid(picker);
 
     // Update the title and hide self-only buttons.
-    $('channel-change-title').textContent = 'CHANGE CHANNEL: ' + pilot.Callsign;
+    $('channel-change-title').textContent = t('CHANGE_CHANNEL_FOR', { callsign: pilot.Callsign });
     $('btn-auto-reassign').classList.add('hidden');
     // Show video system change for leader-added pilots
     if (pilot.AddedByLeader && state.isLeader) {
@@ -2768,27 +2767,25 @@
 
     if (hasExact) {
       textEl.appendChild(document.createTextNode(
-        pilot.Callsign + ' will share ' + channel.name + ' (' + channel.freq + ' MHz) with ' +
-        conflictNames + '. They will be buddied up.'
+        t('BUDDY_CONFIRM_TEXT', { pilotCallsign: pilot.Callsign, channelName: channel.name, freq: channel.freq, conflictNames: conflictNames })
       ));
-      $('buddy-suggestion').querySelector('.action-sheet-title').textContent = 'BUDDY CONFIRMATION';
+      $('buddy-suggestion').querySelector('.action-sheet-title').textContent = t('BUDDY_CONFIRMATION');
     } else {
       textEl.appendChild(document.createTextNode(
-        channel.name + ' (' + channel.freq + ' MHz) overlaps with ' + conflictNames +
-        '. Force this channel for ' + pilot.Callsign + '?'
+        t('OVERLAP_WARNING_TEXT', { channelName: channel.name, freq: channel.freq, conflictNames: conflictNames, pilotCallsign: pilot.Callsign })
       ));
-      $('buddy-suggestion').querySelector('.action-sheet-title').textContent = 'OVERLAP WARNING';
+      $('buddy-suggestion').querySelector('.action-sheet-title').textContent = t('OVERLAP_WARNING');
     }
 
-    $('btn-buddy-up').textContent = 'FORCE';
+    $('btn-buddy-up').textContent = t('BTN_FORCE');
     $('btn-buddy-up').onclick = function () {
       $('buddy-suggestion').classList.add('hidden');
-      $('btn-buddy-up').textContent = 'BUDDY UP';
+      $('btn-buddy-up').textContent = t('BTN_BUDDY_UP');
       submitChannelChangeForPilot(pilot.ID, channel.freq);
     };
     $('btn-buddy-cancel').onclick = function () {
       $('buddy-suggestion').classList.add('hidden');
-      $('btn-buddy-up').textContent = 'BUDDY UP';
+      $('btn-buddy-up').textContent = t('BTN_BUDDY_UP');
       // Re-show the channel picker so leader can pick a different channel
       showChannelChangeForPilot(pilot);
     };
@@ -2845,7 +2842,7 @@
   async function submitCallsignChange() {
     var newCallsign = $('input-new-callsign').value.trim();
     if (!newCallsign) {
-      showError('callsign-change-error', 'ENTER A CALLSIGN');
+      showError('callsign-change-error', t('ERR_CALLSIGN_EMPTY'));
       return;
     }
     hideError('callsign-change-error');
@@ -2864,9 +2861,9 @@
     } catch (err) {
       var msg = err.message || '';
       if (msg.includes('callsign already') || msg.includes('409')) {
-        showError('callsign-change-error', 'CALLSIGN ALREADY IN USE');
+        showError('callsign-change-error', t('ERR_CALLSIGN_IN_USE'));
       } else {
-        showError('callsign-change-error', 'FAILED: ' + msg.toUpperCase());
+        showError('callsign-change-error', t('ERR_FAILED', { error: msg.toUpperCase() }));
       }
     } finally {
       setLoading(btn, false);
@@ -3060,7 +3057,7 @@
 
     function updateRebalancePower(idx) {
       rebalancePowerIndex = idx;
-      var label = idx >= POWER_STEPS.length ? 'NO LIMIT' : POWER_STEPS[idx].mw + ' mW';
+      var label = idx >= POWER_STEPS.length ? t('NO_LIMIT') : t('REBALANCE_POWER_VALUE', { mw: POWER_STEPS[idx].mw });
       $('rebalance-power-value').textContent = label;
       var track = $('rebalance-slider-track');
       var thumbRadius = 18;
@@ -3194,7 +3191,7 @@
     clearChildren(list);
 
     if (moved.length > 0) {
-      var movedTitle = el('div', { className: 'rebalance-section-title', textContent: 'MOVED' });
+      var movedTitle = el('div', { className: 'rebalance-section-title', textContent: t('REBALANCE_MOVED') });
       list.appendChild(movedTitle);
       moved.forEach(function (d) {
         var nameEl = el('div', { className: 'displacement-name', textContent: d.callsign });
@@ -3205,12 +3202,12 @@
         list.appendChild(item);
       });
     } else {
-      var noChanges = el('p', { className: 'rebalance-result-text', textContent: 'NO CHANGES MADE. ALL CHANNELS ARE ALREADY IN THE BEST POSSIBLE POSITIONS.' });
+      var noChanges = el('p', { className: 'rebalance-result-text', textContent: t('REBALANCE_NO_CHANGES') });
       list.appendChild(noChanges);
     }
 
     if (unresolved.length > 0) {
-      var conflictTitle = el('div', { className: 'rebalance-section-title rebalance-conflict-title', textContent: 'UNRESOLVED CONFLICTS' });
+      var conflictTitle = el('div', { className: 'rebalance-section-title rebalance-conflict-title', textContent: t('REBALANCE_UNRESOLVED') });
       list.appendChild(conflictTitle);
       unresolved.forEach(function (c) {
         var reasonEl = el('div', { className: 'rebalance-conflict-reason', textContent: c.reason });
@@ -3257,7 +3254,7 @@
       try {
         var channels = JSON.parse(state.sessionFixedChannels);
         var names = channels.map(function (c) { return c.name; });
-        fcHint.textContent = 'FIXED CHANNELS: ' + names.join(' \u00b7 ');
+        fcHint.textContent = t('ADD_PILOT_FIXED_HINT', { channels: names.join(' \u00b7 ') });
         fcHint.classList.remove('hidden');
       } catch (e) { fcHint.classList.add('hidden'); }
     } else if (fcHint) {
@@ -3300,7 +3297,7 @@
       bwOptions.forEach(function (bw) {
         var btn = el('button', {
           className: 'btn btn-toggle' + (bw === 20 ? ' active' : ''),
-          textContent: bw + ' MHz'
+          textContent: t('BW_MHZ', { bw: bw })
         });
         applyBandwidthHint(btn, bw);
         btn.addEventListener('click', function () {
@@ -3361,7 +3358,7 @@
       btn.addEventListener('click', function () {
         var callsign = $('input-add-callsign').value.trim();
         if (!callsign) {
-          showError('add-pilot-error', 'ENTER A CALLSIGN');
+          showError('add-pilot-error', t('ERR_CALLSIGN_EMPTY'));
           return;
         }
         hideError('add-pilot-error');
@@ -3441,7 +3438,7 @@
     $('btn-add-pilot-confirm').addEventListener('click', function () {
       var callsign = $('input-add-callsign').value.trim();
       if (!callsign) {
-        showError('add-pilot-error', 'ENTER A CALLSIGN');
+        showError('add-pilot-error', t('ERR_CALLSIGN_EMPTY'));
         return;
       }
       hideError('add-pilot-error');
@@ -3470,9 +3467,9 @@
     } catch (err) {
       var msg = err.message || '';
       if (msg.includes('callsign already') || msg.includes('409')) {
-        showError('add-pilot-error', 'CALLSIGN ALREADY IN SESSION');
+        showError('add-pilot-error', t('ERR_CALLSIGN_IN_SESSION'));
       } else {
-        showError('add-pilot-error', 'FAILED: ' + msg.toUpperCase());
+        showError('add-pilot-error', t('ERR_FAILED', { error: msg.toUpperCase() }));
       }
     }
   }
@@ -3491,13 +3488,13 @@
 
       if (pilots.length === 0) {
         // No one to transfer to
-        var note = el('p', { className: 'leader-leave-text', textContent: 'NO OTHER PILOTS IN SESSION.' });
+        var note = el('p', { className: 'leader-leave-text', textContent: t('LEADER_LEAVE_NO_PILOTS') });
         pilotListEl.appendChild(note);
       } else {
         pilots.forEach(function (p) {
           var btn = el('button', {
             className: 'btn btn-secondary btn-large',
-            textContent: 'TRANSFER TO ' + p.Callsign
+            textContent: t('TRANSFER_TO', { callsign: p.Callsign })
           });
           btn.addEventListener('click', function () {
             transferAndLeave(p.ID);
@@ -3600,7 +3597,7 @@
       ctx.textBaseline = 'middle';
       ctx.fillText(state.sessionCode, 140, 130);
       ctx.font = '700 16px -apple-system, BlinkMacSystemFont, sans-serif';
-      ctx.fillText('SHARE THIS CODE', 140, 180);
+      ctx.fillText(t('QR_SHARE_CODE'), 140, 180);
     }
   }
 
@@ -4314,6 +4311,26 @@
     initServiceWorker();
     route();
   }
+
+  // ── Language Picker ─────────────────────────────────────────────
+  onI18nReady(function () {
+    var selectors = document.querySelectorAll('.lang-select');
+    selectors.forEach(function (sel) {
+      getSupportedLanguages().forEach(function (code) {
+        var opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = getLanguageName(code);
+        if (code === getCurrentLanguage()) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      sel.addEventListener('change', function () { setLanguage(sel.value); });
+    });
+  });
+
+  // Re-render dynamic content when language changes
+  window.addEventListener('skwad-languagechange', function () {
+    if (state.sessionCode) refreshSession();
+  });
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
