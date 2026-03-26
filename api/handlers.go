@@ -100,12 +100,13 @@ func splitBands(s string) []string {
 
 // Server holds dependencies for the HTTP handlers.
 type Server struct {
-	DB *db.DB
+	DB                  *db.DB
+	GitHubFeedbackToken string
 }
 
-// NewServer creates a new Server with the given database.
-func NewServer(database *db.DB) *Server {
-	return &Server{DB: database}
+// NewServer creates a new Server with the given database and GitHub feedback token.
+func NewServer(database *db.DB, githubFeedbackToken string) *Server {
+	return &Server{DB: database, GitHubFeedbackToken: githubFeedbackToken}
 }
 
 // requireLeader checks the X-Pilot-ID header matches the session leader.

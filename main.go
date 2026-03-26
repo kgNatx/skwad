@@ -31,6 +31,7 @@ func main() {
 	}
 
 	showFPVFCLink := os.Getenv("SHOW_FPVFC_LINK") != "false"
+	githubFeedbackToken := os.Getenv("GITHUB_FEEDBACK_TOKEN")
 
 	database, err := db.New(dbPath)
 	if err != nil {
@@ -52,7 +53,9 @@ func main() {
 		}
 	}()
 
-	srv := api.NewServer(database)
+	go api.StartFeedbackCleanup()
+
+	srv := api.NewServer(database, githubFeedbackToken)
 
 	mux := http.NewServeMux()
 
@@ -169,6 +172,8 @@ func main() {
 	mux.HandleFunc("POST /api/sessions/{code}/add-pilot", func(w http.ResponseWriter, r *http.Request) {
 		srv.HandleAddPilot(w, r, r.PathValue("code"))
 	})
+
+	mux.HandleFunc("POST /api/feedback", srv.HandleFeedback)
 
 	mux.HandleFunc("DELETE /api/pilots/{id}", func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
