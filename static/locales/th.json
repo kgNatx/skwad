@@ -21,6 +21,7 @@
   "FOOTER_FREE_SERVICE": "เป็นบริการฟรีจาก",
   "FOOTER_SUPPORT_PREFIX": "สนับสนุน",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "ความคิดเห็น",
 
   "BTN_NEXT": "ถัดไป",
   "BTN_CANCEL": "ยกเลิก",
@@ -269,6 +270,20 @@
   "FEAT_REBALANCE_RATE": "อัตราการปรับสมดุลใหม่",
   "FEAT_AVG_CHANNEL_CHANGES": "เปลี่ยนช่องเฉลี่ย / เซสชัน",
   "USAGE_LOAD_ERROR": "โหลดข้อมูลการใช้งานไม่สำเร็จ",
+
+  "FEEDBACK_TITLE": "ความคิดเห็น",
+  "FEEDBACK_ANON_NOTE": "Skwad เป็นแบบไม่ระบุตัวตน — เราไม่สามารถติดต่อกลับได้ เว้นแต่คุณจะระบุอีเมล กรุณาอธิบายบั๊กหรือข้อเสนอแนะให้ชัดเจน",
+  "FEEDBACK_CATEGORY_BUG": "บั๊ก",
+  "FEEDBACK_CATEGORY_FEEDBACK": "ความคิดเห็น",
+  "FEEDBACK_CATEGORY_TRANSLATION": "การแปล",
+  "FEEDBACK_PLACEHOLDER_BUG": "อธิบายสิ่งที่เกิดขึ้น...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "คุณอยากให้ปรับปรุงอะไร?",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "คุณต้องการให้รองรับภาษาอะไร?",
+  "FEEDBACK_BTN_BACK": "กลับ",
+  "FEEDBACK_BTN_SUBMIT": "ส่ง",
+  "FEEDBACK_SUCCESS": "ขอบคุณ!",
+  "FEEDBACK_ERROR": "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง",
+  "FEEDBACK_RATE_LIMITED": "กรุณารอสักครู่ก่อนส่งอีกครั้ง",
 
   "ERR_CODE_LENGTH": "รหัสต้องมี 6 ตัวอักษร",
   "ERR_SESSION_NOT_FOUND": "ไม่พบเซสชัน",

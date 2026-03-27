@@ -23,6 +23,7 @@
   "FOOTER_FREE_SERVICE": "is a free service from",
   "FOOTER_SUPPORT_PREFIX": "Please support the",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "Feedback",
 
   "BTN_NEXT": "NEXT",
   "BTN_CANCEL": "CANCEL",
@@ -274,6 +275,20 @@
   "FEAT_REBALANCE_RATE": "Rebalance Rate",
   "FEAT_AVG_CHANNEL_CHANGES": "Avg Ch. Changes / Session",
   "USAGE_LOAD_ERROR": "Failed to load usage data.",
+
+  "FEEDBACK_TITLE": "FEEDBACK",
+  "FEEDBACK_ANON_NOTE": "Skwad is anonymous — we can't follow up unless you include an email address. Please be specific about your bug or feedback.",
+  "FEEDBACK_CATEGORY_BUG": "BUG",
+  "FEEDBACK_CATEGORY_FEEDBACK": "FEEDBACK",
+  "FEEDBACK_CATEGORY_TRANSLATION": "TRANSLATION",
+  "FEEDBACK_PLACEHOLDER_BUG": "Describe what happened...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "What would you like to see improved?",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "What language would you like supported?",
+  "FEEDBACK_BTN_BACK": "BACK",
+  "FEEDBACK_BTN_SUBMIT": "SUBMIT",
+  "FEEDBACK_SUCCESS": "Thanks!",
+  "FEEDBACK_ERROR": "Something went wrong. Please try again.",
+  "FEEDBACK_RATE_LIMITED": "Please wait before submitting again.",
 
   "ERR_CODE_LENGTH": "CODE MUST BE 6 CHARACTERS",
   "ERR_SESSION_NOT_FOUND": "SESSION NOT FOUND",

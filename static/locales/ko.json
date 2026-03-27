@@ -21,6 +21,7 @@
   "FOOTER_FREE_SERVICE": "의 무료 서비스입니다.",
   "FOOTER_SUPPORT_PREFIX": "후원해주세요:",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "피드백",
 
   "BTN_NEXT": "다음",
   "BTN_CANCEL": "취소",
@@ -269,6 +270,20 @@
   "FEAT_REBALANCE_RATE": "리밸런스 비율",
   "FEAT_AVG_CHANNEL_CHANGES": "세션 평균 채널 변경 수",
   "USAGE_LOAD_ERROR": "이용 통계를 불러오지 못했습니다.",
+
+  "FEEDBACK_TITLE": "피드백",
+  "FEEDBACK_ANON_NOTE": "Skwad는 익명입니다. 답변이 필요하시면 이메일 주소를 포함해 주세요. 버그나 피드백을 구체적으로 작성해 주세요.",
+  "FEEDBACK_CATEGORY_BUG": "버그",
+  "FEEDBACK_CATEGORY_FEEDBACK": "피드백",
+  "FEEDBACK_CATEGORY_TRANSLATION": "번역",
+  "FEEDBACK_PLACEHOLDER_BUG": "무슨 일이 있었는지 설명해 주세요...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "어떤 점을 개선하면 좋겠나요?",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "어떤 언어를 지원해 주길 원하시나요?",
+  "FEEDBACK_BTN_BACK": "뒤로",
+  "FEEDBACK_BTN_SUBMIT": "제출",
+  "FEEDBACK_SUCCESS": "감사합니다!",
+  "FEEDBACK_ERROR": "문제가 발생했습니다. 다시 시도해 주세요.",
+  "FEEDBACK_RATE_LIMITED": "잠시 후 다시 제출해 주세요.",
 
   "ERR_CODE_LENGTH": "코드는 6자리여야 합니다",
   "ERR_SESSION_NOT_FOUND": "세션을 찾을 수 없습니다",

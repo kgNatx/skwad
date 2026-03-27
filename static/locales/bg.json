@@ -21,6 +21,7 @@
   "FOOTER_FREE_SERVICE": "е безплатна услуга от",
   "FOOTER_SUPPORT_PREFIX": "Подкрепете",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "Отзив",
 
   "BTN_NEXT": "НАПРЕД",
   "BTN_CANCEL": "ОТКАЗ",
@@ -272,6 +273,20 @@
   "FEAT_REBALANCE_RATE": "Честота на преразпределяне",
   "FEAT_AVG_CHANNEL_CHANGES": "Средно смени на канал / сесия",
   "USAGE_LOAD_ERROR": "Грешка при зареждане на данните.",
+
+  "FEEDBACK_TITLE": "ОТЗИВИ",
+  "FEEDBACK_ANON_NOTE": "Skwad е анонимен — не можем да се свържем с вас, освен ако не включите имейл адрес. Моля, бъдете конкретни.",
+  "FEEDBACK_CATEGORY_BUG": "БЪГ",
+  "FEEDBACK_CATEGORY_FEEDBACK": "ОТЗИВ",
+  "FEEDBACK_CATEGORY_TRANSLATION": "ПРЕВОД",
+  "FEEDBACK_PLACEHOLDER_BUG": "Опишете какво се случи...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "Какво бихте искали да подобрим?",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "Кой език бихте искали да бъде добавен?",
+  "FEEDBACK_BTN_BACK": "НАЗАД",
+  "FEEDBACK_BTN_SUBMIT": "ИЗПРАТИ",
+  "FEEDBACK_SUCCESS": "Благодарим!",
+  "FEEDBACK_ERROR": "Нещо се обърка. Моля, опитайте отново.",
+  "FEEDBACK_RATE_LIMITED": "Моля, изчакайте преди да изпратите отново.",
 
   "ERR_CODE_LENGTH": "КОДЪТ ТРЯБВА ДА Е 6 СИМВОЛА",
   "ERR_SESSION_NOT_FOUND": "СЕСИЯТА НЕ Е НАМЕРЕНА",

@@ -21,6 +21,7 @@
   "FOOTER_FREE_SERVICE": "è un servizio gratuito di",
   "FOOTER_SUPPORT_PREFIX": "Supporta la",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "Feedback",
 
   "BTN_NEXT": "AVANTI",
   "BTN_CANCEL": "ANNULLA",
@@ -272,6 +273,20 @@
   "FEAT_REBALANCE_RATE": "Frequenza ribilanciamento",
   "FEAT_AVG_CHANNEL_CHANGES": "Cambi canale medi / sessione",
   "USAGE_LOAD_ERROR": "Impossibile caricare i dati di utilizzo.",
+
+  "FEEDBACK_TITLE": "FEEDBACK",
+  "FEEDBACK_ANON_NOTE": "Skwad è anonimo — non possiamo ricontattarti a meno che tu non includa un indirizzo email. Sii specifico riguardo al bug o al feedback.",
+  "FEEDBACK_CATEGORY_BUG": "BUG",
+  "FEEDBACK_CATEGORY_FEEDBACK": "FEEDBACK",
+  "FEEDBACK_CATEGORY_TRANSLATION": "TRADUZIONE",
+  "FEEDBACK_PLACEHOLDER_BUG": "Descrivi cosa è successo...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "Cosa vorresti vedere migliorato?",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "Quale lingua vorresti fosse supportata?",
+  "FEEDBACK_BTN_BACK": "INDIETRO",
+  "FEEDBACK_BTN_SUBMIT": "INVIA",
+  "FEEDBACK_SUCCESS": "Grazie!",
+  "FEEDBACK_ERROR": "Qualcosa è andato storto. Riprova.",
+  "FEEDBACK_RATE_LIMITED": "Attendi prima di inviare di nuovo.",
 
   "ERR_CODE_LENGTH": "IL CODICE DEVE ESSERE DI 6 CARATTERI",
   "ERR_SESSION_NOT_FOUND": "SESSIONE NON TROVATA",

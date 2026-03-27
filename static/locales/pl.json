@@ -21,6 +21,7 @@
   "FOOTER_FREE_SERVICE": "to darmowa usługa od",
   "FOOTER_SUPPORT_PREFIX": "Wesprzyj",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "Opinia",
 
   "BTN_NEXT": "DALEJ",
   "BTN_CANCEL": "ANULUJ",
@@ -278,6 +279,20 @@
   "FEAT_REBALANCE_RATE": "Wskaźnik Zrównoważeń",
   "FEAT_AVG_CHANNEL_CHANGES": "Śr. Zmian Kanału / Sesja",
   "USAGE_LOAD_ERROR": "Nie udało się załadować danych.",
+
+  "FEEDBACK_TITLE": "OPINIE",
+  "FEEDBACK_ANON_NOTE": "Skwad jest anonimowy — nie możemy się z Tobą skontaktować, chyba że podasz adres e-mail. Opisz swój problem lub sugestię jak najdokładniej.",
+  "FEEDBACK_CATEGORY_BUG": "BŁĄD",
+  "FEEDBACK_CATEGORY_FEEDBACK": "OPINIA",
+  "FEEDBACK_CATEGORY_TRANSLATION": "TŁUMACZENIE",
+  "FEEDBACK_PLACEHOLDER_BUG": "Opisz, co się stało...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "Co chciałbyś, żebyśmy poprawili?",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "Jaki język chciałbyś, żebyśmy dodali?",
+  "FEEDBACK_BTN_BACK": "WSTECZ",
+  "FEEDBACK_BTN_SUBMIT": "WYŚLIJ",
+  "FEEDBACK_SUCCESS": "Dziękujemy!",
+  "FEEDBACK_ERROR": "Coś poszło nie tak. Spróbuj ponownie.",
+  "FEEDBACK_RATE_LIMITED": "Poczekaj chwilę przed ponownym wysłaniem.",
 
   "ERR_CODE_LENGTH": "KOD MUSI MIEĆ 6 ZNAKÓW",
   "ERR_SESSION_NOT_FOUND": "SESJA NIE ZNALEZIONA",

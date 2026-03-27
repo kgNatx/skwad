@@ -21,6 +21,7 @@
   "FOOTER_FREE_SERVICE": "は無料サービスです。提供：",
   "FOOTER_SUPPORT_PREFIX": "ぜひ支援してください：",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "フィードバック",
 
   "BTN_NEXT": "次へ",
   "BTN_CANCEL": "キャンセル",
@@ -269,6 +270,20 @@
   "FEAT_REBALANCE_RATE": "リバランス率",
   "FEAT_AVG_CHANNEL_CHANGES": "セッション平均チャンネル変更数",
   "USAGE_LOAD_ERROR": "利用統計の読み込みに失敗しました。",
+
+  "FEEDBACK_TITLE": "フィードバック",
+  "FEEDBACK_ANON_NOTE": "Skwadは匿名です。返信が必要な場合はメールアドレスを記載してください。バグやフィードバックはできるだけ具体的にお願いします。",
+  "FEEDBACK_CATEGORY_BUG": "バグ",
+  "FEEDBACK_CATEGORY_FEEDBACK": "フィードバック",
+  "FEEDBACK_CATEGORY_TRANSLATION": "翻訳",
+  "FEEDBACK_PLACEHOLDER_BUG": "何が起きたか説明してください...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "改善してほしいことは何ですか？",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "どの言語に対応してほしいですか？",
+  "FEEDBACK_BTN_BACK": "戻る",
+  "FEEDBACK_BTN_SUBMIT": "送信",
+  "FEEDBACK_SUCCESS": "ありがとうございます！",
+  "FEEDBACK_ERROR": "エラーが発生しました。もう一度お試しください。",
+  "FEEDBACK_RATE_LIMITED": "しばらく待ってから再送信してください。",
 
   "ERR_CODE_LENGTH": "コードは6文字で入力してください",
   "ERR_SESSION_NOT_FOUND": "セッションが見つかりません",

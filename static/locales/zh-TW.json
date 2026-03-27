@@ -21,6 +21,7 @@
   "FOOTER_FREE_SERVICE": "是一項免費服務，由",
   "FOOTER_SUPPORT_PREFIX": "請支持",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "回饋",
 
   "BTN_NEXT": "下一步",
   "BTN_CANCEL": "取消",
@@ -269,6 +270,20 @@
   "FEAT_REBALANCE_RATE": "重新平衡比例",
   "FEAT_AVG_CHANNEL_CHANGES": "每場平均頻道變更數",
   "USAGE_LOAD_ERROR": "無法載入使用統計資料。",
+
+  "FEEDBACK_TITLE": "回饋",
+  "FEEDBACK_ANON_NOTE": "Skwad 是匿名的——除非你提供電子郵件地址，否則我們無法回覆。請盡量詳細描述你的問題或建議。",
+  "FEEDBACK_CATEGORY_BUG": "BUG",
+  "FEEDBACK_CATEGORY_FEEDBACK": "回饋",
+  "FEEDBACK_CATEGORY_TRANSLATION": "翻譯",
+  "FEEDBACK_PLACEHOLDER_BUG": "描述發生了什麼...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "你希望改進什麼？",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "你希望支援什麼語言？",
+  "FEEDBACK_BTN_BACK": "返回",
+  "FEEDBACK_BTN_SUBMIT": "提交",
+  "FEEDBACK_SUCCESS": "謝謝！",
+  "FEEDBACK_ERROR": "發生錯誤，請重試。",
+  "FEEDBACK_RATE_LIMITED": "請稍後再提交。",
 
   "ERR_CODE_LENGTH": "代碼必須為 6 個字元",
   "ERR_SESSION_NOT_FOUND": "找不到場次",

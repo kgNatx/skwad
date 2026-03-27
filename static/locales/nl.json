@@ -21,6 +21,7 @@
   "FOOTER_FREE_SERVICE": "is een gratis dienst van",
   "FOOTER_SUPPORT_PREFIX": "Steun de",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "Feedback",
 
   "BTN_NEXT": "VOLGENDE",
   "BTN_CANCEL": "ANNULEREN",
@@ -272,6 +273,20 @@
   "FEAT_REBALANCE_RATE": "Herbalanceringspercentage",
   "FEAT_AVG_CHANNEL_CHANGES": "Gem. Kanaalwisselingen / Sessie",
   "USAGE_LOAD_ERROR": "Gebruiksdata laden mislukt.",
+
+  "FEEDBACK_TITLE": "FEEDBACK",
+  "FEEDBACK_ANON_NOTE": "Skwad is anoniem — we kunnen niet reageren tenzij je een e-mailadres toevoegt. Wees specifiek over je bug of feedback.",
+  "FEEDBACK_CATEGORY_BUG": "BUG",
+  "FEEDBACK_CATEGORY_FEEDBACK": "FEEDBACK",
+  "FEEDBACK_CATEGORY_TRANSLATION": "VERTALING",
+  "FEEDBACK_PLACEHOLDER_BUG": "Beschrijf wat er gebeurde...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "Wat zou je graag verbeterd zien?",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "Welke taal zou je willen toevoegen?",
+  "FEEDBACK_BTN_BACK": "TERUG",
+  "FEEDBACK_BTN_SUBMIT": "VERSTUREN",
+  "FEEDBACK_SUCCESS": "Bedankt!",
+  "FEEDBACK_ERROR": "Er ging iets mis. Probeer het opnieuw.",
+  "FEEDBACK_RATE_LIMITED": "Wacht even voordat je opnieuw verstuurt.",
 
   "ERR_CODE_LENGTH": "CODE MOET 6 TEKENS ZIJN",
   "ERR_SESSION_NOT_FOUND": "SESSIE NIET GEVONDEN",

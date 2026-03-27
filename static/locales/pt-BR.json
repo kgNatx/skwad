@@ -21,6 +21,7 @@
   "FOOTER_FREE_SERVICE": "é um serviço gratuito de",
   "FOOTER_SUPPORT_PREFIX": "Apoie a",
   "FOOTER_FPVFC": "FPV Freedom Coalition",
+  "FOOTER_FEEDBACK": "Feedback",
 
   "BTN_NEXT": "PRÓXIMO",
   "BTN_CANCEL": "CANCELAR",
@@ -272,6 +273,20 @@
   "FEAT_REBALANCE_RATE": "Taxa de Rebalanceamento",
   "FEAT_AVG_CHANNEL_CHANGES": "Média de Mudanças de Canal / Sessão",
   "USAGE_LOAD_ERROR": "Falha ao carregar dados de uso.",
+
+  "FEEDBACK_TITLE": "FEEDBACK",
+  "FEEDBACK_ANON_NOTE": "O Skwad é anônimo — não podemos entrar em contato a menos que você inclua um endereço de e-mail. Seja específico sobre seu bug ou feedback.",
+  "FEEDBACK_CATEGORY_BUG": "BUG",
+  "FEEDBACK_CATEGORY_FEEDBACK": "FEEDBACK",
+  "FEEDBACK_CATEGORY_TRANSLATION": "TRADUÇÃO",
+  "FEEDBACK_PLACEHOLDER_BUG": "Descreva o que aconteceu...",
+  "FEEDBACK_PLACEHOLDER_FEEDBACK": "O que você gostaria de ver melhorado?",
+  "FEEDBACK_PLACEHOLDER_TRANSLATION": "Qual idioma você gostaria que fosse adicionado?",
+  "FEEDBACK_BTN_BACK": "VOLTAR",
+  "FEEDBACK_BTN_SUBMIT": "ENVIAR",
+  "FEEDBACK_SUCCESS": "Obrigado!",
+  "FEEDBACK_ERROR": "Algo deu errado. Tente novamente.",
+  "FEEDBACK_RATE_LIMITED": "Aguarde antes de enviar novamente.",
 
   "ERR_CODE_LENGTH": "CÓDIGO DEVE TER 6 CARACTERES",
   "ERR_SESSION_NOT_FOUND": "SESSÃO NÃO ENCONTRADA",
