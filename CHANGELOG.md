@@ -4,6 +4,12 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.6.3] - 2026-03-27
+
+### Added
+- **In-app feedback form.** "Feedback" link in landing page and QR overlay footers opens a feedback screen. Users choose a category (Bug, Feedback, or Translation), type a message, and submit. Submissions create GitHub issues on the `kgNatx/skwad` repo with auto-captured context (session state, video system, language, etc.). Rate limited to one submission per 60 seconds per IP.
+- All feedback UI strings translated in all 14 supported languages.
+
 ## [0.6.2] - 2026-03-23
 
 ### Added
