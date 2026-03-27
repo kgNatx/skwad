@@ -71,7 +71,7 @@
       </div>
       <!-- Keep this footer in sync with the QR overlay footer -->
       <div class="landing-footer">
-        <div><a href="/changelog.html" class="footer-link" data-i18n="FOOTER_WHATS_NEW">What's New</a> · <a href="/freq-guide.html" class="footer-link" data-i18n="FOOTER_FREQ_GUIDE">Freq Guide</a></div>
+        <div><a href="/changelog.html" class="footer-link" data-i18n="FOOTER_WHATS_NEW">What's New</a> · <a href="/freq-guide.html" class="footer-link" data-i18n="FOOTER_FREQ_GUIDE">Freq Guide</a> · <a href="#" id="link-feedback" class="footer-link" data-i18n="FOOTER_FEEDBACK">Feedback</a></div>
         <div><a href="https://github.com/kgNatx/skwad" class="footer-link">SKWAD</a> <span data-i18n="FOOTER_FREE_SERVICE">is a free service from</span> <a href="https://atxfpv.org" class="footer-link">ATXFPV.org</a></div>
         <div id="fpvfc-link" class="hidden"><span data-i18n="FOOTER_SUPPORT_PREFIX">Please support the</span> <a href="https://fpvfc.org/take-action" class="footer-link" data-i18n="FOOTER_FPVFC">FPV Freedom Coalition</a></div>
         <div class="lang-picker"><select id="lang-select" class="lang-select"></select></div>
@@ -560,7 +560,7 @@
       <button id="btn-qr-close" class="btn btn-secondary btn-large" data-i18n="BTN_CLOSE">CLOSE</button>
       <!-- Keep this footer in sync with the landing page footer -->
       <div class="landing-footer qr-footer">
-        <div><a href="/changelog.html" class="footer-link" data-i18n="FOOTER_WHATS_NEW">What's New</a> · <a href="/freq-guide.html" class="footer-link" data-i18n="FOOTER_FREQ_GUIDE">Freq Guide</a></div>
+        <div><a href="/changelog.html" class="footer-link" data-i18n="FOOTER_WHATS_NEW">What's New</a> · <a href="/freq-guide.html" class="footer-link" data-i18n="FOOTER_FREQ_GUIDE">Freq Guide</a> · <a href="#" id="link-feedback-qr" class="footer-link" data-i18n="FOOTER_FEEDBACK">Feedback</a></div>
         <div><a href="https://github.com/kgNatx/skwad" class="footer-link">SKWAD</a> <span data-i18n="FOOTER_FREE_SERVICE">is a free service from</span> <a href="https://atxfpv.org" class="footer-link">ATXFPV.org</a></div>
         <div id="fpvfc-link-qr" class="hidden"><span data-i18n="FOOTER_SUPPORT_PREFIX">Please support the</span> <a href="https://fpvfc.org/take-action" class="footer-link" data-i18n="FOOTER_FPVFC">FPV Freedom Coalition</a></div>
         <div class="lang-picker"><select id="lang-select-qr" class="lang-select"></select></div>
@@ -576,6 +576,29 @@
         <video id="qr-video" class="qr-video" playsinline></video>
       </div>
       <button id="btn-scanner-close" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Feedback -->
+  <div id="screen-feedback" class="screen hidden">
+    <div class="feedback-content">
+      <button id="btn-feedback-back" class="btn btn-secondary feedback-back" data-i18n="FEEDBACK_BTN_BACK">BACK</button>
+
+      <h2 class="feedback-title" data-i18n="FEEDBACK_TITLE">FEEDBACK</h2>
+
+      <div class="feedback-categories">
+        <button class="btn btn-system feedback-cat" data-type="bug" data-i18n="FEEDBACK_CATEGORY_BUG">BUG</button>
+        <button class="btn btn-system feedback-cat selected" data-type="feedback" data-i18n="FEEDBACK_CATEGORY_FEEDBACK">FEEDBACK</button>
+        <button class="btn btn-system feedback-cat" data-type="translation" data-i18n="FEEDBACK_CATEGORY_TRANSLATION">TRANSLATION</button>
+      </div>
+
+      <p class="feedback-note" data-i18n="FEEDBACK_ANON_NOTE">Skwad is anonymous — we can't follow up unless you include an email address. Please be specific about your bug or feedback.</p>
+
+      <textarea id="feedback-text" class="feedback-textarea" rows="5" maxlength="2000" data-i18n-placeholder="FEEDBACK_PLACEHOLDER_FEEDBACK" placeholder="What would you like to see improved?"></textarea>
+
+      <button id="btn-feedback-submit" class="btn btn-primary btn-large" disabled data-i18n="FEEDBACK_BTN_SUBMIT">SUBMIT</button>
+
+      <p id="feedback-status" class="feedback-status hidden"></p>
     </div>
   </div>
 
