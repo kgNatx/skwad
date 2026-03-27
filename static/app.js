@@ -48,6 +48,9 @@
     fixedChannels: '',
     // Pending power ceiling (mW) chosen in power step, 0 = no limit, -1 = not yet set
     pendingPowerMW: 0,
+    // Feedback form
+    feedbackReturnTo: null, // 'landing' or 'qr-overlay'
+    feedbackType: 'feedback', // 'bug', 'feedback', or 'translation'
   };
 
   // ── Buddy group colors ────────────────────────────────────────
@@ -286,12 +289,116 @@
     landing: $('screen-landing'),
     setup: $('screen-setup'),
     session: $('screen-session'),
+    feedback: $('screen-feedback'),
   };
 
   // ── Helpers ───────────────────────────────────────────────────
   function showScreen(name) {
     Object.values(screens).forEach((s) => s.classList.add('hidden'));
     screens[name].classList.remove('hidden');
+  }
+
+  // ── Feedback helpers ──────────────────────────────────────────
+  const FEEDBACK_PLACEHOLDERS = {
+    bug: 'FEEDBACK_PLACEHOLDER_BUG',
+    feedback: 'FEEDBACK_PLACEHOLDER_FEEDBACK',
+    translation: 'FEEDBACK_PLACEHOLDER_TRANSLATION',
+  };
+
+  function updateFeedbackPlaceholder() {
+    var textarea = $('feedback-text');
+    var key = FEEDBACK_PLACEHOLDERS[state.feedbackType];
+    textarea.placeholder = t(key);
+    textarea.setAttribute('data-i18n-placeholder', key);
+  }
+
+  function collectFeedbackContext() {
+    var ctx = {
+      page: state.feedbackReturnTo || 'landing',
+      language: localStorage.getItem('skwad-lang') || navigator.language || 'en',
+      user_agent: navigator.userAgent,
+      timestamp: new Date().toISOString(),
+    };
+    if (state.sessionCode) {
+      ctx.session_code = state.sessionCode;
+      var pilotCards = document.querySelectorAll('.pilot-card');
+      ctx.pilot_count = pilotCards.length;
+      if (state.sessionPowerCeiling) {
+        ctx.power_ceiling_mw = state.sessionPowerCeiling;
+      }
+      if (state.videoSystem) {
+        ctx.video_system = state.videoSystem;
+      }
+    }
+    return ctx;
+  }
+
+  function openFeedbackScreen() {
+    // Reset form state
+    state.feedbackType = 'feedback';
+    $('feedback-text').value = '';
+    $('btn-feedback-submit').disabled = true;
+    $('btn-feedback-submit').textContent = t('FEEDBACK_BTN_SUBMIT');
+    $('feedback-status').classList.add('hidden');
+    $('feedback-status').classList.remove('success', 'error');
+
+    // Reset category selection
+    document.querySelectorAll('.feedback-cat').forEach(function (b) { b.classList.remove('selected'); });
+    document.querySelector('.feedback-cat[data-type="feedback"]').classList.add('selected');
+    updateFeedbackPlaceholder();
+
+    showScreen('feedback');
+  }
+
+  function closeFeedbackScreen() {
+    if (state.feedbackReturnTo === 'qr-overlay') {
+      showScreen('session');
+      $('qr-overlay').classList.remove('hidden');
+    } else {
+      showScreen('landing');
+    }
+    state.feedbackReturnTo = null;
+  }
+
+  function submitFeedback() {
+    var msg = $('feedback-text').value.trim();
+    if (!msg) return;
+
+    var btn = $('btn-feedback-submit');
+    btn.disabled = true;
+
+    var payload = {
+      type: state.feedbackType,
+      message: msg,
+      context: collectFeedbackContext(),
+    };
+
+    fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(function (resp) {
+        if (resp.status === 429) {
+          showFeedbackStatus(t('FEEDBACK_RATE_LIMITED'), 'error');
+          btn.disabled = false;
+          return;
+        }
+        if (!resp.ok) throw new Error('status ' + resp.status);
+        showFeedbackStatus(t('FEEDBACK_SUCCESS'), 'success');
+        setTimeout(closeFeedbackScreen, 2000);
+      })
+      .catch(function () {
+        showFeedbackStatus(t('FEEDBACK_ERROR'), 'error');
+        btn.disabled = false;
+      });
+  }
+
+  function showFeedbackStatus(text, type) {
+    var el = $('feedback-status');
+    el.textContent = text;
+    el.classList.remove('hidden', 'success', 'error');
+    el.classList.add(type);
   }
 
   function showStep(stepId) {
@@ -577,6 +684,13 @@
     }
     $('btn-scan-qr').addEventListener('click', openQRScanner);
     $('btn-scanner-close').addEventListener('click', closeQRScanner);
+
+    // Feedback link on landing page
+    $('link-feedback').addEventListener('click', function (e) {
+      e.preventDefault();
+      state.feedbackReturnTo = 'landing';
+      openFeedbackScreen();
+    });
   }
 
   var scannerStream = null;
@@ -4286,6 +4400,39 @@
     }
   }
 
+  function initFeedbackScreen() {
+    // Feedback link on QR overlay
+    $('link-feedback-qr').addEventListener('click', function (e) {
+      e.preventDefault();
+      state.feedbackReturnTo = 'qr-overlay';
+      $('qr-overlay').classList.add('hidden');
+      openFeedbackScreen();
+    });
+
+    // Feedback back button
+    $('btn-feedback-back').addEventListener('click', function () {
+      closeFeedbackScreen();
+    });
+
+    // Feedback category buttons
+    document.querySelectorAll('.feedback-cat').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.feedback-cat').forEach(function (b) { b.classList.remove('selected'); });
+        btn.classList.add('selected');
+        state.feedbackType = btn.getAttribute('data-type');
+        updateFeedbackPlaceholder();
+      });
+    });
+
+    // Feedback textarea — enable/disable submit
+    $('feedback-text').addEventListener('input', function () {
+      $('btn-feedback-submit').disabled = !this.value.trim();
+    });
+
+    // Feedback submit
+    $('btn-feedback-submit').addEventListener('click', submitFeedback);
+  }
+
   function init() {
     initLanding();
     initCallsignStep();
@@ -4308,6 +4455,7 @@
     initAddPilotDialog();
     initLeaderLeaveDialog();
     initInstallBanner();
+    initFeedbackScreen();
     initServiceWorker();
     route();
   }
