@@ -139,7 +139,7 @@ func buildTitle(fbType, msg string) string {
 
 	// Truncate at word boundary.
 	truncated := msg[:maxBody]
-	if idx := strings.LastIndex(truncated, " "); idx > 0 {
+	if idx := strings.LastIndex(truncated, " "); idx > maxBody/2 {
 		truncated = truncated[:idx]
 	}
 	return prefix + truncated + "..."
@@ -179,9 +179,9 @@ func formatContext(raw json.RawMessage) string {
 	}
 	fields := []field{
 		{"page", "Page"},
-		{"session", "Session"},
-		{"pilots", "Pilots"},
-		{"power_ceiling", "Power Ceiling"},
+		{"session_code", "Session"},
+		{"pilot_count", "Pilots"},
+		{"power_ceiling_mw", "Power Ceiling"},
 		{"video_system", "Video System"},
 		{"language", "Language"},
 		{"user_agent", "User-Agent"},
@@ -246,6 +246,7 @@ func createGitHubIssue(token, title, body, label string) error {
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
 	resp, err := client.Do(req)
 	if err != nil {
