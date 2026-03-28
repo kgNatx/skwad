@@ -4,6 +4,11 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.7.0] — 2026-03-28
+
+### Added
+- **Spotter role**: Join a session as a spotter/observer without consuming a frequency slot. Spotters can lead sessions, manage pilots, and switch to a flying video system at any time.
+
 ## [0.6.3] - 2026-03-27
 
 ### Added
