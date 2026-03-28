@@ -194,6 +194,7 @@
     walksnail_std: 'SYS_WALKSNAIL',
     walksnail_race: 'SYS_WALKSNAIL_RACE',
     openipc: 'SYS_OPENIPC',
+    spotter: 'SYS_SPOTTER',
   };
 
   // ── Channel tables (mirrors Go freq/tables.go) ────────────────
@@ -1277,7 +1278,7 @@
     resetOptionButtons();
 
     // Systems with no follow-ups go straight to channel pref
-    if (['hdzero', 'openipc'].includes(system)) {
+    if (['hdzero', 'openipc', 'spotter'].includes(system)) {
       goToChannelStep();
       return;
     }
@@ -1500,6 +1501,12 @@
   var previewPilots = []; // Cached pilots for spectrum preview on channel step
 
   function goToChannelStep() {
+    if (state.videoSystem === 'spotter') {
+      state.preferredFreqMHz = 0;
+      showStep('step-channel');
+      updateJoinButtonState();
+      return;
+    }
     state.preferredFreqMHz = 0;
     showStep('step-channel');
     $('btn-auto-assign').classList.add('active');
@@ -3344,7 +3351,7 @@
 
   // ── Add Pilot Dialog ────────────────────────────────────────
   // Systems that need no follow-up options.
-  var SIMPLE_SYSTEMS = ['hdzero', 'openipc', 'walksnail_race'];
+  var SIMPLE_SYSTEMS = ['hdzero', 'openipc', 'walksnail_race', 'spotter'];
   // Systems that need FCC toggle only.
   var FCC_SYSTEMS = ['dji_v1', 'walksnail_std'];
   // Systems that need FCC + bandwidth.
