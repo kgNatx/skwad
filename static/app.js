@@ -2521,6 +2521,19 @@
 
   // ── Channel Change Options (self) ──────────────────────────
   function showChannelChangeOptions() {
+    // Spotters go straight to video system change
+    if (state.videoSystem === 'spotter') {
+      state._changingVideoSystem = true;
+      state.videoSystem = '';
+      state.fccUnlocked = false;
+      state.goggles = '';
+      state.bandwidthMHz = 0;
+      state.raceMode = false;
+      state.walksnailMode = '';
+      showScreen('setup');
+      showStep('step-video');
+      return;
+    }
     $('channel-change-options').style.display = '';
   }
 
@@ -2844,6 +2857,17 @@
     clearChildren(picker);
     channelChangeSelectedFreq = 0;
 
+    if (pilot.VideoSystem === 'spotter') {
+      $('channel-change-title').textContent = t('CHANGE_CHANNEL_FOR', { callsign: pilot.Callsign });
+      $('btn-auto-reassign').classList.add('hidden');
+      $('btn-change-video-system').classList.remove('hidden');
+      state._changeVideoSystemPilot = pilot;
+      $('btn-confirm-channel-change').classList.add('hidden');
+      state._channelChangeForPilot = pilot.ID;
+      $('channel-change').classList.remove('hidden');
+      return;
+    }
+
     var pool = filterPoolToFixedChannels(getChannelPoolForPilot(pilot));
     var pilotBw = pilot.BandwidthMHz || 0;
 
@@ -2882,8 +2906,8 @@
     // Update the title and hide self-only buttons.
     $('channel-change-title').textContent = t('CHANGE_CHANNEL_FOR', { callsign: pilot.Callsign });
     $('btn-auto-reassign').classList.add('hidden');
-    // Show video system change for leader-added pilots
-    if (pilot.AddedByLeader && state.isLeader) {
+    // Show video system change for leader-added pilots or spotters
+    if ((pilot.VideoSystem === 'spotter' || pilot.AddedByLeader) && state.isLeader) {
       $('btn-change-video-system').classList.remove('hidden');
       state._changeVideoSystemPilot = pilot;
     } else {
