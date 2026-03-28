@@ -2,7 +2,7 @@
 // Skwad is a live-data app so we don't cache aggressively —
 // just enough to satisfy the PWA install criteria.
 
-const CACHE_NAME = 'skwad-v35';
+const CACHE_NAME = 'skwad-v36';
 const PRECACHE = [
   '/',
   '/style.css',
@@ -13,6 +13,7 @@ const PRECACHE = [
   '/icon-192.png',
   '/icon-512.png',
   '/manifest.json',
+  '/locales/en.json',
 ];
 
 self.addEventListener('install', function (e) {
