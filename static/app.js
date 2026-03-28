@@ -2240,10 +2240,10 @@
     spotters.sort(function (a, b) { return a.Callsign.localeCompare(b.Callsign); });
     pilots = flyers.concat(spotters);
 
-    // Build buddy group map for "sharing with" labels
+    // Build buddy group map for "sharing with" labels (exclude spotters)
     var buddyGroups = {};
     pilots.forEach(function (p) {
-      if (p.BuddyGroup && p.BuddyGroup > 0) {
+      if (p.VideoSystem !== 'spotter' && p.BuddyGroup && p.BuddyGroup > 0) {
         if (!buddyGroups[p.BuddyGroup]) buddyGroups[p.BuddyGroup] = [];
         buddyGroups[p.BuddyGroup].push(p);
       }
@@ -2265,7 +2265,7 @@
       }
 
       var isMe = p.ID === state.pilotId;
-      var buddyIdx = p.BuddyGroup > 0 ? ((p.BuddyGroup - 1) % 8) + 1 : 0;
+      var buddyIdx = (p.VideoSystem !== 'spotter' && p.BuddyGroup > 0) ? ((p.BuddyGroup - 1) % 8) + 1 : 0;
 
       if (isMe) {
         card.classList.add('is-me');
