@@ -1187,6 +1187,28 @@ body {
   animation: conflict-pulse 1.5s ease-in-out infinite;
 }
 
+/* ===== SPOTTER CARDS ===== */
+.pilot-card.is-spotter {
+  opacity: 0.6;
+}
+
+.spotter-freq-block {
+  justify-content: center;
+}
+
+.spotter-label {
+  font-size: 14px;
+  color: #888;
+  letter-spacing: 1px;
+}
+
+.spotter-divider {
+  width: 100%;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 8px 0;
+}
+
 /* ===== TAPPABLE OTHER PILOT ===== */
 .pilot-card.is-other {
   cursor: pointer;

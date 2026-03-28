@@ -2233,8 +2233,12 @@
       return;
     }
 
-    // Sort by frequency (lowest first)
-    pilots.sort(function (a, b) { return (a.AssignedFreqMHz || 0) - (b.AssignedFreqMHz || 0); });
+    // Sort flyers by frequency, spotters alphabetically at end
+    var flyers = pilots.filter(function (p) { return p.VideoSystem !== 'spotter'; });
+    var spotters = pilots.filter(function (p) { return p.VideoSystem === 'spotter'; });
+    flyers.sort(function (a, b) { return (a.AssignedFreqMHz || 0) - (b.AssignedFreqMHz || 0); });
+    spotters.sort(function (a, b) { return a.Callsign.localeCompare(b.Callsign); });
+    pilots = flyers.concat(spotters);
 
     // Build buddy group map for "sharing with" labels
     var buddyGroups = {};
@@ -2248,9 +2252,17 @@
     // Compute IMD hit pilots (after sort, so indices match the sorted order)
     var imdHitSet = getIMDHitPilots(pilots);
 
+    var spotterDividerAdded = false;
     pilots.forEach(function (p, pilotIdx) {
+      if (p.VideoSystem === 'spotter' && !spotterDividerAdded && flyers.length > 0) {
+        spotterDividerAdded = true;
+        container.appendChild(el('div', { className: 'spotter-divider' }));
+      }
       var card = document.createElement('div');
       card.className = 'pilot-card';
+      if (p.VideoSystem === 'spotter') {
+        card.classList.add('is-spotter');
+      }
 
       var isMe = p.ID === state.pilotId;
       var buddyIdx = p.BuddyGroup > 0 ? ((p.BuddyGroup - 1) % 8) + 1 : 0;
@@ -2274,39 +2286,48 @@
       }
 
       // Determine worst conflict level for card styling
-      var conflicts = p.Conflicts || p.conflicts || [];
+      var conflicts = [];
       var worstLevel = null;
-      conflicts.forEach(function (c) {
-        if (c.level === 'danger' || c.Level === 'danger') worstLevel = 'danger';
-        else if (!worstLevel && (c.level === 'warning' || c.Level === 'warning')) worstLevel = 'warning';
-      });
-      if (worstLevel === 'danger') {
-        card.classList.add('has-conflict-danger');
-      } else if (worstLevel === 'warning') {
-        card.classList.add('has-conflict-warning');
+      if (p.VideoSystem !== 'spotter') {
+        conflicts = p.Conflicts || p.conflicts || [];
+        conflicts.forEach(function (c) {
+          if (c.level === 'danger' || c.Level === 'danger') worstLevel = 'danger';
+          else if (!worstLevel && (c.level === 'warning' || c.Level === 'warning')) worstLevel = 'warning';
+        });
+        if (worstLevel === 'danger') {
+          card.classList.add('has-conflict-danger');
+        } else if (worstLevel === 'warning') {
+          card.classList.add('has-conflict-warning');
+        }
       }
 
       // Frequency block — frequency prominent, channel name + bandwidth below
-      var freqEl = el('div', { className: 'pilot-freq' });
-      if (p.AssignedFreqMHz) {
-        freqEl.appendChild(document.createTextNode(String(p.AssignedFreqMHz)));
-        freqEl.appendChild(el('span', { className: 'pilot-freq-unit', textContent: ' ' + t('UNIT_MHZ') }));
+      var freqBlock;
+      if (p.VideoSystem === 'spotter') {
+        freqBlock = el('div', { className: 'pilot-freq-block spotter-freq-block' }, [
+          el('div', { className: 'pilot-freq spotter-label', textContent: t('SYS_SPOTTER') })
+        ]);
       } else {
-        freqEl.textContent = '\u2014';
+        var freqEl = el('div', { className: 'pilot-freq' });
+        if (p.AssignedFreqMHz) {
+          freqEl.appendChild(document.createTextNode(String(p.AssignedFreqMHz)));
+          freqEl.appendChild(el('span', { className: 'pilot-freq-unit', textContent: ' ' + t('UNIT_MHZ') }));
+        } else {
+          freqEl.textContent = '\u2014';
+        }
+        var channelLabel = p.AssignedChannel || '';
+        var bw = p.BandwidthMHz || 0;
+        if ((p.VideoSystem === 'dji_o3' || p.VideoSystem === 'dji_o4') && bw > 0) {
+          channelLabel += ' (' + bw + 'M)';
+        }
+        var chEl = el('div', { className: 'pilot-channel', textContent: channelLabel });
+        if (channelLabel) fitText(chEl, 15, 10);
+        var freqBlockChildren = [freqEl, chEl];
+        if (buddyIdx > 0) {
+          freqBlockChildren.push(el('span', { className: 'pilot-buddy-badge buddy-badge-' + buddyIdx, textContent: t('BADGE_BUDDIES') }));
+        }
+        freqBlock = el('div', { className: 'pilot-freq-block' }, freqBlockChildren);
       }
-      var channelLabel = p.AssignedChannel || '';
-      // Disambiguate DJI O3/O4 channel names by appending bandwidth
-      var bw = p.BandwidthMHz || 0;
-      if ((p.VideoSystem === 'dji_o3' || p.VideoSystem === 'dji_o4') && bw > 0) {
-        channelLabel += ' (' + bw + 'M)';
-      }
-      var chEl = el('div', { className: 'pilot-channel', textContent: channelLabel });
-      if (channelLabel) fitText(chEl, 15, 10);
-      var freqBlockChildren = [freqEl, chEl];
-      if (buddyIdx > 0) {
-        freqBlockChildren.push(el('span', { className: 'pilot-buddy-badge buddy-badge-' + buddyIdx, textContent: t('BADGE_BUDDIES') }));
-      }
-      var freqBlock = el('div', { className: 'pilot-freq-block' }, freqBlockChildren);
       card.appendChild(freqBlock);
 
       // Info block
