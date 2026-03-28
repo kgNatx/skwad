@@ -239,11 +239,11 @@
     ],
     dji_o3_fcc: [
       { name: 'O3-CH1', freq: 5669 }, { name: 'O3-CH2', freq: 5705 },
-      { name: 'O3-CH3', freq: 5741 }, { name: 'O3-CH4', freq: 5769 },
-      { name: 'O3-CH5', freq: 5805 }, { name: 'O3-CH6', freq: 5840 },
-      { name: 'O3-CH7', freq: 5876 },
+      { name: 'O3-CH3', freq: 5769 }, { name: 'O3-CH4', freq: 5805 },
+      { name: 'O3-CH5', freq: 5840 }, { name: 'O3-CH6', freq: 5876 },
+      { name: 'O3-CH7', freq: 5912 },
     ],
-    dji_o3_40_fcc: [{ name: 'O3-CH1', freq: 5735 }, { name: 'O3-CH2', freq: 5795 }, { name: 'O3-CH3', freq: 5855 }],
+    dji_o3_40_fcc: [{ name: 'O3-CH1', freq: 5677 }, { name: 'O3-CH2', freq: 5795 }, { name: 'O3-CH3', freq: 5902 }],
     dji_o3_40_stock: [{ name: 'O3-CH1', freq: 5795 }],
     dji_o4_stock: [
       { name: 'O4-CH1', freq: 5769 }, { name: 'O4-CH2', freq: 5790 },

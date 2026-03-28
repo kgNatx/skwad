@@ -155,22 +155,24 @@ var DJIO3Stock = []Channel{
 	{"O3-CH3", 5840},
 }
 
-// DJIO3FCC contains the 7 DJI O3 channels available at 20 MHz with FCC unlock.
+// DJIO3FCC contains the 7 DJI O3 channels available at 10/20 MHz with FCC unlock.
+// Channel numbers match DJI goggles UI. Ref: oscarliang.com/fpv-channels
 var DJIO3FCC = []Channel{
 	{"O3-CH1", 5669},
 	{"O3-CH2", 5705},
-	{"O3-CH3", 5741},
-	{"O3-CH4", 5769},
-	{"O3-CH5", 5805},
-	{"O3-CH6", 5840},
-	{"O3-CH7", 5876},
+	{"O3-CH3", 5769},
+	{"O3-CH4", 5805},
+	{"O3-CH5", 5840},
+	{"O3-CH6", 5876},
+	{"O3-CH7", 5912},
 }
 
 // DJIO3_40_FCC contains the 3 DJI O3 channels available at 40 MHz with FCC unlock.
+// Channel numbers match DJI goggles UI. Ref: oscarliang.com/fpv-channels
 var DJIO3_40_FCC = []Channel{
-	{"O3-CH1", 5735},
+	{"O3-CH1", 5677},
 	{"O3-CH2", 5795},
-	{"O3-CH3", 5855},
+	{"O3-CH3", 5902},
 }
 
 // DJIO3_40_Stock contains the single DJI O3 channel at 40 MHz without FCC unlock.
