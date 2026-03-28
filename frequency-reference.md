@@ -112,19 +112,19 @@ Uses Race Band channels (R1–R8). Same table as analog Race Band.
 |----------|-----------|
 | O3-CH1   | 5669      |
 | O3-CH2   | 5705      |
-| O3-CH3   | 5741      |
-| O3-CH4   | 5769      |
-| O3-CH5   | 5805      |
-| O3-CH6   | 5840      |
-| O3-CH7   | 5876      |
+| O3-CH3   | 5769      |
+| O3-CH4   | 5805      |
+| O3-CH5   | 5840      |
+| O3-CH6   | 5876      |
+| O3-CH7   | 5912      |
 
 ### FCC 40 MHz (3 channels)
 
 | Channel  | Freq (MHz) |
 |----------|-----------|
-| O3-CH1   | 5735      |
+| O3-CH1   | 5677      |
 | O3-CH2   | 5795      |
-| O3-CH3   | 5855      |
+| O3-CH3   | 5902      |
 
 ### Stock 40 MHz (1 channel)
 
