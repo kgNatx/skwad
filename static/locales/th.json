@@ -108,6 +108,7 @@
   "VS_WALKSNAIL": "WALKSNAIL AVATAR",
   "VS_WALKSNAIL_SHORT": "WALKSNAIL",
   "VS_OPENIPC": "OPENIPC / อื่นๆ",
+  "VS_SPOTTER": "ผู้สังเกตการณ์",
 
   "FOLLOWUP_TITLE_ANALOG": "ตั้งค่า ANALOG",
   "FOLLOWUP_TITLE_WALKSNAIL": "ตั้งค่า WALKSNAIL",
@@ -246,6 +247,7 @@
   "SYS_WALKSNAIL": "WALKSNAIL",
   "SYS_WALKSNAIL_RACE": "WALKSNAIL RACE",
   "SYS_OPENIPC": "OPENIPC",
+  "SYS_SPOTTER": "ผู้สังเกตการณ์",
 
   "USAGE_TITLE": "สถิติการใช้งาน",
   "USAGE_BROWSER_TITLE": "สถิติการใช้งาน SKWAD",
