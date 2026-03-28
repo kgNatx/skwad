@@ -320,6 +320,24 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 		}
 	}
 
+	// Spotters skip frequency assignment entirely.
+	if added.VideoSystem == "spotter" {
+		if err := s.DB.IncrementVersion(code); err != nil {
+			log.Printf("IncrementVersion error: %v", err)
+		}
+		if err := s.DB.IncrementJoinCount(code); err != nil {
+			log.Printf("IncrementJoinCount error: %v", err)
+		}
+		leaderID, _ := s.DB.GetLeader(code)
+		if leaderID == 0 {
+			s.DB.SetLeader(code, added.ID)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(added)
+		return
+	}
+
 	// Graduated escalation: minimize displacement of existing pilots.
 	pilots, err := s.DB.GetActivePilots(code)
 	if err != nil {
@@ -899,6 +917,18 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Switching to spotter: clear assignment, skip optimizer.
+	if req.VideoSystem == "spotter" {
+		if err := s.DB.UpdatePilotAssignment(pilotID, "", 0, 0); err != nil {
+			log.Printf("HandleUpdatePilotVideoSystem: clear spotter assignment error: %v", err)
+		}
+		if err := s.DB.IncrementVersion(sessionCode); err != nil {
+			log.Printf("IncrementVersion error: %v", err)
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	// Graduated escalation: treat the changing pilot as "new".
 	sess, err := s.DB.GetSession(sessionCode)
 	if err != nil {
@@ -1043,10 +1073,14 @@ func (s *Server) HandlePoll(w http.ResponseWriter, r *http.Request, code string)
 }
 
 // buildPilotInputs converts DB pilots to freq.PilotInput structs for the optimizer.
+// Spotters are excluded — they don't participate in frequency assignment.
 func buildPilotInputs(pilots []db.Pilot) []freq.PilotInput {
-	inputs := make([]freq.PilotInput, len(pilots))
-	for i, p := range pilots {
-		inputs[i] = freq.PilotInput{
+	var inputs []freq.PilotInput
+	for _, p := range pilots {
+		if p.VideoSystem == "spotter" {
+			continue
+		}
+		inputs = append(inputs, freq.PilotInput{
 			ID:               p.ID,
 			VideoSystem:      p.VideoSystem,
 			FCCUnlocked:      p.FCCUnlocked,
@@ -1057,22 +1091,26 @@ func buildPilotInputs(pilots []db.Pilot) []freq.PilotInput {
 			PrevChannel:      p.AssignedChannel,
 			PrevFreqMHz:      p.AssignedFreqMHz,
 			AnalogBands:      splitBands(p.AnalogBands),
-		}
+		})
 	}
 	return inputs
 }
 
 // buildAssignments converts DB pilots to freq.Assignment structs for conflict detection.
+// Spotters are excluded — they have no frequency and can't conflict.
 func buildAssignments(pilots []db.Pilot) []freq.Assignment {
-	assignments := make([]freq.Assignment, len(pilots))
-	for i, p := range pilots {
-		assignments[i] = freq.Assignment{
+	var assignments []freq.Assignment
+	for _, p := range pilots {
+		if p.VideoSystem == "spotter" {
+			continue
+		}
+		assignments = append(assignments, freq.Assignment{
 			PilotID:      p.ID,
 			Channel:      p.AssignedChannel,
 			FreqMHz:      p.AssignedFreqMHz,
 			BandwidthMHz: freq.OccupiedBandwidth(p.VideoSystem, p.BandwidthMHz),
 			BuddyGroup:   p.BuddyGroup,
-		}
+		})
 	}
 	return assignments
 }
@@ -1399,6 +1437,29 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 		}
 		http.Error(w, "failed to add pilot", http.StatusInternalServerError)
 		log.Printf("HandleAddPilot AddPilot error: %v", err)
+		return
+	}
+
+	// Spotters skip frequency assignment entirely.
+	if added.VideoSystem == "spotter" {
+		if err := s.DB.IncrementVersion(code); err != nil {
+			log.Printf("IncrementVersion error: %v", err)
+		}
+		if err := s.DB.IncrementJoinCount(code); err != nil {
+			log.Printf("IncrementJoinCount error: %v", err)
+		}
+		pilots, err := s.DB.GetActivePilots(code)
+		if err == nil {
+			for _, p := range pilots {
+				if p.ID == added.ID {
+					added = &p
+					break
+				}
+			}
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(added)
 		return
 	}
 

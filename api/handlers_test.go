@@ -24,7 +24,7 @@ func newTestServer(t *testing.T) *Server {
 		t.Fatalf("db.New(%q): %v", dbPath, err)
 	}
 	t.Cleanup(func() { database.Close() })
-	return NewServer(database)
+	return NewServer(database, "")
 }
 
 func TestCreateSession(t *testing.T) {
@@ -985,4 +985,120 @@ func TestGetSession_RebalanceRecommended_FalseWhenClean(t *testing.T) {
 	if resp.RebalanceRecommended {
 		t.Error("expected rebalance_recommended = false when no conflicts exist")
 	}
+}
+
+func TestJoinSession_Spotter(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create a session.
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess struct{ ID string `json:"id"` }
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Join as spotter.
+	join := JoinRequest{Callsign: "OBSERVER", VideoSystem: "spotter"}
+	body, _ := json.Marshal(join)
+	joinW := httptest.NewRecorder()
+	s.HandleJoinSession(joinW, httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body)), sess.ID)
+
+	if joinW.Result().StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want %d", joinW.Result().StatusCode, http.StatusCreated)
+	}
+
+	var pilot db.Pilot
+	json.NewDecoder(joinW.Result().Body).Decode(&pilot)
+
+	if pilot.AssignedFreqMHz != 0 {
+		t.Errorf("spotter should have no frequency, got %d", pilot.AssignedFreqMHz)
+	}
+	if pilot.AssignedChannel != "" {
+		t.Errorf("spotter should have no channel, got %q", pilot.AssignedChannel)
+	}
+}
+
+func TestJoinSession_SpotterBecomesLeader(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create a session.
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess struct{ ID string `json:"id"` }
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Join as spotter — first pilot in session.
+	join := JoinRequest{Callsign: "LEAD_SPOTTER", VideoSystem: "spotter"}
+	body, _ := json.Marshal(join)
+	joinW := httptest.NewRecorder()
+	s.HandleJoinSession(joinW, httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body)), sess.ID)
+
+	if joinW.Result().StatusCode != http.StatusCreated {
+		t.Fatalf("status = %d, want %d", joinW.Result().StatusCode, http.StatusCreated)
+	}
+
+	var pilot db.Pilot
+	json.NewDecoder(joinW.Result().Body).Decode(&pilot)
+
+	// The spotter should be leader since they joined first.
+	leaderID, err := s.DB.GetLeader(sess.ID)
+	if err != nil {
+		t.Fatalf("GetLeader error: %v", err)
+	}
+	if leaderID != pilot.ID {
+		t.Errorf("spotter should be leader: leaderID = %d, pilot.ID = %d", leaderID, pilot.ID)
+	}
+}
+
+func TestJoinSession_SpotterDoesNotAffectOthers(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create a session.
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess struct{ ID string `json:"id"` }
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Join an analog pilot first.
+	join1 := JoinRequest{Callsign: "ANALOG1", VideoSystem: "analog"}
+	body1, _ := json.Marshal(join1)
+	joinW1 := httptest.NewRecorder()
+	s.HandleJoinSession(joinW1, httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body1)), sess.ID)
+
+	var pilot1 db.Pilot
+	json.NewDecoder(joinW1.Result().Body).Decode(&pilot1)
+	origFreq := pilot1.AssignedFreqMHz
+	origChan := pilot1.AssignedChannel
+
+	if origFreq == 0 {
+		t.Fatal("analog pilot should have a frequency assigned")
+	}
+
+	// Now join a spotter.
+	join2 := JoinRequest{Callsign: "SPOTTER1", VideoSystem: "spotter"}
+	body2, _ := json.Marshal(join2)
+	joinW2 := httptest.NewRecorder()
+	s.HandleJoinSession(joinW2, httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body2)), sess.ID)
+
+	if joinW2.Result().StatusCode != http.StatusCreated {
+		t.Fatalf("spotter join status = %d, want %d", joinW2.Result().StatusCode, http.StatusCreated)
+	}
+
+	// Re-fetch analog pilot and verify freq unchanged.
+	pilots, err := s.DB.GetActivePilots(sess.ID)
+	if err != nil {
+		t.Fatalf("GetActivePilots error: %v", err)
+	}
+
+	for _, p := range pilots {
+		if p.Callsign == "ANALOG1" {
+			if p.AssignedFreqMHz != origFreq {
+				t.Errorf("analog pilot freq changed: was %d, now %d", origFreq, p.AssignedFreqMHz)
+			}
+			if p.AssignedChannel != origChan {
+				t.Errorf("analog pilot channel changed: was %q, now %q", origChan, p.AssignedChannel)
+			}
+			return
+		}
+	}
+	t.Error("analog pilot not found in active pilots")
 }
