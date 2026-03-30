@@ -1506,6 +1506,9 @@
       $('btn-auto-assign').classList.add('active');
       $('btn-have-preference').classList.remove('active');
       $('channel-picker').classList.add('hidden');
+      $('spectrum-preview').classList.add('hidden');
+      var hint = $('preference-hint');
+      if (hint) hint.style.display = 'none';
       showStep('step-channel');
       updateJoinButtonState();
       return;

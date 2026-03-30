@@ -122,7 +122,7 @@ func (s *Server) requireLeader(w http.ResponseWriter, r *http.Request, sessionCo
 		return 0, false
 	}
 	leaderID, err := s.DB.GetLeader(sessionCode)
-	if err != nil || leaderID != pilotID {
+	if err != nil || leaderID == 0 || leaderID != pilotID {
 		http.Error(w, "leader access required", http.StatusForbidden)
 		return 0, false
 	}
