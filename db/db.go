@@ -403,10 +403,10 @@ func (d *DB) GetActivePilots(sessionID string) ([]Pilot, error) {
 }
 
 // UpdatePilotAssignment sets the assigned channel, frequency, and buddy group for a pilot.
-func (d *DB) UpdatePilotAssignment(pilotID int, channel string, freqMHz int, buddyGroup int) error {
+func (d *DB) UpdatePilotAssignment(sessionID string, pilotID int, channel string, freqMHz int, buddyGroup int) error {
 	res, err := d.db.Exec(
-		`UPDATE pilots SET assigned_channel = ?, assigned_frequency_mhz = ?, buddy_group = ? WHERE id = ?`,
-		channel, freqMHz, buddyGroup, pilotID,
+		`UPDATE pilots SET assigned_channel = ?, assigned_frequency_mhz = ?, buddy_group = ? WHERE id = ? AND session_id = ?`,
+		channel, freqMHz, buddyGroup, pilotID, sessionID,
 	)
 	if err != nil {
 		return fmt.Errorf("update pilot assignment: %w", err)
@@ -419,10 +419,10 @@ func (d *DB) UpdatePilotAssignment(pilotID int, channel string, freqMHz int, bud
 }
 
 // UpdatePilotPreference updates a pilot's preferred frequency (0 = auto-assign).
-func (d *DB) UpdatePilotPreference(pilotID int, preferredFreqMHz int) error {
+func (d *DB) UpdatePilotPreference(sessionID string, pilotID int, preferredFreqMHz int) error {
 	res, err := d.db.Exec(
-		`UPDATE pilots SET preferred_frequency_mhz = ? WHERE id = ? AND active = TRUE`,
-		preferredFreqMHz, pilotID,
+		`UPDATE pilots SET preferred_frequency_mhz = ? WHERE id = ? AND session_id = ? AND active = TRUE`,
+		preferredFreqMHz, pilotID, sessionID,
 	)
 	if err != nil {
 		return fmt.Errorf("update pilot preference: %w", err)
@@ -435,10 +435,10 @@ func (d *DB) UpdatePilotPreference(pilotID int, preferredFreqMHz int) error {
 }
 
 // UpdatePilotVideoSystem changes an active pilot's video system and related settings.
-func (d *DB) UpdatePilotVideoSystem(pilotID int, videoSystem string, fccUnlocked bool, goggles string, bandwidthMHz int, raceMode bool, analogBands string, preferredFreqMHz int) error {
+func (d *DB) UpdatePilotVideoSystem(sessionID string, pilotID int, videoSystem string, fccUnlocked bool, goggles string, bandwidthMHz int, raceMode bool, analogBands string, preferredFreqMHz int) error {
 	res, err := d.db.Exec(
-		`UPDATE pilots SET video_system = ?, fcc_unlocked = ?, goggles = ?, bandwidth_mhz = ?, race_mode = ?, analog_bands = ?, preferred_frequency_mhz = ? WHERE id = ? AND active = TRUE`,
-		videoSystem, fccUnlocked, goggles, bandwidthMHz, raceMode, analogBands, preferredFreqMHz, pilotID,
+		`UPDATE pilots SET video_system = ?, fcc_unlocked = ?, goggles = ?, bandwidth_mhz = ?, race_mode = ?, analog_bands = ?, preferred_frequency_mhz = ? WHERE id = ? AND session_id = ? AND active = TRUE`,
+		videoSystem, fccUnlocked, goggles, bandwidthMHz, raceMode, analogBands, preferredFreqMHz, pilotID, sessionID,
 	)
 	if err != nil {
 		return fmt.Errorf("update pilot video system: %w", err)
@@ -451,10 +451,10 @@ func (d *DB) UpdatePilotVideoSystem(pilotID int, videoSystem string, fccUnlocked
 }
 
 // UpdatePilotCallsign changes an active pilot's callsign.
-func (d *DB) UpdatePilotCallsign(pilotID int, callsign string) error {
+func (d *DB) UpdatePilotCallsign(sessionID string, pilotID int, callsign string) error {
 	res, err := d.db.Exec(
-		`UPDATE pilots SET callsign = ? WHERE id = ? AND active = TRUE`,
-		callsign, pilotID,
+		`UPDATE pilots SET callsign = ? WHERE id = ? AND session_id = ? AND active = TRUE`,
+		callsign, pilotID, sessionID,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
@@ -484,10 +484,10 @@ func (d *DB) FindActivePilotByCallsign(sessionID, callsign string) (int, error) 
 }
 
 // DeactivatePilot sets a pilot's active flag to FALSE.
-func (d *DB) DeactivatePilot(pilotID int) error {
+func (d *DB) DeactivatePilot(sessionID string, pilotID int) error {
 	res, err := d.db.Exec(
-		`UPDATE pilots SET active = FALSE WHERE id = ?`,
-		pilotID,
+		`UPDATE pilots SET active = FALSE WHERE id = ? AND session_id = ?`,
+		pilotID, sessionID,
 	)
 	if err != nil {
 		return fmt.Errorf("deactivate pilot: %w", err)

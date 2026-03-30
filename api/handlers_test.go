@@ -365,8 +365,8 @@ func TestGetSession_WithConflicts(t *testing.T) {
 	}
 	// Place analog on R4 (5769) which is within 30 MHz of O3-CH1 (5795) — conflicts.
 	// Use BuddyGroup 0 so this is NOT a buddy pair.
-	s.DB.UpdatePilotAssignment(djiPilot.ID, "O3-CH1", 5795, 0)
-	s.DB.UpdatePilotAssignment(analogPilot.ID, "R4", 5769, 0)
+	s.DB.UpdatePilotAssignment(sess.ID, djiPilot.ID, "O3-CH1", 5795, 0)
+	s.DB.UpdatePilotAssignment(sess.ID, analogPilot.ID, "R4", 5769, 0)
 
 	// GET session and check for conflicts.
 	getW := httptest.NewRecorder()
@@ -421,7 +421,7 @@ func TestGetSession_BuddyPairsNoConflict(t *testing.T) {
 	sharedChannel := pilots[0].AssignedChannel
 	buddyGroup := 1
 	for _, p := range pilots {
-		s.DB.UpdatePilotAssignment(p.ID, sharedChannel, sharedFreq, buddyGroup)
+		s.DB.UpdatePilotAssignment(sess.ID, p.ID, sharedChannel, sharedFreq, buddyGroup)
 	}
 
 	// GET session — buddy pairs should NOT show conflicts.
@@ -931,10 +931,10 @@ func TestGetSession_RebalanceRecommended(t *testing.T) {
 	pilots, _ := s.DB.GetActivePilots(sess.ID)
 	for _, p := range pilots {
 		if p.Callsign == "DJI1" {
-			s.DB.UpdatePilotAssignment(p.ID, "O3-CH1", 5795, 0)
+			s.DB.UpdatePilotAssignment(sess.ID, p.ID, "O3-CH1", 5795, 0)
 		}
 		if p.Callsign == "ANALOG1" {
-			s.DB.UpdatePilotAssignment(p.ID, "R4", 5769, 0)
+			s.DB.UpdatePilotAssignment(sess.ID, p.ID, "R4", 5769, 0)
 		}
 	}
 

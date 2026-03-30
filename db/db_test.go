@@ -232,7 +232,7 @@ func TestDeactivatePilot(t *testing.T) {
 		t.Fatalf("AddPilot: %v", err)
 	}
 
-	err = d.DeactivatePilot(p.ID)
+	err = d.DeactivatePilot(sess.ID, p.ID)
 	if err != nil {
 		t.Fatalf("DeactivatePilot: %v", err)
 	}
@@ -260,7 +260,7 @@ func TestUpdatePilotAssignment(t *testing.T) {
 		t.Fatalf("AddPilot: %v", err)
 	}
 
-	err = d.UpdatePilotAssignment(p.ID, "R1", 5658, 1)
+	err = d.UpdatePilotAssignment(sess.ID, p.ID, "R1", 5658, 1)
 	if err != nil {
 		t.Fatalf("UpdatePilotAssignment: %v", err)
 	}
@@ -350,7 +350,7 @@ func TestUpdatePilotCallsign(t *testing.T) {
 		t.Fatalf("AddPilot: %v", err)
 	}
 
-	err = d.UpdatePilotCallsign(p.ID, "NEWNAME")
+	err = d.UpdatePilotCallsign(sess.ID, p.ID, "NEWNAME")
 	if err != nil {
 		t.Fatalf("UpdatePilotCallsign: %v", err)
 	}
@@ -384,7 +384,7 @@ func TestUpdatePilotCallsign_Duplicate(t *testing.T) {
 		t.Fatalf("AddPilot BRAVO: %v", err)
 	}
 
-	err = d.UpdatePilotCallsign(p2.ID, "ALPHA")
+	err = d.UpdatePilotCallsign(sess.ID, p2.ID, "ALPHA")
 	if err == nil {
 		t.Fatal("expected error for duplicate callsign, got nil")
 	}
@@ -513,7 +513,7 @@ func TestUpdatePilotPreference(t *testing.T) {
 	}
 
 	// Update preference.
-	if err := d.UpdatePilotPreference(added.ID, 5806); err != nil {
+	if err := d.UpdatePilotPreference(sess.ID, added.ID, 5806); err != nil {
 		t.Fatalf("UpdatePilotPreference: %v", err)
 	}
 
@@ -566,5 +566,133 @@ func TestCreateSessionWithPowerCeiling(t *testing.T) {
 	}
 	if got.PowerCeilingMW != 400 {
 		t.Errorf("GetSession PowerCeilingMW = %d, want 400", got.PowerCeilingMW)
+	}
+}
+
+// --- Cross-session mutation tests ---
+
+func TestUpdatePilotAssignment_CrossSession(t *testing.T) {
+	d := newTestDB(t)
+
+	sess1, _ := d.CreateSession(0, "")
+	sess2, _ := d.CreateSession(0, "")
+
+	p, err := d.AddPilot(sess1.ID, &Pilot{Callsign: "ALPHA", VideoSystem: "HDZero"})
+	if err != nil {
+		t.Fatalf("AddPilot: %v", err)
+	}
+
+	// Same session should succeed.
+	if err := d.UpdatePilotAssignment(sess1.ID, p.ID, "R1", 5658, 1); err != nil {
+		t.Fatalf("same-session UpdatePilotAssignment: %v", err)
+	}
+
+	// Cross-session should fail.
+	err = d.UpdatePilotAssignment(sess2.ID, p.ID, "R2", 5695, 0)
+	if err == nil {
+		t.Fatal("cross-session UpdatePilotAssignment should return error")
+	}
+}
+
+func TestUpdatePilotPreference_CrossSession(t *testing.T) {
+	d := newTestDB(t)
+
+	sess1, _ := d.CreateSession(0, "")
+	sess2, _ := d.CreateSession(0, "")
+
+	p, err := d.AddPilot(sess1.ID, &Pilot{Callsign: "ALPHA", VideoSystem: "analog"})
+	if err != nil {
+		t.Fatalf("AddPilot: %v", err)
+	}
+
+	// Same session should succeed.
+	if err := d.UpdatePilotPreference(sess1.ID, p.ID, 5806); err != nil {
+		t.Fatalf("same-session UpdatePilotPreference: %v", err)
+	}
+
+	// Cross-session should fail.
+	err = d.UpdatePilotPreference(sess2.ID, p.ID, 5806)
+	if err == nil {
+		t.Fatal("cross-session UpdatePilotPreference should return error")
+	}
+}
+
+func TestUpdatePilotVideoSystem_CrossSession(t *testing.T) {
+	d := newTestDB(t)
+
+	sess1, _ := d.CreateSession(0, "")
+	sess2, _ := d.CreateSession(0, "")
+
+	p, err := d.AddPilot(sess1.ID, &Pilot{Callsign: "ALPHA", VideoSystem: "analog"})
+	if err != nil {
+		t.Fatalf("AddPilot: %v", err)
+	}
+
+	// Same session should succeed.
+	if err := d.UpdatePilotVideoSystem(sess1.ID, p.ID, "HDZero", true, "HDZero Goggles", 0, false, "", 0); err != nil {
+		t.Fatalf("same-session UpdatePilotVideoSystem: %v", err)
+	}
+
+	// Cross-session should fail.
+	err = d.UpdatePilotVideoSystem(sess2.ID, p.ID, "DJI", false, "DJI Goggles", 0, false, "", 0)
+	if err == nil {
+		t.Fatal("cross-session UpdatePilotVideoSystem should return error")
+	}
+}
+
+func TestUpdatePilotCallsign_CrossSession(t *testing.T) {
+	d := newTestDB(t)
+
+	sess1, _ := d.CreateSession(0, "")
+	sess2, _ := d.CreateSession(0, "")
+
+	p, err := d.AddPilot(sess1.ID, &Pilot{Callsign: "OLDNAME", VideoSystem: "analog"})
+	if err != nil {
+		t.Fatalf("AddPilot: %v", err)
+	}
+
+	// Same session should succeed.
+	if err := d.UpdatePilotCallsign(sess1.ID, p.ID, "NEWNAME"); err != nil {
+		t.Fatalf("same-session UpdatePilotCallsign: %v", err)
+	}
+
+	// Cross-session should fail.
+	err = d.UpdatePilotCallsign(sess2.ID, p.ID, "HACKED")
+	if err == nil {
+		t.Fatal("cross-session UpdatePilotCallsign should return error")
+	}
+}
+
+func TestDeactivatePilot_CrossSession(t *testing.T) {
+	d := newTestDB(t)
+
+	sess1, _ := d.CreateSession(0, "")
+	sess2, _ := d.CreateSession(0, "")
+
+	p, err := d.AddPilot(sess1.ID, &Pilot{Callsign: "GHOST", VideoSystem: "DJI"})
+	if err != nil {
+		t.Fatalf("AddPilot: %v", err)
+	}
+
+	// Cross-session should fail.
+	err = d.DeactivatePilot(sess2.ID, p.ID)
+	if err == nil {
+		t.Fatal("cross-session DeactivatePilot should return error")
+	}
+
+	// Pilot should still be active.
+	pilots, _ := d.GetActivePilots(sess1.ID)
+	if len(pilots) != 1 {
+		t.Fatalf("expected 1 active pilot after failed cross-session deactivate, got %d", len(pilots))
+	}
+
+	// Same session should succeed.
+	if err := d.DeactivatePilot(sess1.ID, p.ID); err != nil {
+		t.Fatalf("same-session DeactivatePilot: %v", err)
+	}
+
+	pilots, _ = d.GetActivePilots(sess1.ID)
+	if len(pilots) != 0 {
+		t.Errorf("expected 0 active pilots after deactivate, got %d", len(pilots))
 	}
 }

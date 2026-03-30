@@ -302,7 +302,7 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 				http.Error(w, "callsign already in session", http.StatusConflict)
 				return
 			}
-			if deactErr := s.DB.DeactivatePilot(existingID); deactErr != nil {
+			if deactErr := s.DB.DeactivatePilot(code, existingID); deactErr != nil {
 				http.Error(w, "callsign already in session", http.StatusConflict)
 				return
 			}
@@ -369,7 +369,7 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 
 	// Apply all assignments from the selected set.
 	for _, a := range assignments {
-		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+		if err := s.DB.UpdatePilotAssignment(code, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
 			log.Printf("HandleJoinSession: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
 		}
 	}
@@ -742,7 +742,7 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if err := s.DB.UpdatePilotPreference(pilotID, req.PreferredFreqMHz); err != nil {
+	if err := s.DB.UpdatePilotPreference(sessionCode, pilotID, req.PreferredFreqMHz); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			http.Error(w, "pilot not found", http.StatusNotFound)
 			return
@@ -866,7 +866,7 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 	}
 
 	for _, a := range assignments {
-		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+		if err := s.DB.UpdatePilotAssignment(sessionCode, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
 			log.Printf("HandleUpdatePilotChannel: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
 		}
 	}
@@ -907,7 +907,7 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if err := s.DB.UpdatePilotVideoSystem(pilotID, req.VideoSystem, req.FCCUnlocked, req.Goggles, req.BandwidthMHz, req.RaceMode, joinBands(req.AnalogBands), req.PreferredFreqMHz); err != nil {
+	if err := s.DB.UpdatePilotVideoSystem(sessionCode, pilotID, req.VideoSystem, req.FCCUnlocked, req.Goggles, req.BandwidthMHz, req.RaceMode, joinBands(req.AnalogBands), req.PreferredFreqMHz); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			http.Error(w, "pilot not found", http.StatusNotFound)
 			return
@@ -919,7 +919,7 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 
 	// Switching to spotter: clear assignment, skip optimizer.
 	if req.VideoSystem == "spotter" {
-		if err := s.DB.UpdatePilotAssignment(pilotID, "", 0, 0); err != nil {
+		if err := s.DB.UpdatePilotAssignment(sessionCode, pilotID, "", 0, 0); err != nil {
 			log.Printf("HandleUpdatePilotVideoSystem: clear spotter assignment error: %v", err)
 		}
 		if err := s.DB.IncrementVersion(sessionCode); err != nil {
@@ -966,7 +966,7 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand, fixedFreqs)
 
 	for _, a := range result.Assignments {
-		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+		if err := s.DB.UpdatePilotAssignment(sessionCode, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
 			log.Printf("HandleUpdatePilotVideoSystem: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
 		}
 	}
@@ -998,7 +998,7 @@ func (s *Server) HandleUpdatePilotCallsign(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if err := s.DB.UpdatePilotCallsign(pilotID, callsign); err != nil {
+	if err := s.DB.UpdatePilotCallsign(sessionCode, pilotID, callsign); err != nil {
 		if strings.Contains(err.Error(), "already in session") {
 			http.Error(w, "callsign already in session", http.StatusConflict)
 			return
@@ -1045,7 +1045,7 @@ func (s *Server) HandleDeactivatePilot(w http.ResponseWriter, r *http.Request, p
 		}
 	}
 
-	if err := s.DB.DeactivatePilot(pilotID); err != nil {
+	if err := s.DB.DeactivatePilot(sessionCode, pilotID); err != nil {
 		http.Error(w, "pilot not found", http.StatusNotFound)
 		return
 	}
@@ -1486,7 +1486,7 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand, fixedFreqs)
 
 	for _, a := range result.Assignments {
-		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+		if err := s.DB.UpdatePilotAssignment(code, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
 			log.Printf("HandleAddPilot: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
 		}
 	}
@@ -1560,7 +1560,7 @@ func (s *Server) reoptimize(sessionCode string, guardBandMHz int, fixedFreqs []i
 	}
 
 	for _, a := range assignments {
-		if err := s.DB.UpdatePilotAssignment(a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
+		if err := s.DB.UpdatePilotAssignment(sessionCode, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
 			log.Printf("reoptimize: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
 		}
 	}
