@@ -24,6 +24,19 @@ All notable changes to Skwad are documented in this file.
 - **QR deep-link join race.** The "Next" button on the callsign step is disabled until session data is fetched, preventing power ceiling and fixed channel warnings from being skipped on slow connections.
 - **Metrics: peak pilot count.** Spotters are no longer counted in `peak_pilot_count`.
 - **Metrics: session snapshot.** Video system breakdown now only counts active pilots, avoiding double-counting pilots who changed systems mid-session.
+- **Leader video system change for other pilots.** Cancelling no longer deletes the pilot — the delete is deferred until the new system is confirmed.
+- **Deep link session conflict.** Scanning a QR code while already in a session now prompts before switching, instead of silently discarding the active session.
+- **Browser back button.** No longer exits the app — returns to landing or stays in session.
+- **Session expiry detection.** Broadened to catch all server errors, not just "not found" — prevents stuck dead-session views.
+- **Poll loop during video system change.** Polling is stopped while the wizard is open, preventing mid-wizard redirects if the session expires.
+- **Video system cancel restore.** Cancelling a video system change restores the previous selection instead of leaving uncommitted state.
+- **Add pilot double-tap.** Loading state added to the confirm button.
+
+### Improved
+- **Touch targets.** Leader buttons and QR scan button enlarged to 44px minimum.
+- **Input keyboards.** Added `inputmode="text"` to all text inputs for better Android keyboard behavior.
+- **Service worker update robustness.** Server sends `Cache-Control: no-store` for `sw.js`, app forces update check on every page load, and auto-reloads when a new version activates. Deploys take effect immediately without manual cache clearing.
+- **Dead HTML cleanup.** Removed orphaned `#displacement-confirm` action sheet.
 
 ### Docs
 - **Channel separation guide updated.** O3 FCC 20 MHz channel frequencies synced with the corrected values from v0.7.0 (5741 was never a valid O3 channel — it belongs to O4). Near-overlap tables, fixed channel set recommendations, and O3 vs. O4 divergence analysis all updated. Some mixed-pilot preset spacing values changed as a result; recommendations may need re-evaluation for sessions mixing O3 and analog pilots.
