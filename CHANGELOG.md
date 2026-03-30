@@ -4,6 +4,30 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.7.1] — 2026-03-30
+
+### Security
+- **Session-scoped pilot mutations.** All pilot update/delete API endpoints now verify the pilot belongs to the specified session, preventing cross-session modification via crafted requests. Every pilot mutation query includes `AND session_id = ?`.
+- **Require X-Pilot-ID for deletion.** `DELETE /api/pilots/{id}` now rejects requests missing the `X-Pilot-ID` header. Previously allowed for backwards compatibility.
+- **GetLeader checks session expiry.** Leader-gated endpoints now reject expired sessions even before cleanup runs.
+- **TransferLeader validates target.** Leadership can only be transferred to a pilot who is an active member of the session.
+
+### Fixed
+- **Service worker: skipWaiting race.** `skipWaiting()` now waits for precache to complete before activating, preventing empty cache on flaky connections during deploy.
+- **Service worker: error response caching.** Non-OK responses (404, 500) are no longer written to cache, preventing stale error pages from being served offline after a deploy.
+- **Spotter join button stuck.** Switching to spotter after visiting the channel preference step no longer leaves the join button disabled.
+- **Assignment change detection.** The "you were moved" dialog flag is now always cleared on refresh, even if the pilot was removed from the session mid-refresh.
+- **IMD badge with all-spotter sessions.** IMD score badge no longer shows a misleading "100" when all pilots are spotters with no frequency assignments.
+- **Leader channel change dialog.** Stale confirm button visibility from a previous pilot's dialog no longer leaks into subsequent dialogs.
+- **QR deep-link join race.** The "Next" button on the callsign step is disabled until session data is fetched, preventing power ceiling and fixed channel warnings from being skipped on slow connections.
+- **Metrics: peak pilot count.** Spotters are no longer counted in `peak_pilot_count`.
+- **Metrics: session snapshot.** Video system breakdown now only counts active pilots, avoiding double-counting pilots who changed systems mid-session.
+
+### Docs
+- **Channel separation guide updated.** O3 FCC 20 MHz channel frequencies synced with the corrected values from v0.7.0 (5741 was never a valid O3 channel — it belongs to O4). Near-overlap tables, fixed channel set recommendations, and O3 vs. O4 divergence analysis all updated. Some mixed-pilot preset spacing values changed as a result; recommendations may need re-evaluation for sessions mixing O3 and analog pilots.
+- **mixed-channel-analysis.py updated.** DJI FCC channel dict corrected to match `freq/tables.go`.
+- **Thai locale fix.** Translated `BW_RECOMMENDED` from English placeholder to Thai (แนะนำ).
+
 ## [0.7.0] — 2026-03-28
 
 ### Added
