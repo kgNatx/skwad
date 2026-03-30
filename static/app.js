@@ -1503,6 +1503,9 @@
   function goToChannelStep() {
     if (state.videoSystem === 'spotter') {
       state.preferredFreqMHz = 0;
+      $('btn-auto-assign').classList.add('active');
+      $('btn-have-preference').classList.remove('active');
+      $('channel-picker').classList.add('hidden');
       showStep('step-channel');
       updateJoinButtonState();
       return;
@@ -1850,7 +1853,6 @@
                 );
               }
             }
-            state.expectingAssignmentChange = false;
 
             state.myChannel = data.pilots[j].AssignedChannel;
             state.myFreqMHz = data.pilots[j].AssignedFreqMHz;
@@ -1867,6 +1869,8 @@
           }
         }
       }
+      // Always reset — even if pilot wasn't found (they were removed).
+      state.expectingAssignmentChange = false;
 
       if (!foundSelf) {
         clearState();
@@ -1916,7 +1920,8 @@
 
       // IMD badge
       var imdBadge = $('imd-badge');
-      if (imdBadge && data.pilots.length >= 2) {
+      var pilotsWithFreq = data.pilots.filter(function (p) { return p.AssignedFreqMHz > 0; });
+      if (imdBadge && pilotsWithFreq.length >= 2) {
         var imdScore = calcIMDScore(data.pilots);
         imdBadge.textContent = t('IMD_BADGE', { score: imdScore });
         imdBadge.className = 'imd-badge ' + (imdScore >= 80 ? 'imd-good' : imdScore >= 50 ? 'imd-fair' : 'imd-poor');
@@ -2856,13 +2861,13 @@
     var picker = $('channel-change-picker');
     clearChildren(picker);
     channelChangeSelectedFreq = 0;
+    $('btn-confirm-channel-change').classList.add('hidden');
 
     if (pilot.VideoSystem === 'spotter') {
       $('channel-change-title').textContent = t('CHANGE_CHANNEL_FOR', { callsign: pilot.Callsign });
       $('btn-auto-reassign').classList.add('hidden');
       $('btn-change-video-system').classList.remove('hidden');
       state._changeVideoSystemPilot = pilot;
-      $('btn-confirm-channel-change').classList.add('hidden');
       state._channelChangeForPilot = pilot.ID;
       $('channel-change').classList.remove('hidden');
       return;
