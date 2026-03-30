@@ -132,7 +132,7 @@
   "BAND_E_BOSCAM": "E (BOSCAM)",
   "BAND_L_LOWRACE": "L (LOW RACE)",
   "ANALOG_BANDS_HELPER": "ไม่แน่ใจ? ใช้ RACE BAND ก็พอ",
-  "BW_RECOMMENDED": "RECOMMENDED",
+  "BW_RECOMMENDED": "แนะนำ",
   "BW_MHZ": "{{bw}} MHz",
 
   "STEP_CHANNEL_TITLE": "ช่องที่ต้องการ",
