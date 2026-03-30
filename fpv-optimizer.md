@@ -38,7 +38,7 @@ Stock pilots get 4 channels (CH3, CH4, CH5, CH8). FCC unlock enables all 8. Occu
 
 | Channel | CH1 | CH2 | CH3 | CH4 | CH5 | CH6 | CH7 |
 |---------|-----|-----|-----|-----|-----|-----|-----|
-| **MHz** | 5669 | 5705 | 5741 | 5769 | 5805 | 5840 | 5876 |
+| **MHz** | 5669 | 5705 | 5769 | 5805 | 5840 | 5876 | 5912 |
 | **Stock** | | | | yes | yes | yes | |
 | **FCC** | yes | yes | yes | yes | yes | yes | yes |
 
@@ -48,7 +48,7 @@ Stock pilots get 3 channels (CH4, CH5, CH6 — labeled CH1-CH3 in stock mode). F
 
 | Channel | CH1 | CH2 | CH3 |
 |---------|-----|-----|-----|
-| **MHz** | 5735 | 5795 | 5855 |
+| **MHz** | 5677 | 5795 | 5902 |
 | **Stock** | | yes | |
 | **FCC** | yes | yes | yes |
 
