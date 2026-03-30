@@ -3626,6 +3626,8 @@
   }
 
   async function addPilot(callsign, videoSystem, fccUnlocked, goggles, bandwidthMHz, raceMode, analogBands) {
+    var btn = $('btn-add-pilot-confirm');
+    setLoading(btn, true);
     try {
       await apiPost('/api/sessions/' + state.sessionCode + '/add-pilot', {
         callsign: callsign,
@@ -3645,6 +3647,8 @@
       } else {
         showError('add-pilot-error', t('ERR_FAILED', { error: msg.toUpperCase() }));
       }
+    } finally {
+      setLoading(btn, false);
     }
   }
 

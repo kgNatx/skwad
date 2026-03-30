@@ -53,7 +53,7 @@
         </div>
       </div>
       <div id="join-input-area" class="join-input-area hidden">
-        <input id="input-code" type="text" class="input-code" maxlength="6" placeholder="ENTER CODE" autocapitalize="characters" autocomplete="off" spellcheck="false" data-i18n-placeholder="INPUT_CODE_PLACEHOLDER">
+        <input id="input-code" type="text" class="input-code" maxlength="6" placeholder="ENTER CODE" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" data-i18n-placeholder="INPUT_CODE_PLACEHOLDER">
         <button id="btn-go" class="btn btn-primary btn-go" data-i18n="BTN_GO">GO</button>
       </div>
       <div id="landing-error" class="error-msg hidden"></div>
@@ -86,7 +86,7 @@
     <div id="step-callsign" class="setup-step">
       <div id="joining-session-hint" class="joining-hint hidden"><span data-i18n="JOINING_SESSION">JOINING SESSION</span> <span id="joining-session-code"></span></div>
       <h2 class="step-title" data-i18n="STEP_CALLSIGN_TITLE">YOUR CALLSIGN</h2>
-      <input id="input-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" data-i18n-placeholder="INPUT_CALLSIGN_PLACEHOLDER">
+      <input id="input-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" data-i18n-placeholder="INPUT_CALLSIGN_PLACEHOLDER">
       <button id="btn-callsign-next" class="btn btn-primary btn-large" data-i18n="BTN_NEXT">NEXT</button>
       <button id="btn-callsign-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
       <div id="callsign-error" class="error-msg hidden"></div>
@@ -349,7 +349,7 @@
   <div id="callsign-change" class="action-sheet hidden">
     <div class="action-sheet-content">
       <h3 class="action-sheet-title" data-i18n="CALLSIGN_CHANGE_TITLE">CHANGE CALLSIGN</h3>
-      <input id="input-new-callsign" type="text" class="input-callsign" placeholder="NEW CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" data-i18n-placeholder="INPUT_NEW_CALLSIGN">
+      <input id="input-new-callsign" type="text" class="input-callsign" placeholder="NEW CALLSIGN" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" data-i18n-placeholder="INPUT_NEW_CALLSIGN">
       <div id="callsign-change-error" class="error-msg hidden"></div>
       <button id="btn-callsign-save" class="btn btn-primary btn-large" data-i18n="BTN_SAVE">SAVE</button>
       <button id="btn-callsign-change-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
@@ -391,17 +391,6 @@
     </div>
   </div>
 
-  <!-- Displacement Confirmation -->
-  <div id="displacement-confirm" class="action-sheet hidden">
-    <div class="action-sheet-content">
-      <h3 class="action-sheet-title" data-i18n="DISPLACEMENT_TITLE">HEADS UP</h3>
-      <div id="displacement-list" class="displacement-list"></div>
-      <p class="displacement-note" data-i18n="DISPLACEMENT_VERIFY">VERIFY WITH THEM BEFORE CONTINUING</p>
-      <button id="btn-displacement-confirm" class="btn btn-primary btn-large" data-i18n="BTN_JOIN">JOIN</button>
-      <button id="btn-displacement-cancel" class="btn btn-secondary btn-large" data-i18n="BTN_CANCEL">CANCEL</button>
-    </div>
-  </div>
-
   <!-- Buddy Suggestion (Level 3) -->
   <div id="buddy-suggestion" class="action-sheet hidden">
     <div class="action-sheet-content">
@@ -428,7 +417,7 @@
     <div class="action-sheet-content">
       <h3 class="action-sheet-title" data-i18n="ADD_PILOT_TITLE">ADD PILOT</h3>
       <div id="add-pilot-fixed-hint" class="add-pilot-fixed-hint hidden"></div>
-      <input id="input-add-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" data-i18n-placeholder="INPUT_CALLSIGN_PLACEHOLDER">
+      <input id="input-add-callsign" type="text" class="input-callsign" placeholder="CALLSIGN" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" maxlength="20" data-i18n-placeholder="INPUT_CALLSIGN_PLACEHOLDER">
       <div class="system-grid" id="add-pilot-systems">
         <button class="btn btn-system btn-add-system" data-add-system="analog" data-i18n="VS_ANALOG">ANALOG 5.8GHz</button>
         <button class="btn btn-system btn-add-system" data-add-system="dji_v1" data-i18n="VS_DJI_V1">DJI V1 / VISTA</button>
