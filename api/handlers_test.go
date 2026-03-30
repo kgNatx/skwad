@@ -556,6 +556,7 @@ func TestDeactivatePilot(t *testing.T) {
 
 	// Deactivate the pilot.
 	deactReq := httptest.NewRequest(http.MethodDelete, "/api/pilots/1?session="+sess.ID, nil)
+	deactReq.Header.Set("X-Pilot-ID", fmt.Sprint(pilot.ID))
 	deactW := httptest.NewRecorder()
 	s.HandleDeactivatePilot(deactW, deactReq, pilot.ID, sess.ID)
 
@@ -699,6 +700,7 @@ func TestDeactivatePilot_OthersStayPut(t *testing.T) {
 
 	// Deactivate pilot 2.
 	req := httptest.NewRequest("DELETE", "/api/pilots/"+fmt.Sprint(pilot2ID)+"?session="+sess.ID, nil)
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(pilot2ID))
 	w := httptest.NewRecorder()
 	srv.HandleDeactivatePilot(w, req, pilot2ID, sess.ID)
 
@@ -867,6 +869,24 @@ func TestDeactivatePilot_SelfRemovalAlwaysAllowed(t *testing.T) {
 	srv.HandleDeactivatePilot(w, req, otherID, sess.ID)
 	if w.Code != http.StatusNoContent {
 		t.Errorf("self-removal: expected 204, got %d", w.Code)
+	}
+}
+
+func TestDeactivatePilot_NoHeader_Returns401(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "PILOT1", "analog")
+
+	pilots := getTestPilots(t, srv, sess.ID)
+	pilotID := pilots[0].ID
+
+	// Send DELETE without X-Pilot-ID header.
+	req := httptest.NewRequest("DELETE", "/api/pilots/"+fmt.Sprint(pilotID)+"?session="+sess.ID, nil)
+	w := httptest.NewRecorder()
+	srv.HandleDeactivatePilot(w, req, pilotID, sess.ID)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("no X-Pilot-ID header: expected 401, got %d", w.Code)
 	}
 }
 

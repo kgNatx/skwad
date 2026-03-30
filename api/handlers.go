@@ -1026,22 +1026,23 @@ func (s *Server) HandleUpdatePilotCallsign(w http.ResponseWriter, r *http.Reques
 // Authorization:
 //   - Self-removal (X-Pilot-ID == pilotID): always allowed
 //   - Removing another pilot: requires leader
-//   - No X-Pilot-ID header: allowed (backwards compatibility)
 func (s *Server) HandleDeactivatePilot(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
 	idStr := r.Header.Get("X-Pilot-ID")
-	if idStr != "" {
-		requestingID, err := strconv.Atoi(idStr)
-		if err != nil {
-			http.Error(w, "invalid X-Pilot-ID", http.StatusBadRequest)
+	if idStr == "" {
+		http.Error(w, "X-Pilot-ID header required", http.StatusUnauthorized)
+		return
+	}
+	requestingID, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid X-Pilot-ID", http.StatusBadRequest)
+		return
+	}
+	// If not self-removal, require leader.
+	if requestingID != pilotID {
+		leaderID, err := s.DB.GetLeader(sessionCode)
+		if err != nil || leaderID != requestingID {
+			http.Error(w, "leader access required", http.StatusForbidden)
 			return
-		}
-		// If not self-removal, require leader.
-		if requestingID != pilotID {
-			leaderID, err := s.DB.GetLeader(sessionCode)
-			if err != nil || leaderID != requestingID {
-				http.Error(w, "leader access required", http.StatusForbidden)
-				return
-			}
 		}
 	}
 
