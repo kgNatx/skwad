@@ -355,6 +355,8 @@
     if (state.feedbackReturnTo === 'qr-overlay') {
       showScreen('session');
       $('qr-overlay').classList.remove('hidden');
+    } else if (state.feedbackReturnTo === 'session') {
+      showScreen('session');
     } else {
       showScreen('landing');
     }
@@ -575,6 +577,7 @@
     state.isLeader = false;
     state.leaderPilotId = null;
     state.expectingAssignmentChange = false;
+    state._changingVideoSystem = false;
     localStorage.removeItem('skwad_session');
     localStorage.removeItem('skwad_pilot');
   }
@@ -852,6 +855,7 @@
       $('joining-session-code').textContent = code;
       $('joining-session-hint').classList.remove('hidden');
       showScreen('setup');
+      pushNavState('setup');
       showStep('step-callsign');
       $('input-callsign').focus();
     } catch (err) {
@@ -1494,6 +1498,8 @@
 
   function cancelVideoSystemChange() {
     state._changingVideoSystem = false;
+    state.videoSystem = state._prevVideoSystem || '';
+    delete state._prevVideoSystem;
     enterSessionView();
   }
 
@@ -1817,6 +1823,7 @@
   // ── Session View ──────────────────────────────────────────────
   function enterSessionView() {
     showScreen('session');
+    pushNavState('session');
     $('session-code-text').textContent = state.sessionCode;
     refreshSession();
     startPolling();
@@ -1933,8 +1940,9 @@
         imdBadge.classList.add('hidden');
       }
     } catch (err) {
-      // Session may have expired or been deleted
-      if (err.message && err.message.includes('not found')) {
+      // Session gone (404, expired, deleted) — return to landing.
+      // Network errors are silent — the next poll will retry.
+      if (err.message && !err.message.includes('Failed to fetch') && !err.message.includes('NetworkError')) {
         clearState();
         stopPolling();
         validateAndShowLanding();
@@ -2532,12 +2540,14 @@
     // Spotters go straight to video system change
     if (state.videoSystem === 'spotter') {
       state._changingVideoSystem = true;
+      state._prevVideoSystem = state.videoSystem;
       state.videoSystem = '';
       state.fccUnlocked = false;
       state.goggles = '';
       state.bandwidthMHz = 0;
       state.raceMode = false;
       state.walksnailMode = '';
+      stopPolling();
       showScreen('setup');
       showStep('step-video');
       return;
@@ -2563,12 +2573,14 @@
     $('btn-cco-video-system').addEventListener('click', function () {
       hideChannelChangeOptions();
       state._changingVideoSystem = true;
+      state._prevVideoSystem = state.videoSystem;
       state.videoSystem = '';
       state.fccUnlocked = false;
       state.goggles = '';
       state.bandwidthMHz = 0;
       state.raceMode = false;
       state.walksnailMode = '';
+      stopPolling();
       showScreen('setup');
       showStep('step-video');
     });
@@ -2727,12 +2739,14 @@
       // Self: update video system in place
       hideChannelChange();
       state._changingVideoSystem = true;
+      state._prevVideoSystem = state.videoSystem;
       state.videoSystem = '';
       state.fccUnlocked = false;
       state.goggles = '';
       state.bandwidthMHz = 0;
       state.raceMode = false;
       state.walksnailMode = '';
+      stopPolling();
       showScreen('setup');
       showStep('step-video');
     });
@@ -4272,6 +4286,31 @@
     };
   })();
 
+  // ── Deep-link join helper ────────────────────────────────────
+  function startDeepLinkJoin(code) {
+    state.sessionCode = code;
+    state.sessionPowerCeiling = 0;
+    state.sessionFixedChannels = '';
+    saveState();
+    $('joining-session-code').textContent = code;
+    $('joining-session-hint').classList.remove('hidden');
+    showScreen('setup');
+    pushNavState('setup');
+    showStep('step-callsign');
+    $('input-callsign').focus();
+    var nextBtn = $('btn-callsign-next');
+    if (nextBtn) nextBtn.disabled = true;
+    apiGet('/api/sessions/' + code).then(function (data) {
+      state.sessionPowerCeiling = (data.session && data.session.power_ceiling_mw) || 0;
+      state.sessionFixedChannels = (data.session && data.session.fixed_channels) || '';
+    }).catch(function () {
+      state.sessionPowerCeiling = 0;
+      state.sessionFixedChannels = '';
+    }).finally(function () {
+      if (nextBtn) nextBtn.disabled = false;
+    });
+  }
+
   // ── Client-side routing ───────────────────────────────────────
   function route() {
     var path = window.location.pathname;
@@ -4285,29 +4324,30 @@
         // Already joined this session, go to session view
         enterSessionView();
       } else {
-        // Need to join this session
-        state.sessionCode = code;
-        state.sessionPowerCeiling = 0;
-        state.sessionFixedChannels = '';
-        saveState();
-        $('joining-session-code').textContent = code;
-        $('joining-session-hint').classList.remove('hidden');
-        showScreen('setup');
-        showStep('step-callsign');
-        $('input-callsign').focus();
-        // Disable Next until session data is loaded so power ceiling / fixed channel
-        // warnings cannot be skipped by a fast typist.
-        var nextBtn = $('btn-callsign-next');
-        if (nextBtn) nextBtn.disabled = true;
-        apiGet('/api/sessions/' + code).then(function (data) {
-          state.sessionPowerCeiling = (data.session && data.session.power_ceiling_mw) || 0;
-          state.sessionFixedChannels = (data.session && data.session.fixed_channels) || '';
-        }).catch(function () {
-          state.sessionPowerCeiling = 0;
-          state.sessionFixedChannels = '';
-        }).finally(function () {
-          if (nextBtn) nextBtn.disabled = false;
-        });
+        // Check if user is already in a different session
+        if (state.sessionCode && state.pilotId && state.sessionCode !== code) {
+          // Show confirmation dialog
+          $('session-switch-message').textContent = 'You\'re currently in session ' + state.sessionCode + '. Leave it and join session ' + code + '?';
+          $('session-switch').classList.remove('hidden');
+          $('btn-session-switch-yes').onclick = function () {
+            $('session-switch').classList.add('hidden');
+            stopPolling();
+            clearState();
+            startDeepLinkJoin(code);
+          };
+          $('btn-session-switch-no').onclick = function () {
+            $('session-switch').classList.add('hidden');
+            enterSessionView();
+          };
+        } else {
+          // No conflict — proceed directly
+          if (state.pilotId) {
+            // Had a pilotId but no sessionCode, or same session — clear stale pilot
+            state.pilotId = null;
+            localStorage.removeItem('skwad_pilot');
+          }
+          startDeepLinkJoin(code);
+        }
       }
       return;
     }
@@ -4516,6 +4556,27 @@
     // Feedback submit
     $('btn-feedback-submit').addEventListener('click', submitFeedback);
   }
+
+  // ── Browser back button ──────────────────────────────────────
+  function pushNavState(screen) {
+    history.pushState({ screen: screen }, '');
+  }
+
+  window.addEventListener('popstate', function (e) {
+    // If we're in the setup wizard for video system change, cancel it
+    if (state._changingVideoSystem) {
+      state._changingVideoSystem = false;
+      enterSessionView();
+      return;
+    }
+    // If we're in session view, don't leave — push state back
+    if (state.sessionCode && state.pilotId) {
+      history.pushState({ screen: 'session' }, '');
+      return;
+    }
+    // Otherwise, go to landing
+    validateAndShowLanding();
+  });
 
   function init() {
     initLanding();
