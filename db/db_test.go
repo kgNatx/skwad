@@ -691,6 +691,43 @@ func TestUpdatePilotCallsign_CrossSession(t *testing.T) {
 	}
 }
 
+func TestIncrementJoinCount_ExcludesSpotters(t *testing.T) {
+	d := newTestDB(t)
+
+	sess, err := d.CreateSession(0, "")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	// Add 2 regular pilots and 1 spotter.
+	_, err = d.AddPilot(sess.ID, &Pilot{Callsign: "PILOT1", VideoSystem: "analog"})
+	if err != nil {
+		t.Fatalf("AddPilot PILOT1: %v", err)
+	}
+	_, err = d.AddPilot(sess.ID, &Pilot{Callsign: "PILOT2", VideoSystem: "HDZero"})
+	if err != nil {
+		t.Fatalf("AddPilot PILOT2: %v", err)
+	}
+	_, err = d.AddPilot(sess.ID, &Pilot{Callsign: "SPOTTER1", VideoSystem: "spotter"})
+	if err != nil {
+		t.Fatalf("AddPilot SPOTTER1: %v", err)
+	}
+
+	// IncrementJoinCount should set peak_pilot_count to 2 (excluding the spotter).
+	if err := d.IncrementJoinCount(sess.ID); err != nil {
+		t.Fatalf("IncrementJoinCount: %v", err)
+	}
+
+	var peak int
+	err = d.db.QueryRow(`SELECT peak_pilot_count FROM sessions WHERE id = ?`, sess.ID).Scan(&peak)
+	if err != nil {
+		t.Fatalf("querying peak_pilot_count: %v", err)
+	}
+	if peak != 2 {
+		t.Errorf("peak_pilot_count = %d, want 2 (spotters should be excluded)", peak)
+	}
+}
+
 func TestDeactivatePilot_CrossSession(t *testing.T) {
 	d := newTestDB(t)
 

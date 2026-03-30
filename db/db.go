@@ -528,7 +528,7 @@ func (d *DB) IncrementJoinCount(sessionID string) error {
 	_, err := d.db.Exec(
 		`UPDATE sessions SET total_joins = total_joins + 1,
 			peak_pilot_count = MAX(peak_pilot_count,
-				(SELECT COUNT(*) FROM pilots WHERE session_id = ? AND active = TRUE))
+				(SELECT COUNT(*) FROM pilots WHERE session_id = ? AND active = TRUE AND video_system != 'spotter'))
 		WHERE id = ?`,
 		sessionID, sessionID,
 	)
@@ -613,9 +613,9 @@ func (d *DB) SnapshotAndDeleteExpiredSessions() (int64, error) {
 
 	// Snapshot each session.
 	for _, s := range expired {
-		// Build video system summary from all pilots (active or not).
+		// Build video system summary from active pilots only.
 		vsRows, err := tx.Query(
-			`SELECT video_system, COUNT(*) FROM pilots WHERE session_id = ? GROUP BY video_system`,
+			`SELECT video_system, COUNT(*) FROM pilots WHERE session_id = ? AND active = TRUE GROUP BY video_system`,
 			s.id,
 		)
 		if err != nil {
