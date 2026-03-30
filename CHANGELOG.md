@@ -11,6 +11,7 @@ All notable changes to Skwad are documented in this file.
 - **Require X-Pilot-ID for deletion.** `DELETE /api/pilots/{id}` now rejects requests missing the `X-Pilot-ID` header. Previously allowed for backwards compatibility.
 - **GetLeader checks session expiry.** Leader-gated endpoints now reject expired sessions even before cleanup runs.
 - **TransferLeader validates target.** Leadership can only be transferred to a pilot who is an active member of the session.
+- **requireLeader rejects zero-value pilot ID.** Prevents privilege escalation on leaderless sessions via `X-Pilot-ID: 0` header.
 
 ### Fixed
 - **Service worker: skipWaiting race.** `skipWaiting()` now waits for precache to complete before activating, preventing empty cache on flaky connections during deploy.
@@ -19,6 +20,7 @@ All notable changes to Skwad are documented in this file.
 - **Assignment change detection.** The "you were moved" dialog flag is now always cleared on refresh, even if the pilot was removed from the session mid-refresh.
 - **IMD badge with all-spotter sessions.** IMD score badge no longer shows a misleading "100" when all pilots are spotters with no frequency assignments.
 - **Leader channel change dialog.** Stale confirm button visibility from a previous pilot's dialog no longer leaks into subsequent dialogs.
+- **Spotter channel step cleanup.** Spectrum preview and preference hint are now hidden when entering the channel step as a spotter.
 - **QR deep-link join race.** The "Next" button on the callsign step is disabled until session data is fetched, preventing power ceiling and fixed channel warnings from being skipped on slow connections.
 - **Metrics: peak pilot count.** Spotters are no longer counted in `peak_pilot_count`.
 - **Metrics: session snapshot.** Video system breakdown now only counts active pilots, avoiding double-counting pilots who changed systems mid-session.
