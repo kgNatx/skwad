@@ -4288,13 +4288,18 @@
         showScreen('setup');
         showStep('step-callsign');
         $('input-callsign').focus();
-        // Fetch session in background to get power ceiling and fixed channels for alert steps
+        // Disable Next until session data is loaded so power ceiling / fixed channel
+        // warnings cannot be skipped by a fast typist.
+        var nextBtn = $('btn-callsign-next');
+        if (nextBtn) nextBtn.disabled = true;
         apiGet('/api/sessions/' + code).then(function (data) {
           state.sessionPowerCeiling = (data.session && data.session.power_ceiling_mw) || 0;
           state.sessionFixedChannels = (data.session && data.session.fixed_channels) || '';
         }).catch(function () {
           state.sessionPowerCeiling = 0;
           state.sessionFixedChannels = '';
+        }).finally(function () {
+          if (nextBtn) nextBtn.disabled = false;
         });
       }
       return;
