@@ -208,6 +208,14 @@ func main() {
 		http.ServeFile(w, r, staticDir+"/index.html")
 	})
 
+	// Service worker must never be HTTP-cached — browsers check for updates every
+	// 24h by default, and no-cache still allows conditional caching. no-store forces
+	// a fresh fetch every time so deploys take effect immediately.
+	mux.HandleFunc("GET /sw.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		http.ServeFile(w, r, staticDir+"/sw.js")
+	})
+
 	// Static file server with no-cache headers so deploys take effect immediately.
 	staticFS := http.FileServer(http.Dir(staticDir))
 	mux.Handle("GET /", noCacheMiddleware(staticFS))

@@ -4406,7 +4406,22 @@
 
   function initServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.register('/sw.js').catch(function () {});
+    navigator.serviceWorker.register('/sw.js').then(function (reg) {
+      // Force an update check on every page load — don't wait for the
+      // browser's 24-hour cycle. Combined with no-store on sw.js, this
+      // means deploys are picked up immediately.
+      reg.update();
+    }).catch(function () {});
+
+    // When a new SW takes over (via skipWaiting + clients.claim), reload
+    // so the user gets fresh code without manual cache clearing.
+    var refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
 
     // Capture the install prompt (Android Chrome).
     window.addEventListener('beforeinstallprompt', function (e) {
