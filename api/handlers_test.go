@@ -784,6 +784,26 @@ func TestTransferLeader(t *testing.T) {
 	}
 }
 
+func TestTransferLeader_TargetNotInSession(t *testing.T) {
+	srv := newTestServer(t)
+	sess := createTestSession(t, srv)
+	joinTestPilot(t, srv, sess.ID, "LEADER", "analog")
+
+	pilots := getTestPilots(t, srv, sess.ID)
+	leaderID := pilots[0].ID
+
+	// Try to transfer to a pilot ID that doesn't exist in the session.
+	body := `{"pilot_id":99999}`
+	req := httptest.NewRequest("POST", "/api/sessions/"+sess.ID+"/transfer-leader", strings.NewReader(body))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
+	w := httptest.NewRecorder()
+	srv.HandleTransferLeader(w, req, sess.ID)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
 func TestAddPilot_LeaderOnly(t *testing.T) {
 	srv := newTestServer(t)
 	sess := createTestSession(t, srv)

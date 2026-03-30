@@ -450,6 +450,34 @@ func TestTransferLeader(t *testing.T) {
 	}
 }
 
+func TestGetLeader_ExpiredSession(t *testing.T) {
+	d := newTestDB(t)
+	sess, err := d.CreateSession(0, "")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	// Set a leader.
+	if err := d.SetLeader(sess.ID, 42); err != nil {
+		t.Fatalf("SetLeader: %v", err)
+	}
+
+	// Manually expire the session.
+	_, err = d.db.Exec(
+		`UPDATE sessions SET expires_at = datetime('now', '-1 hour') WHERE id = ?`,
+		sess.ID,
+	)
+	if err != nil {
+		t.Fatalf("expiring session: %v", err)
+	}
+
+	// GetLeader should return 0 for expired sessions.
+	leaderID, err := d.GetLeader(sess.ID)
+	if err == nil && leaderID != 0 {
+		t.Fatalf("GetLeader on expired session returned leader %d, want 0 or error", leaderID)
+	}
+}
+
 func TestMigration_PreferredFrequency(t *testing.T) {
 	d := newTestDB(t)
 

@@ -287,7 +287,7 @@ func (d *DB) SetLeader(sessionID string, pilotID int) error {
 func (d *DB) GetLeader(sessionID string) (int, error) {
 	var leaderID int
 	err := d.db.QueryRow(
-		`SELECT leader_pilot_id FROM sessions WHERE id = ?`,
+		`SELECT leader_pilot_id FROM sessions WHERE id = ? AND expires_at > datetime('now')`,
 		sessionID,
 	).Scan(&leaderID)
 	if err != nil {

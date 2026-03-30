@@ -1380,6 +1380,22 @@ func (s *Server) HandleTransferLeader(w http.ResponseWriter, r *http.Request, co
 		http.Error(w, "pilot_id required", http.StatusBadRequest)
 		return
 	}
+	pilots, err := s.DB.GetActivePilots(code)
+	if err != nil {
+		http.Error(w, "failed to get pilots", http.StatusInternalServerError)
+		return
+	}
+	found := false
+	for _, p := range pilots {
+		if p.ID == req.PilotID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		http.Error(w, "target pilot not in session", http.StatusBadRequest)
+		return
+	}
 	if err := s.DB.SetLeader(code, req.PilotID); err != nil {
 		http.Error(w, "failed to transfer leadership", http.StatusInternalServerError)
 		log.Printf("SetLeader error: %v", err)
