@@ -2722,16 +2722,12 @@
     });
     $('btn-change-video-system').addEventListener('click', async function () {
       hideChannelChange();
-      // Leader changing video system for a leader-added pilot
+      // Leader changing video system for another pilot — defer delete until
+      // the new system is confirmed. If the leader cancels, nothing changes.
       if (state._changeVideoSystemPilot) {
         var pilot = state._changeVideoSystemPilot;
         state._changeVideoSystemPilot = null;
-        try {
-          await apiDelete('/api/pilots/' + pilot.ID + '?session=' + state.sessionCode);
-        } catch (err) {
-          // Continue even if delete fails
-        }
-        // Open add-pilot dialog pre-filled with their callsign
+        state._replacingPilot = pilot;
         showAddPilotDialog();
         $('input-add-callsign').value = pilot.Callsign;
         return;
@@ -3455,6 +3451,7 @@
 
   function hideAddPilotDialog() {
     $('add-pilot').classList.add('hidden');
+    state._replacingPilot = null;
   }
 
   function showAddPilotOptions(system) {
@@ -3643,6 +3640,15 @@
     var btn = $('btn-add-pilot-confirm');
     setLoading(btn, true);
     try {
+      // If replacing an existing pilot's video system, delete them first
+      if (state._replacingPilot) {
+        try {
+          await apiDelete('/api/pilots/' + state._replacingPilot.ID + '?session=' + state.sessionCode);
+        } catch (err) {
+          // Continue even if delete fails — add-pilot may reactivate them
+        }
+        state._replacingPilot = null;
+      }
       await apiPost('/api/sessions/' + state.sessionCode + '/add-pilot', {
         callsign: callsign,
         video_system: videoSystem,
