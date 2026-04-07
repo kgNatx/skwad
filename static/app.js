@@ -1411,11 +1411,8 @@
     state.bandwidthMHz = bw;
 
     if (state.videoSystem === 'dji_o4') {
-      // Check if Race Mode is available (Goggles 3 or N3 + FCC)
-      if (
-        state.fccUnlocked &&
-        (state.goggles === 'goggles_3' || state.goggles === 'goggles_n3')
-      ) {
+      // Check if Race Mode is available (Goggles 3 or N3)
+      if (state.goggles === 'goggles_3' || state.goggles === 'goggles_n3') {
         $('followup-racemode').classList.remove('hidden');
       } else {
         $('btn-followup-next').classList.remove('hidden');
@@ -3523,9 +3520,8 @@
 
   function updateAddPilotRaceMode() {
     if (addPilotState.system !== 'dji_o4') return;
-    // Race Mode requires FCC + Goggles 3 or N3
-    if (addPilotState.fccUnlocked &&
-        (addPilotState.goggles === 'goggles_3' || addPilotState.goggles === 'goggles_n3')) {
+    // Race Mode available with Goggles 3 or N3
+    if (addPilotState.goggles === 'goggles_3' || addPilotState.goggles === 'goggles_n3') {
       $('add-pilot-racemode').classList.remove('hidden');
     } else {
       $('add-pilot-racemode').classList.add('hidden');
