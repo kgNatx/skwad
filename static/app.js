@@ -53,6 +53,8 @@
     // Feedback form
     feedbackReturnTo: null, // 'landing' or 'qr-overlay'
     feedbackType: 'feedback', // 'bug', 'feedback', or 'translation'
+    // Race mode alert tracking — IDs of O4 pilots we've already alerted about
+    raceModeAlertedPilotIds: [],
   };
 
   // ── Buddy group colors ────────────────────────────────────────
