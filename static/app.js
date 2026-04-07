@@ -679,6 +679,99 @@
     return result;
   }
 
+  function checkRaceModeAlert(pilots) {
+    if (!sessionHasMixedSystems()) return;
+
+    var needRaceMode = findO4PilotsNeedingRaceMode(pilots);
+    if (needRaceMode.length === 0) return;
+
+    // Check if there are any NEW pilots we haven't alerted about
+    var newPilots = needRaceMode.filter(function (p) {
+      return state.raceModeAlertedPilotIds.indexOf(p.ID) === -1;
+    });
+    if (newPilots.length === 0) return;
+
+    // Mark all current needy pilots as alerted
+    needRaceMode.forEach(function (p) {
+      if (state.raceModeAlertedPilotIds.indexOf(p.ID) === -1) {
+        state.raceModeAlertedPilotIds.push(p.ID);
+      }
+    });
+
+    showRaceModeAlert(needRaceMode);
+  }
+
+  function showRaceModeAlert(pilotsNeedingRaceMode) {
+    var textEl = $('racemode-alert-text');
+    var channelEl = $('racemode-alert-channel');
+    var listEl = $('racemode-alert-pilot-list');
+    var rebalBtn = $('btn-racemode-alert-rebalance');
+    var instructionEl = $('racemode-alert-instruction');
+
+    clearChildren(listEl);
+
+    var isSelfAffected = false;
+    for (var i = 0; i < pilotsNeedingRaceMode.length; i++) {
+      if (pilotsNeedingRaceMode[i].ID === state.pilotId) {
+        isSelfAffected = true;
+        break;
+      }
+    }
+
+    if (state.isLeader) {
+      // Leader view: show list of pilots who need race mode
+      textEl.textContent = t('RACE_MODE_ALERT_LEADER_TEXT');
+      if (instructionEl) instructionEl.classList.add('hidden');
+      channelEl.classList.add('hidden');
+      pilotsNeedingRaceMode.forEach(function (p) {
+        var item = document.createElement('p');
+        item.className = 'followup-helper';
+        item.textContent = t('RACE_MODE_ALERT_PILOT_ITEM', {
+          callsign: p.Callsign,
+          channel: p.AssignedChannel || '—',
+          freq: p.AssignedFreqMHz || '—'
+        });
+        listEl.appendChild(item);
+      });
+      rebalBtn.classList.remove('hidden');
+    } else if (isSelfAffected) {
+      // Pilot view: show recommendation with their channel
+      textEl.textContent = t('RACE_MODE_ALERT_PILOT_TEXT');
+      if (instructionEl) instructionEl.classList.remove('hidden');
+      if (state.myChannel && state.myFreqMHz) {
+        channelEl.textContent = t('RACE_MODE_ALERT_CHANNEL_HINT', {
+          channel: state.myChannel,
+          freq: state.myFreqMHz
+        });
+        channelEl.classList.remove('hidden');
+      } else {
+        channelEl.classList.add('hidden');
+      }
+      rebalBtn.classList.add('hidden');
+    } else {
+      // Not leader and not affected — don't show
+      return;
+    }
+
+    $('racemode-alert').style.display = '';
+  }
+
+  function initRaceModeAlert() {
+    $('btn-racemode-alert-dismiss').addEventListener('click', function () {
+      $('racemode-alert').style.display = 'none';
+    });
+    $('racemode-alert').addEventListener('click', function (e) {
+      if (e.target === $('racemode-alert')) {
+        $('racemode-alert').style.display = 'none';
+      }
+    });
+    $('btn-racemode-alert-rebalance').addEventListener('click', function () {
+      $('racemode-alert').style.display = 'none';
+      // Trigger the existing rebalance flow
+      $('btn-rebalance').click();
+    });
+  }
+
   // ── Determine effective video system for API ──────────────────
   function getEffectiveVideoSystem() {
     if (state.videoSystem === 'walksnail') {
@@ -1956,6 +2049,9 @@
           rebalHint.style.display = 'none';
         }
       }
+
+      // Check if O4 pilots should be alerted about race mode
+      checkRaceModeAlert(data.pilots);
 
       // Power ceiling badge
       state.sessionPowerCeiling = data.session.power_ceiling_mw || 0;
@@ -4666,6 +4762,7 @@
     initChannelChangeOptions();
     initChannelChange();
     initMovedDialog();
+    initRaceModeAlert();
     initCallsignChange();
     initOtherPilotActions();
     initChannelChangeBanner();
