@@ -3578,10 +3578,24 @@
     // Race Mode available with Goggles 3 or N3
     if (addPilotState.goggles === 'goggles_3' || addPilotState.goggles === 'goggles_n3') {
       $('add-pilot-racemode').classList.remove('hidden');
+      // Pre-select race mode if session has mixed video systems
+      var mixed = sessionHasMixedSystems();
+      var hint = $('add-pilot-racemode-hint');
+      if (mixed) {
+        addPilotState.raceMode = true;
+        document.querySelectorAll('.btn-add-racemode').forEach(function (b) {
+          b.classList.toggle('selected', b.dataset.addRacemode === 'true');
+        });
+        if (hint) hint.classList.remove('hidden');
+      } else {
+        if (hint) hint.classList.add('hidden');
+      }
     } else {
       $('add-pilot-racemode').classList.add('hidden');
       addPilotState.raceMode = false;
       document.querySelectorAll('.btn-add-racemode').forEach(function (b) { b.classList.remove('selected'); });
+      var hint2 = $('add-pilot-racemode-hint');
+      if (hint2) hint2.classList.add('hidden');
     }
   }
 
