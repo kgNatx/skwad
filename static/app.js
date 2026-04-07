@@ -48,6 +48,8 @@
     fixedChannels: '',
     // Pending power ceiling (mW) chosen in power step, 0 = no limit, -1 = not yet set
     pendingPowerMW: 0,
+    // Pilots already in the session (for mixed-system detection during join)
+    cachedSessionPilots: [],
     // Feedback form
     feedbackReturnTo: null, // 'landing' or 'qr-overlay'
     feedbackType: 'feedback', // 'bug', 'feedback', or 'translation'
@@ -648,6 +650,33 @@
     }
   }
 
+  // Returns true if the session has pilots on non-DJI video systems,
+  // meaning O4 pilots should use race mode for band cleanliness.
+  function sessionHasMixedSystems() {
+    var pilots = state.cachedPilots || state.cachedSessionPilots || [];
+    var NON_DJI = ['analog', 'hdzero', 'walksnail_std', 'walksnail_race', 'openipc'];
+    for (var i = 0; i < pilots.length; i++) {
+      if (pilots[i].VideoSystem && NON_DJI.indexOf(pilots[i].VideoSystem) !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Returns O4 pilots with compatible goggles who are NOT in race mode.
+  function findO4PilotsNeedingRaceMode(pilots) {
+    var result = [];
+    for (var i = 0; i < pilots.length; i++) {
+      var p = pilots[i];
+      if (p.VideoSystem === 'dji_o4' &&
+          !p.RaceMode &&
+          (p.Goggles === 'goggles_3' || p.Goggles === 'goggles_n3')) {
+        result.push(p);
+      }
+    }
+    return result;
+  }
+
   // ── Determine effective video system for API ──────────────────
   function getEffectiveVideoSystem() {
     if (state.videoSystem === 'walksnail') {
@@ -851,6 +880,7 @@
       state.sessionCode = code;
       state.sessionPowerCeiling = (data.session && data.session.power_ceiling_mw) || 0;
       state.sessionFixedChannels = (data.session && data.session.fixed_channels) || '';
+      state.cachedSessionPilots = data.pilots || [];
       saveState();
       $('joining-session-code').textContent = code;
       $('joining-session-hint').classList.remove('hidden');
