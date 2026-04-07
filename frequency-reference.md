@@ -176,7 +176,35 @@ Uses Race Band channels (R1–R8). Same table as analog Race Band.
 
 ### Race Mode (Goggles 3 / N3)
 
-Uses Race Band channels (R1–R8) when race mode is enabled with compatible goggles.
+Race mode aligns DJI O4 onto standard race band channels with 20 MHz bandwidth, making it compatible with analog and HDZero channel spacing. The goggles' telemetry link moves onto the same frequency as the video carrier, eliminating the random telemetry hops across the 5.8 GHz band that occur in normal mode.
+
+**Compatible hardware:**
+- Air units: O4 Pro, O4 Light (NOT O3 or earlier)
+- Goggles: Goggles 3, Goggles N3 (NOT Goggles 2 or Integra)
+- Spectator mode works between Goggles 3/N3 only
+
+| Channel  | Freq (MHz) |
+|----------|-----------|
+| R1       | 5658      |
+| R2       | 5695      |
+| R3       | 5732      |
+| R4       | 5769      |
+| R5       | 5806      |
+| R6       | 5843      |
+| R7       | 5880      |
+| R8       | 5917      |
+
+**Settings in race mode:**
+- 20 MHz bandwidth, 20 Mbps bitrate
+- 1080p @ 100fps, 4:3 only
+- Manual channel select (R1–R8), manual power control with fine-tuning
+- DVR recording still available
+- Latency is reduced compared to normal mode
+
+**Operational notes:**
+- Do not power up O4 air units while other pilots are in the air — there is a brief band scan on startup that can cause momentary interference.
+- Goggles still transmit a telemetry link (DJI is a two-way system). Maintain physical separation between goggles — don't sit directly on top of other pilots or lap timers.
+- In race mode, DJI O4 channels are clean and do not cause out-of-channel interference. Any cross-system interference issues are on the receiving equipment side, not DJI.
 
 ## Walksnail Avatar
 
