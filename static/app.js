@@ -1373,7 +1373,18 @@
         document.querySelectorAll('[data-racemode]').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
         state.raceMode = btn.dataset.racemode === 'true';
-        $('btn-followup-next').classList.remove('hidden');
+        if (state.videoSystem === 'dji_o4') {
+          if (state.raceMode) {
+            // Race mode ON — bandwidth is fixed at 20 MHz, skip to next
+            state.bandwidthMHz = 20;
+            $('btn-followup-next').classList.remove('hidden');
+          } else {
+            // Race mode OFF — need bandwidth selection
+            showBandwidthOptions([10, 20, 40, 60]);
+          }
+        } else {
+          $('btn-followup-next').classList.remove('hidden');
+        }
       });
     });
 
@@ -1433,24 +1444,38 @@
   }
 
   function handleGogglesSelected() {
-    // After goggles, ask bandwidth
-    showBandwidthOptions([10, 20, 40, 60]);
+    if (state.goggles === 'goggles_3' || state.goggles === 'goggles_n3') {
+      // Compatible goggles — ask race mode first
+      showRaceModeOption();
+    } else {
+      // Incompatible goggles — skip race mode, ask bandwidth
+      state.raceMode = false;
+      showBandwidthOptions([10, 20, 40, 60]);
+    }
+  }
+
+  function showRaceModeOption() {
+    // Pre-select race mode if session has mixed video systems
+    var mixed = sessionHasMixedSystems();
+    var hint = $('racemode-mixed-hint');
+    if (mixed) {
+      // Default to YES and show recommendation
+      state.raceMode = true;
+      document.querySelectorAll('[data-racemode]').forEach(function (b) {
+        b.classList.toggle('selected', b.dataset.racemode === 'true');
+      });
+      if (hint) hint.classList.remove('hidden');
+    } else {
+      if (hint) hint.classList.add('hidden');
+    }
+    $('followup-racemode').classList.remove('hidden');
   }
 
   function handleBandwidthSelected(bw) {
     state.bandwidthMHz = bw;
-
-    if (state.videoSystem === 'dji_o4') {
-      // Check if Race Mode is available (Goggles 3 or N3)
-      if (state.goggles === 'goggles_3' || state.goggles === 'goggles_n3') {
-        $('followup-racemode').classList.remove('hidden');
-      } else {
-        $('btn-followup-next').classList.remove('hidden');
-      }
-    } else {
-      // DJI O3 — done with follow-ups
-      $('btn-followup-next').classList.remove('hidden');
-    }
+    // For O4: bandwidth is only shown when race mode is OFF, so we're done.
+    // For O3: no race mode, so we're done.
+    $('btn-followup-next').classList.remove('hidden');
   }
 
   function shouldWarnBandwidth() {
