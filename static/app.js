@@ -1433,7 +1433,8 @@
       $('followup-fcc').classList.remove('hidden');
     } else if (system === 'dji_o4') {
       $('followup-title').textContent = t('FOLLOWUP_TITLE_DJI_O4');
-      $('followup-fcc').classList.remove('hidden');
+      // O4 starts with goggles (not FCC) — race mode makes FCC irrelevant
+      $('followup-goggles').classList.remove('hidden');
     }
   }
 
@@ -1470,12 +1471,12 @@
         state.raceMode = btn.dataset.racemode === 'true';
         if (state.videoSystem === 'dji_o4') {
           if (state.raceMode) {
-            // Race mode ON — bandwidth is fixed at 20 MHz, skip to next
+            // Race mode ON — bandwidth is fixed at 20 MHz, FCC irrelevant, skip to next
             state.bandwidthMHz = 20;
             $('btn-followup-next').classList.remove('hidden');
           } else {
-            // Race mode OFF — need bandwidth selection
-            showBandwidthOptions([10, 20, 40, 60]);
+            // Race mode OFF — need FCC then bandwidth
+            $('followup-fcc').classList.remove('hidden');
           }
         } else {
           $('btn-followup-next').classList.remove('hidden');
@@ -1533,8 +1534,8 @@
       // DJI O3 needs bandwidth selection
       showBandwidthOptions([10, 20, 40]);
     } else if (state.videoSystem === 'dji_o4') {
-      // DJI O4 needs goggles selection
-      $('followup-goggles').classList.remove('hidden');
+      // O4 FCC is only asked after race mode is declined — go to bandwidth
+      showBandwidthOptions([10, 20, 40, 60]);
     }
   }
 
@@ -1543,9 +1544,9 @@
       // Compatible goggles — ask race mode first
       showRaceModeOption();
     } else {
-      // Incompatible goggles — skip race mode, ask bandwidth
+      // Incompatible goggles — skip race mode, ask FCC then bandwidth
       state.raceMode = false;
-      showBandwidthOptions([10, 20, 40, 60]);
+      $('followup-fcc').classList.remove('hidden');
     }
   }
 
