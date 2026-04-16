@@ -12,6 +12,15 @@ A frequency coordinator for FPV drone pilots. When multiple pilots fly together,
 
 Sessions update live — any join, leave, or channel change is reflected on everyone's screen within seconds.
 
+## Direct Links
+
+Share these for one-tap deep links into the app:
+
+- [`skwad.atxfpv.org`](https://skwad.atxfpv.org) — main app
+- [`skwad.atxfpv.org/s/{CODE}`](https://skwad.atxfpv.org) — join a specific session
+- [`skwad.atxfpv.org/feedback`](https://skwad.atxfpv.org/feedback) — open the feedback form
+- [`skwad.atxfpv.org/translate`](https://skwad.atxfpv.org/translate) — flag a bad translation (Translation category pre-selected)
+
 ## Features
 
 - **Smart channel assignment.** The optimizer calculates required spacing for each pilot pair based on their actual signal widths and the session's power ceiling. It's not "stay two channels apart" — it's real RF math.
@@ -21,9 +30,9 @@ Sessions update live — any join, leave, or channel change is reflected on ever
 - **QR code join.** One tap to share, one scan to join. Works with phone cameras and in-app scanner.
 - **Conflict detection.** Real-time danger/warning indicators when pilots are too close, with IMD (intermodulation distortion) scoring.
 - **Spectrum visualization.** Live view of the 5.8 GHz band showing each pilot's signal width, conflicts, and IMD products.
-- **Fixed channel presets.** Session leader can lock the session to an optimized 2-5 channel set for structured events.
-- **14 languages.** Auto-detected from browser, switchable in the footer. Community translations welcome.
-- **In-app feedback.** Report bugs, request features, or suggest translation fixes — submissions go straight to GitHub Issues.
+- **Fixed channels (race mode).** Leader can lock the session to an optimized 2-5 channel preset for structured events, and switch to a different preset mid-session if the pilot mix changes. Pilots whose equipment can't tune any of the locked channels are refused at join with a clear dialog.
+- **14 languages.** Auto-detected from browser, switchable in the footer. Most locales are machine-translated and need native-speaker review — tap `/translate` in any language to flag issues.
+- **In-app feedback.** Report bugs, request features, or suggest translation fixes — direct links at `/feedback` and `/translate`. Submissions go straight to GitHub Issues.
 - **Usage dashboard.** Anonymous aggregate stats at `/usage` — session counts, video system distribution, and a map of where sessions have been hosted.
 - **Installable PWA.** Add to home screen on any device.
 
@@ -75,6 +84,7 @@ The server starts on port 8080 by default. Set `PORT`, `DB_PATH`, and `STATIC_DI
 | `POST` | `/api/sessions/{code}/preview-rebalance` | Preview rebalance (dry-run) |
 | `POST` | `/api/sessions/{code}/transfer-leader` | Transfer leadership (leader only) |
 | `POST` | `/api/sessions/{code}/add-pilot` | Add pilot (leader only) |
+| `PUT` | `/api/sessions/{code}/fixed-channels` | Change fixed channel set mid-session (leader only) |
 | `POST` | `/api/pilots/{id}/preview-channel?session=CODE` | Preview channel change (dry-run) |
 | `PUT` | `/api/pilots/{id}/channel?session=CODE` | Change channel |
 | `PUT` | `/api/pilots/{id}/video-system?session=CODE` | Change video system |
@@ -120,12 +130,20 @@ static/
   usage.html             # Usage dashboard
 ```
 
-## Help Translate Skwad
+## Help Translate Skwad — Native Speakers Wanted
 
-Skwad supports 14 languages. To request a new language or fix a translation:
+Skwad supports 14 languages: English, German, Italian, Bulgarian, Traditional Chinese, Korean, Japanese, French, Spanish, Brazilian Portuguese, Simplified Chinese, Thai, Dutch, and Polish.
 
-1. Open an issue using the [Translation Request](../../issues/new?template=translation-request.yml) template
-2. Or submit a PR with a new `static/locales/{lang-code}.json` file based on `static/locales/en.json`
+**Most of these were machine-translated and haven't been verified by a native speaker yet.** If you read one of these languages and something reads awkwardly, loses meaning, or just sounds like a robot wrote it, we'd genuinely love your help cleaning it up.
+
+**Fastest way to flag something:**
+Switch the app to your language (footer dropdown), notice the issue, then open [**skwad.atxfpv.org/translate**](https://skwad.atxfpv.org/translate) — it opens the feedback form with the Translation category pre-selected. Paste or paraphrase the string and suggest a better rendering. Each submission creates a GitHub issue automatically.
+
+**Structured correction or a new language:**
+Open a [Translation Request](../../issues/new?template=translation-request.yml) issue.
+
+**Code contribution:**
+Submit a PR with an updated `static/locales/{lang-code}.json`, based on `static/locales/en.json`. Keep the keys identical — only translate the values.
 
 ## License
 

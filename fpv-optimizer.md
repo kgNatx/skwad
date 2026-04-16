@@ -149,11 +149,13 @@ Channel selection logic:
 
 When multiple pilots end up on the same frequency — because there are more pilots than channels, or because fixed channels force sharing — they're marked as a buddy group. The UI highlights buddy groups with matching colored borders and "SHARING WITH" labels. They can still fly but will interfere with each other on that channel.
 
-## Fixed Channels
+## Fixed Channels (Race Mode)
 
-The leader can select a preset channel set (2-5 frequencies) during session creation. When fixed channels are active, `Optimize()` receives a `fixedFreqs` list and filters every pilot's channel pool to only those frequencies. If a pilot's system has no channels matching the fixed set, they get the fixed frequencies directly as synthetic channels and buddy up on the closest match.
+The leader can select a preset channel set (2-5 frequencies) during session creation, and can **change the set mid-session** via a dedicated "FIXED CHANNELS (RACE MODE)" leader button. The change-set picker reuses the same preset UI as session creation and marks the current preset with a CURRENT badge. Picking "NO FIXED CHANNELS" exits race mode entirely; picking a different preset triggers a full reoptimize against the new constraints.
 
-When all fixed channels have a pilot, overflow pilots buddy up on the least-loaded channel. Preset channel sets are optimized for spacing and IMD across different system mixes (analog-only, DJI-only, mixed).
+**Compatibility check.** Before any pilot joins a fixed-channel session, `freq.HasFixedSetMatch()` verifies their native channel pool intersects the fixed set. If it doesn't (e.g., a DJI V1 FCC pilot trying to join a Race Band-only session), the join is refused with HTTP 409 `no_channel_match` and the client shows a dialog explaining the mismatch — no pilot is ever silently assigned to a frequency their radio can't tune. The same check runs on `add-pilot`, on mid-session video-system changes, and on mid-session fixed-set changes (the leader's new set must be tunable by every active pilot, otherwise the change is refused with a list of incompatible pilots).
+
+When fixed channels are active, `Optimize()` receives a `fixedFreqs` list and filters every pilot's channel pool to only those frequencies. When all fixed channels have a pilot, overflow pilots buddy up on the least-loaded channel. Preset channel sets are optimized for spacing and IMD across different system mixes (analog-only, DJI-only, mixed).
 
 ## Graduated Escalation (FindMinimalDisplacement)
 
@@ -167,7 +169,7 @@ Lock all existing pilots at their current frequencies, let the optimizer place o
 
 If Level 0 produces a danger conflict, the pilot gets two options to choose from:
 
-**Buddy option:** Find the most compatible existing pilot to share a frequency with. Prefers same video system and similar bandwidth.
+**Buddy option:** Find the best existing pilot to share a frequency with. Ranks candidates by load ascending first (so overflow pilots distribute round-robin across channels), then by same video system and similar bandwidth as tiebreakers. Without the load-first ranking, overflow pilots would stack on the first channel — they all score identically on video-system/bandwidth in a uniform-system session, and stable sort would return the first pilot every time.
 
 **Rebalance option:** Try unlocking one flexible pilot at a time (most flexible first), re-run the optimizer. If that doesn't produce a clean solution, try pairs of flexible pilots. Take the first clean result.
 
