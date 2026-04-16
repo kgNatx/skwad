@@ -42,7 +42,7 @@
   "SESSION_CHANNELS_TITLE": "세션 채널",
   "POWER_ALERT_TEXT": "세션 리더가 송신 출력 상한을 설정했습니다. 최적의 경험을 위해 VTX를 {{mw}} mW 이하로 설정해주세요.",
   "POWER_ALERT_DJI_HINT": "DJI 조종사: 채널 호환성을 위해 20 MHz 대역폭을 사용하세요.",
-  "FIXED_CHANNELS_HINT": "이 세션은 고정 채널을 사용합니다: {{channels}}",
+  "FIXED_CHANNELS_HINT": "이 세션은 고정 채널(레이스 모드)을 사용합니다: {{channels}}",
 
   "STEP_LEADER_TITLE": "당신이 리더입니다",
   "LEADER_INFO_MOVE_BOLD": "조종사 이동",
@@ -55,7 +55,7 @@
   "LEADER_INFO_TRANSFER_TEXT": ": 떠나기 전에 리더를 이전하세요 — 명단에서 본인 행을 탭.",
   "SESSION_OPTIONS_LABEL": "세션 옵션",
   "OPT_POWER_CEILING": "출력 상한",
-  "OPT_FIXED_CHANNELS": "고정 채널",
+  "OPT_FIXED_CHANNELS": "고정 채널 (레이스 모드)",
 
   "STEP_POWER_TITLE": "출력 상한",
   "POWER_SUBTITLE": "출력이 높을수록 더 넓은 채널 간격이 필요합니다. 출력이 클수록 사용 가능한 채널이 줄어듭니다.",
@@ -78,7 +78,7 @@
   "POWER_TIP_800MW": "최대 출력에 근접. 독립 채널 4개, 대인원은 버디 공유.",
   "POWER_TIP_1000MW": "풀 파워. 독립 채널 최대 4개.",
 
-  "STEP_FIXED_CHANNELS_TITLE": "고정 채널",
+  "STEP_FIXED_CHANNELS_TITLE": "고정 채널 (레이스 모드)",
   "FIXED_CHANNELS_SUBTITLE": "넓은 간격으로 고출력과 깨끗한 영상에 대응. 초과 조종사는 채널을 공유합니다.",
   "FC_UNIQUE_CHANNELS": "독립 채널",
   "FC_SELECT_HINT": "세트를 탭하여 선택",
@@ -98,6 +98,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "현재",
 
   "STEP_VIDEO_TITLE": "비디오 시스템",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -206,7 +207,7 @@
   "BTN_LEAVE_ANYWAY": "그래도 나가기",
 
   "ADD_PILOT_TITLE": "조종사 추가",
-  "ADD_PILOT_FIXED_HINT": "고정 채널: {{channels}}",
+  "ADD_PILOT_FIXED_HINT": "고정 채널 (레이스 모드): {{channels}}",
   "BTN_ADD_TO_SESSION": "세션에 추가",
 
   "REBALANCE_CONFIRM_TITLE": "전체 리밸런스",
@@ -268,7 +269,7 @@
   "MAP_LEGEND_ACTIVE": "진행 중",
   "MAP_LEGEND_PAST": "종료",
   "FEAT_POWER_CEILING": "출력 상한 사용",
-  "FEAT_FIXED_CHANNELS": "고정 채널 사용",
+  "FEAT_FIXED_CHANNELS": "고정 채널(레이스 모드) 사용",
   "FEAT_REBALANCE_RATE": "리밸런스 비율",
   "FEAT_AVG_CHANNEL_CHANGES": "세션 평균 채널 변경 수",
   "USAGE_LOAD_ERROR": "이용 통계를 불러오지 못했습니다.",
@@ -294,6 +295,13 @@
   "ERR_CALLSIGN_EMPTY": "콜사인을 입력하세요",
   "ERR_CALLSIGN_IN_SESSION": "이미 세션에 있는 콜사인입니다",
   "ERR_JOIN_FAILED": "참가 실패: {{error}}",
+  "INCOMPATIBLE_TITLE": "호환 가능한 채널 없음",
+  "INCOMPATIBLE_TEXT": "사용 중인 영상 시스템은 이 세션의 고정 채널({{channels}})에 튜닝할 수 없습니다. 돌아가서 영상 시스템, 대역폭, 레이스 모드 설정을 변경하거나 세션 리더에게 다른 채널 세트를 사용해 달라고 요청하세요.",
+  "BTN_CHANGE_FIXED_CHANNELS": "고정 채널 (레이스 모드)",
+  "BTN_NO_FIXED_CHANNELS": "고정 채널 없음",
+  "INCOMPATIBLE_PILOTS_TITLE": "전환 불가 \u2014 파일럿 호환 안 됨",
+  "INCOMPATIBLE_PILOTS_TEXT": "다음 파일럿은 선택한 채널 세트의 어떤 채널에도 튜닝할 수 없습니다:",
+  "INCOMPATIBLE_PILOTS_HINT": "먼저 영상 시스템을 변경해 달라고 요청하거나 다른 채널 세트를 선택하세요.",
   "ERR_UPDATE_FAILED": "업데이트 실패: {{error}}",
   "ERR_CALLSIGN_IN_USE": "이미 사용 중인 콜사인입니다",
   "ERR_FAILED": "실패: {{error}}",

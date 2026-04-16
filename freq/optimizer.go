@@ -219,6 +219,29 @@ func Optimize(pilots []PilotInput, guardBandMHz int, fixedFreqs []int) []Assignm
 	return out
 }
 
+// HasFixedSetMatch reports whether the pilot's native channel pool contains
+// at least one of the session's fixed frequencies. Callers should check this
+// before running Optimize() on a fixed-channel session — if false, the pilot's
+// equipment cannot tune to any of the session's channels and they should be
+// refused rather than silently assigned to a frequency they can't use.
+// Returns true when fixedFreqs is empty (no constraint, trivially compatible).
+func HasFixedSetMatch(videoSystem string, fccUnlocked bool, bandwidthMHz int, raceMode bool, goggles string, analogBands []string, fixedFreqs []int) bool {
+	if len(fixedFreqs) == 0 {
+		return true
+	}
+	pool := ChannelPool(videoSystem, fccUnlocked, bandwidthMHz, raceMode, goggles, analogBands)
+	fixedSet := make(map[int]bool, len(fixedFreqs))
+	for _, f := range fixedFreqs {
+		fixedSet[f] = true
+	}
+	for _, ch := range pool {
+		if fixedSet[ch.FreqMHz] {
+			return true
+		}
+	}
+	return false
+}
+
 // OptimizeWithLocks runs the optimizer but forces pilots in lockedIDs to be
 // pinned at their PrevFreqMHz, regardless of their preference.
 // guardBandMHz and fixedFreqs are passed through to Optimize.
@@ -549,7 +572,9 @@ func copyAssignments(a []Assignment) []Assignment {
 }
 
 // findBestBuddy picks the best existing pilot to share a frequency with.
-// Prefers: same video system, similar bandwidth, most margin to other pilots.
+// Ranks candidates by load first (prefer less-loaded frequencies so overflow
+// distributes round-robin across channels), then by same video system and
+// similar bandwidth as tiebreakers.
 func findBestBuddy(existing []PilotInput, newPilot PilotInput) *BuddySuggestion {
 	newPool := ChannelPool(newPilot.VideoSystem, newPilot.FCCUnlocked, newPilot.BandwidthMHz, newPilot.RaceMode, newPilot.Goggles, newPilot.AnalogBands)
 	newPoolFreqs := make(map[int]bool, len(newPool))
@@ -559,9 +584,18 @@ func findBestBuddy(existing []PilotInput, newPilot PilotInput) *BuddySuggestion 
 
 	newBW := OccupiedBandwidth(newPilot.VideoSystem, newPilot.BandwidthMHz)
 
+	// Count how many existing pilots are on each frequency.
+	freqLoad := make(map[int]int, len(existing))
+	for _, p := range existing {
+		if p.PrevFreqMHz > 0 {
+			freqLoad[p.PrevFreqMHz]++
+		}
+	}
+
 	type candidate struct {
 		pilot PilotInput
-		score int // higher is better
+		load  int // lower is better — preferring less-loaded channels distributes overflow round-robin
+		score int // higher is better — used to break load ties (same video system, similar bandwidth)
 	}
 	var candidates []candidate
 
@@ -584,15 +618,20 @@ func findBestBuddy(existing []PilotInput, newPilot PilotInput) *BuddySuggestion 
 		}
 		score -= bwDiff
 
-		candidates = append(candidates, candidate{pilot: p, score: score})
+		candidates = append(candidates, candidate{pilot: p, load: freqLoad[p.PrevFreqMHz], score: score})
 	}
 
 	if len(candidates) == 0 {
 		return nil
 	}
 
-	// Pick highest score.
+	// Sort: lowest load first, then highest score. Stable so that ties break
+	// on insertion order (oldest pilot on a tied freq wins — matches what a
+	// human coordinator would expect: "buddy up with the pilot who was already there").
 	sort.SliceStable(candidates, func(i, j int) bool {
+		if candidates[i].load != candidates[j].load {
+			return candidates[i].load < candidates[j].load
+		}
 		return candidates[i].score > candidates[j].score
 	})
 	best := candidates[0]

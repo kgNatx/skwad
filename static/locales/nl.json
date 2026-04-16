@@ -42,7 +42,7 @@
   "SESSION_CHANNELS_TITLE": "SESSIEKANALEN",
   "POWER_ALERT_TEXT": "De sessieleider heeft een vermogenslimiet ingesteld. Stel je VTX in op {{mw}} mW of lager voor de beste ervaring.",
   "POWER_ALERT_DJI_HINT": "DJI piloten: gebruik 20 MHz bandbreedte voor de beste kanaalcompatibiliteit.",
-  "FIXED_CHANNELS_HINT": "Deze sessie gebruikt vaste kanalen: {{channels}}",
+  "FIXED_CHANNELS_HINT": "Deze sessie gebruikt vaste kanalen (race mode): {{channels}}",
 
   "STEP_LEADER_TITLE": "JIJ BENT DE LEIDER",
   "LEADER_INFO_MOVE_BOLD": "Verplaats piloten",
@@ -55,7 +55,7 @@
   "LEADER_INFO_TRANSFER_TEXT": " voordat je vertrekt — tik op je eigen rij in de lijst.",
   "SESSION_OPTIONS_LABEL": "SESSIEOPTIES",
   "OPT_POWER_CEILING": "VERMOGENSLIMIET",
-  "OPT_FIXED_CHANNELS": "VASTE KANALEN",
+  "OPT_FIXED_CHANNELS": "VASTE KANALEN (RACE MODE)",
 
   "STEP_POWER_TITLE": "VERMOGENSLIMIET",
   "POWER_SUBTITLE": "Meer vermogen vereist bredere kanaalafstand. Meer vermogen betekent minder piloten op aparte kanalen.",
@@ -78,7 +78,7 @@
   "POWER_TIP_800MW": "Bijna maximaal vermogen. 4 unieke kanalen, buddy up voor grotere groepen.",
   "POWER_TIP_1000MW": "Volle kracht. Maximaal 4 unieke kanalen.",
 
-  "STEP_FIXED_CHANNELS_TITLE": "VASTE KANALEN",
+  "STEP_FIXED_CHANNELS_TITLE": "VASTE KANALEN (RACE MODE)",
   "FIXED_CHANNELS_SUBTITLE": "Bredere afstand voor meer vermogen en schoner beeld. Extra piloten delen kanalen.",
   "FC_UNIQUE_CHANNELS": "UNIEKE KANALEN",
   "FC_SELECT_HINT": "TIK OP EEN SET OM TE SELECTEREN",
@@ -98,6 +98,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "HUIDIG",
 
   "STEP_VIDEO_TITLE": "VIDEOSYSTEEM",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -207,7 +208,7 @@
   "BTN_LEAVE_ANYWAY": "TOCH VERTREKKEN",
 
   "ADD_PILOT_TITLE": "PILOOT TOEVOEGEN",
-  "ADD_PILOT_FIXED_HINT": "VASTE KANALEN: {{channels}}",
+  "ADD_PILOT_FIXED_HINT": "VASTE KANALEN (RACE MODE): {{channels}}",
   "BTN_ADD_TO_SESSION": "AAN SESSIE TOEVOEGEN",
 
   "REBALANCE_CONFIRM_TITLE": "ALLES HERBALANCEREN",
@@ -271,7 +272,7 @@
   "MAP_LEGEND_ACTIVE": "Actief",
   "MAP_LEGEND_PAST": "Afgelopen",
   "FEAT_POWER_CEILING": "Vermogenslimiet Gebruikt",
-  "FEAT_FIXED_CHANNELS": "Vaste Kanalen Gebruikt",
+  "FEAT_FIXED_CHANNELS": "Vaste Kanalen Gebruikt (Race Mode)",
   "FEAT_REBALANCE_RATE": "Herbalanceringspercentage",
   "FEAT_AVG_CHANNEL_CHANGES": "Gem. Kanaalwisselingen / Sessie",
   "USAGE_LOAD_ERROR": "Gebruiksdata laden mislukt.",
@@ -297,6 +298,13 @@
   "ERR_CALLSIGN_EMPTY": "VOER JE CALLSIGN IN",
   "ERR_CALLSIGN_IN_SESSION": "CALLSIGN AL IN SESSIE",
   "ERR_JOIN_FAILED": "JOINEN MISLUKT: {{error}}",
+  "INCOMPATIBLE_TITLE": "GEEN COMPATIBELE KANALEN",
+  "INCOMPATIBLE_TEXT": "Jouw videosysteem kan geen van de vaste kanalen van deze sessie ({{channels}}) afstemmen. Ga terug en wijzig videosysteem, bandbreedte of race mode — of vraag de sessieleider om een andere kanaalset te gebruiken.",
+  "BTN_CHANGE_FIXED_CHANNELS": "VASTE KANALEN (RACE MODE)",
+  "BTN_NO_FIXED_CHANNELS": "GEEN VASTE KANALEN",
+  "INCOMPATIBLE_PILOTS_TITLE": "WISSELEN NIET MOGELIJK \u2014 PILOTEN INCOMPATIBEL",
+  "INCOMPATIBLE_PILOTS_TEXT": "Deze piloten kunnen geen enkel kanaal uit de gekozen set afstemmen:",
+  "INCOMPATIBLE_PILOTS_HINT": "Vraag ze eerst hun videosysteem te wijzigen, of kies een andere kanaalset.",
   "ERR_UPDATE_FAILED": "BIJWERKEN MISLUKT: {{error}}",
   "ERR_CALLSIGN_IN_USE": "CALLSIGN AL IN GEBRUIK",
   "ERR_FAILED": "MISLUKT: {{error}}",

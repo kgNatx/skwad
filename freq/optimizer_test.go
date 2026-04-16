@@ -624,3 +624,188 @@ func TestOptimize_FixedChannels_Nil(t *testing.T) {
 		t.Fatalf("expected 2 assignments, got %d", len(result))
 	}
 }
+
+// TestFindMinimalDisplacement_FixedChannels_SequentialOverflow simulates the
+// production scenario where pilots join a fixed-channel session one at a time
+// AND the user accepts the buddy suggestion each time (which is the only option
+// at Level 1 for fixed-channel sessions, since partial rebalance can't create
+// a clean slot from a locked fixed pool).
+//
+// The client flow (static/app.js:1850) sets preferred_frequency_mhz to the
+// buddy option's freq when the user clicks "Buddy Up". The backend then pins
+// the new pilot onto that freq via the preference path in Optimize().
+//
+// With 4 fixed channels and 8 pilots, overflow pilots 5-8 MUST be distributed
+// round-robin (one per channel) — NOT all piled onto the same channel.
+// Regression test for the bug where all overflow pilots ended up in Buddy Group 1.
+func TestFindMinimalDisplacement_FixedChannels_SequentialOverflow(t *testing.T) {
+	fixedFreqs := []int{5658, 5732, 5843, 5917} // R1, R3, R6, R8
+
+	// Simulate sequential joins. Each iteration mirrors the flow in
+	// HandleJoinSession + the client's buddy-up handling.
+	committed := []PilotInput{}
+	for id := 1; id <= 8; id++ {
+		newPilot := PilotInput{
+			ID:          id,
+			VideoSystem: "dji_o4",
+			RaceMode:    true,
+			Goggles:     "goggles_3",
+		}
+
+		// Preview run (what the client sees first).
+		previewResult := FindMinimalDisplacement(committed, newPilot, DefaultGuardBandMHz, fixedFreqs)
+
+		// If preview escalates to Level 1 with a buddy option, mimic the
+		// client's behavior: user clicks "Buddy Up", client sets
+		// preferred_frequency_mhz = buddy_option.freq_mhz. The commit call
+		// then rebuilds newPilot WITH the preference and re-runs the optimizer.
+		if previewResult.Level == 1 && previewResult.BuddyOption != nil {
+			newPilot.PreferredFreqMHz = previewResult.BuddyOption.FreqMHz
+		}
+
+		// Commit run (what HandleJoinSession actually writes to DB).
+		commitResult := FindMinimalDisplacement(committed, newPilot, DefaultGuardBandMHz, fixedFreqs)
+
+		// HandleJoinSession writes commitResult.Assignments to the DB unless
+		// the client explicitly chose "rebalance" (not relevant here since
+		// fixed-channel overflow has no rebalance option).
+		next := make([]PilotInput, 0, id)
+		assignByID := make(map[int]Assignment, id)
+		for _, a := range commitResult.Assignments {
+			assignByID[a.PilotID] = a
+		}
+		for _, p := range committed {
+			a := assignByID[p.ID]
+			p.PrevFreqMHz = a.FreqMHz
+			p.PrevChannel = a.Channel
+			next = append(next, p)
+		}
+		a := assignByID[newPilot.ID]
+		newPilot.PrevFreqMHz = a.FreqMHz
+		newPilot.PrevChannel = a.Channel
+		next = append(next, newPilot)
+		committed = next
+	}
+
+	// Count pilots per channel from the final committed state.
+	pilotsOnFreq := make(map[int][]int)
+	for _, p := range committed {
+		pilotsOnFreq[p.PrevFreqMHz] = append(pilotsOnFreq[p.PrevFreqMHz], p.ID)
+	}
+
+	// With 8 pilots on 4 channels, each channel MUST have exactly 2 pilots.
+	for _, f := range fixedFreqs {
+		if n := len(pilotsOnFreq[f]); n != 2 {
+			t.Errorf("channel %d MHz has %d pilots %v, want 2 (round-robin distribution)",
+				f, n, pilotsOnFreq[f])
+		}
+	}
+
+	// Belt-and-suspenders: make sure every channel in the fixed set is used.
+	if len(pilotsOnFreq) != 4 {
+		t.Errorf("used %d distinct frequencies, want 4; distribution=%v",
+			len(pilotsOnFreq), pilotsOnFreq)
+	}
+}
+
+// TestHasFixedSetMatch verifies that compatibility detection works across
+// common video-system / fixed-set combinations. Used by the join handler to
+// refuse pilots whose equipment cannot tune any of the session's channels.
+func TestHasFixedSetMatch(t *testing.T) {
+	raceBandFixed := []int{5658, 5732, 5843, 5917} // R1, R3, R6, R8
+
+	tests := []struct {
+		name        string
+		videoSystem string
+		fccUnlocked bool
+		bandwidthMHz int
+		raceMode    bool
+		goggles     string
+		analogBands []string
+		fixedFreqs  []int
+		want        bool
+	}{
+		{
+			name:        "no fixed freqs is always compatible",
+			videoSystem: "dji_v1",
+			fccUnlocked: true,
+			fixedFreqs:  nil,
+			want:        true,
+		},
+		{
+			name:        "analog race band matches race-band fixed",
+			videoSystem: "analog",
+			analogBands: []string{"R"},
+			fixedFreqs:  raceBandFixed,
+			want:        true,
+		},
+		{
+			name:        "dji o4 race mode matches race-band fixed",
+			videoSystem: "dji_o4",
+			raceMode:    true,
+			goggles:     "goggles_3",
+			fixedFreqs:  raceBandFixed,
+			want:        true,
+		},
+		{
+			name:        "dji v1 fcc does NOT match race-band fixed",
+			videoSystem: "dji_v1",
+			fccUnlocked: true,
+			fixedFreqs:  raceBandFixed,
+			want:        false,
+		},
+		{
+			name:        "dji o4 stock (non-race) does NOT match race-band fixed",
+			videoSystem: "dji_o4",
+			raceMode:    false,
+			goggles:     "goggles_3",
+			fixedFreqs:  raceBandFixed,
+			want:        false,
+		},
+		{
+			name:        "hdzero matches race-band fixed",
+			videoSystem: "hdzero",
+			fixedFreqs:  raceBandFixed,
+			want:        true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := HasFixedSetMatch(tc.videoSystem, tc.fccUnlocked, tc.bandwidthMHz, tc.raceMode, tc.goggles, tc.analogBands, tc.fixedFreqs)
+			if got != tc.want {
+				t.Errorf("HasFixedSetMatch = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestFindBestBuddy_LoadBalancing verifies that findBestBuddy considers load:
+// when multiple candidate pilots are equally-compatible, it should suggest a
+// pilot on a less-loaded frequency so overflow distributes round-robin.
+//
+// Setup: 4 O4 race-mode pilots, one per channel (load=1 each). One of those
+// channels then picks up a second pilot (load=2). A new O4 race-mode pilot
+// joining next should be suggested a buddy on one of the load=1 channels, not
+// the load=2 one.
+func TestFindBestBuddy_LoadBalancing(t *testing.T) {
+	existing := []PilotInput{
+		{ID: 1, VideoSystem: "dji_o4", RaceMode: true, Goggles: "goggles_3", PrevFreqMHz: 5658}, // R1 load=2 (pilots 1 and 5)
+		{ID: 2, VideoSystem: "dji_o4", RaceMode: true, Goggles: "goggles_3", PrevFreqMHz: 5917}, // R8 load=1
+		{ID: 3, VideoSystem: "dji_o4", RaceMode: true, Goggles: "goggles_3", PrevFreqMHz: 5732}, // R3 load=1
+		{ID: 4, VideoSystem: "dji_o4", RaceMode: true, Goggles: "goggles_3", PrevFreqMHz: 5843}, // R6 load=1
+		{ID: 5, VideoSystem: "dji_o4", RaceMode: true, Goggles: "goggles_3", PrevFreqMHz: 5658}, // R1 (second)
+	}
+	newPilot := PilotInput{ID: 6, VideoSystem: "dji_o4", RaceMode: true, Goggles: "goggles_3"}
+
+	suggestion := findBestBuddy(existing, newPilot)
+	if suggestion == nil {
+		t.Fatal("findBestBuddy returned nil; expected a suggestion")
+	}
+	// R1 is already load=2 with pilots 1 and 5. Suggesting another pilot on
+	// R1 would pile a third pilot there instead of load-balancing.
+	if suggestion.FreqMHz == 5658 {
+		t.Errorf("findBestBuddy suggested freq %d (R1, load=2); should pick a load=1 freq to balance",
+			suggestion.FreqMHz)
+	}
+}

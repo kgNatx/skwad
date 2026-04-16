@@ -42,7 +42,7 @@
   "SESSION_CHANNELS_TITLE": "場次頻道",
   "POWER_ALERT_TEXT": "場次領隊已設定發射功率上限。請將你的 VTX 設為 {{mw}} mW 或以下，以獲得最佳體驗。",
   "POWER_ALERT_DJI_HINT": "DJI 飛手：使用 20 MHz 頻寬以獲得最佳頻道相容性。",
-  "FIXED_CHANNELS_HINT": "此場次使用固定頻道：{{channels}}",
+  "FIXED_CHANNELS_HINT": "此場次使用固定頻道（競速模式）：{{channels}}",
 
   "STEP_LEADER_TITLE": "你是領隊",
   "LEADER_INFO_MOVE_BOLD": "移動飛手",
@@ -55,7 +55,7 @@
   "LEADER_INFO_TRANSFER_TEXT": "：離開前請先移交——點擊你自己的列即可交接。",
   "SESSION_OPTIONS_LABEL": "場次選項",
   "OPT_POWER_CEILING": "功率上限",
-  "OPT_FIXED_CHANNELS": "固定頻道",
+  "OPT_FIXED_CHANNELS": "固定頻道（競速模式）",
 
   "STEP_POWER_TITLE": "功率上限",
   "POWER_SUBTITLE": "功率越高需要越寬的頻道間距。功率越大，能分開使用的頻道越少。",
@@ -78,7 +78,7 @@
   "POWER_TIP_800MW": "接近最大功率。4 個獨立頻道，更多人需共用頻道。",
   "POWER_TIP_1000MW": "全力輸出。最多 4 個獨立頻道。",
 
-  "STEP_FIXED_CHANNELS_TITLE": "固定頻道",
+  "STEP_FIXED_CHANNELS_TITLE": "固定頻道（競速模式）",
   "FIXED_CHANNELS_SUBTITLE": "更寬間距適合更高功率與更乾淨的畫面。多餘飛手將共用頻道。",
   "FC_UNIQUE_CHANNELS": "獨立頻道",
   "FC_SELECT_HINT": "點選以選擇頻道組",
@@ -98,6 +98,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "目前",
 
   "STEP_VIDEO_TITLE": "影像系統",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -206,7 +207,7 @@
   "BTN_LEAVE_ANYWAY": "仍然離開",
 
   "ADD_PILOT_TITLE": "新增飛手",
-  "ADD_PILOT_FIXED_HINT": "固定頻道：{{channels}}",
+  "ADD_PILOT_FIXED_HINT": "固定頻道（競速模式）：{{channels}}",
   "BTN_ADD_TO_SESSION": "加入場次",
 
   "REBALANCE_CONFIRM_TITLE": "全部重新平衡",
@@ -268,7 +269,7 @@
   "MAP_LEGEND_ACTIVE": "進行中",
   "MAP_LEGEND_PAST": "已結束",
   "FEAT_POWER_CEILING": "使用功率上限",
-  "FEAT_FIXED_CHANNELS": "使用固定頻道",
+  "FEAT_FIXED_CHANNELS": "使用固定頻道（競速模式）",
   "FEAT_REBALANCE_RATE": "重新平衡比例",
   "FEAT_AVG_CHANNEL_CHANGES": "每場平均頻道變更數",
   "USAGE_LOAD_ERROR": "無法載入使用統計資料。",
@@ -294,6 +295,13 @@
   "ERR_CALLSIGN_EMPTY": "請輸入你的呼號",
   "ERR_CALLSIGN_IN_SESSION": "此呼號已在場次中",
   "ERR_JOIN_FAILED": "加入失敗：{{error}}",
+  "INCOMPATIBLE_TITLE": "無相容頻道",
+  "INCOMPATIBLE_TEXT": "你的影像系統無法調至本場次的任何固定頻道（{{channels}}）。請回上一步更改影像系統、頻寬或競速模式 — 或請場次負責人更換頻道組。",
+  "BTN_CHANGE_FIXED_CHANNELS": "固定頻道（競速模式）",
+  "BTN_NO_FIXED_CHANNELS": "無固定頻道",
+  "INCOMPATIBLE_PILOTS_TITLE": "無法切換 \u2014 飛手不相容",
+  "INCOMPATIBLE_PILOTS_TEXT": "這些飛手無法調至所選頻道組中的任何頻道：",
+  "INCOMPATIBLE_PILOTS_HINT": "請他們先更換影像系統，或選擇其他頻道組。",
   "ERR_UPDATE_FAILED": "更新失敗：{{error}}",
   "ERR_CALLSIGN_IN_USE": "此呼號已被使用",
   "ERR_FAILED": "失敗：{{error}}",

@@ -42,7 +42,7 @@
   "SESSION_CHANNELS_TITLE": "КАНАЛИ НА СЕСИЯТА",
   "POWER_ALERT_TEXT": "Лидерът е задал таван на предавателната мощност. Моля, настройте VTX на {{mw}} mW или по-малко за най-добро качество.",
   "POWER_ALERT_DJI_HINT": "DJI пилоти: използвайте 20 MHz ширина за най-добра съвместимост.",
-  "FIXED_CHANNELS_HINT": "Тази сесия използва фиксирани канали: {{channels}}",
+  "FIXED_CHANNELS_HINT": "Тази сесия използва фиксирани канали (рейс режим): {{channels}}",
 
   "STEP_LEADER_TITLE": "ТИ СИ ЛИДЕРЪТ",
   "LEADER_INFO_MOVE_BOLD": "Премести пилоти",
@@ -55,7 +55,7 @@
   "LEADER_INFO_TRANSFER_TEXT": " преди да напуснеш — натисни собствения си ред в списъка.",
   "SESSION_OPTIONS_LABEL": "ОПЦИИ НА СЕСИЯТА",
   "OPT_POWER_CEILING": "ОГРАНИЧЕНИЕ НА МОЩНОСТТА",
-  "OPT_FIXED_CHANNELS": "ФИКСИРАНИ КАНАЛИ",
+  "OPT_FIXED_CHANNELS": "ФИКСИРАНИ КАНАЛИ (РЕЙС РЕЖИМ)",
 
   "STEP_POWER_TITLE": "ОГРАНИЧЕНИЕ НА МОЩНОСТТА",
   "POWER_SUBTITLE": "По-висока мощност изисква по-широк разнос. Повече мощност означава по-малко пилоти на отделни канали.",
@@ -78,7 +78,7 @@
   "POWER_TIP_800MW": "Почти максимална мощност. 4 уникални канала, повече пилоти споделят.",
   "POWER_TIP_1000MW": "На макс. 4 уникални канала максимум.",
 
-  "STEP_FIXED_CHANNELS_TITLE": "ФИКСИРАНИ КАНАЛИ",
+  "STEP_FIXED_CHANNELS_TITLE": "ФИКСИРАНИ КАНАЛИ (РЕЙС РЕЖИМ)",
   "FIXED_CHANNELS_SUBTITLE": "По-широк разнос за по-висока мощност и по-чисто видео. Допълнителните пилоти споделят канали.",
   "FC_UNIQUE_CHANNELS": "УНИКАЛНИ КАНАЛИ",
   "FC_SELECT_HINT": "НАТИСНИ НАБОР, ЗА ДА ИЗБЕРЕШ",
@@ -98,6 +98,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "ТЕКУЩ",
 
   "STEP_VIDEO_TITLE": "ВИДЕО СИСТЕМА",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -207,7 +208,7 @@
   "BTN_LEAVE_ANYWAY": "НАПУСНИ ВЪПРЕКИ ТОВА",
 
   "ADD_PILOT_TITLE": "ДОБАВИ ПИЛОТ",
-  "ADD_PILOT_FIXED_HINT": "ФИКСИРАНИ КАНАЛИ: {{channels}}",
+  "ADD_PILOT_FIXED_HINT": "ФИКСИРАНИ КАНАЛИ (РЕЙС РЕЖИМ): {{channels}}",
   "BTN_ADD_TO_SESSION": "ДОБАВИ В СЕСИЯТА",
 
   "REBALANCE_CONFIRM_TITLE": "ПРЕРАЗПРЕДЕЛИ ВСИЧКИ",
@@ -271,7 +272,7 @@
   "MAP_LEGEND_ACTIVE": "Активна",
   "MAP_LEGEND_PAST": "Минала",
   "FEAT_POWER_CEILING": "Ограничение на мощността",
-  "FEAT_FIXED_CHANNELS": "Фиксирани канали",
+  "FEAT_FIXED_CHANNELS": "Фиксирани канали (рейс режим)",
   "FEAT_REBALANCE_RATE": "Честота на преразпределяне",
   "FEAT_AVG_CHANNEL_CHANGES": "Средно смени на канал / сесия",
   "USAGE_LOAD_ERROR": "Грешка при зареждане на данните.",
@@ -297,6 +298,13 @@
   "ERR_CALLSIGN_EMPTY": "ВЪВЕДИ ПОЗИВНАТА СИ",
   "ERR_CALLSIGN_IN_SESSION": "ПОЗИВНАТА ВЕЧЕ Е В СЕСИЯТА",
   "ERR_JOIN_FAILED": "ГРЕШКА ПРИ ВЛИЗАНЕ: {{error}}",
+  "INCOMPATIBLE_TITLE": "НЯМА СЪВМЕСТИМИ КАНАЛИ",
+  "INCOMPATIBLE_TEXT": "Твоята видео система не може да настрои нито един от фиксираните канали в тази сесия ({{channels}}). Върни се и промени видео системата, честотната лента или race режима — или помоли лидера на сесията да използва друг комплект канали.",
+  "BTN_CHANGE_FIXED_CHANNELS": "ФИКСИРАНИ КАНАЛИ (РЕЙС РЕЖИМ)",
+  "BTN_NO_FIXED_CHANNELS": "БЕЗ ФИКСИРАНИ КАНАЛИ",
+  "INCOMPATIBLE_PILOTS_TITLE": "НЕ Е ВЪЗМОЖНО \u2014 НЕСЪВМЕСТИМИ ПИЛОТИ",
+  "INCOMPATIBLE_PILOTS_TEXT": "Тези пилоти не могат да настроят нито един канал от избрания комплект:",
+  "INCOMPATIBLE_PILOTS_HINT": "Помоли ги първо да сменят видео системата си или избери друг комплект канали.",
   "ERR_UPDATE_FAILED": "ГРЕШКА ПРИ ОБНОВЯВАНЕ: {{error}}",
   "ERR_CALLSIGN_IN_USE": "ПОЗИВНАТА ВЕЧЕ СЕ ИЗПОЛЗВА",
   "ERR_FAILED": "ГРЕШКА: {{error}}",

@@ -281,6 +281,14 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 		return
 	}
 
+	// Refuse pilots whose native channel pool has no overlap with the session's
+	// fixed set — their equipment can't tune to any of the locked channels.
+	// Spotters skip this (they don't transmit).
+	if req.VideoSystem != "spotter" && !freq.HasFixedSetMatch(req.VideoSystem, req.FCCUnlocked, req.BandwidthMHz, req.RaceMode, req.Goggles, req.AnalogBands, fixedFreqs) {
+		http.Error(w, "no_channel_match", http.StatusConflict)
+		return
+	}
+
 	pilot := &db.Pilot{
 		Callsign:         req.Callsign,
 		VideoSystem:      req.VideoSystem,
@@ -429,6 +437,16 @@ type PreviewResponse struct {
 	OverrideReason  string                `json:"override_reason,omitempty"`
 	BuddyOption     *freq.BuddySuggestion `json:"buddy_option,omitempty"`
 	RebalanceOption *RebalancePreview      `json:"rebalance_option,omitempty"`
+	Incompatible    *Incompatibility      `json:"incompatible,omitempty"`
+}
+
+// Incompatibility describes why a pilot cannot join a fixed-channel session —
+// their video system / bandwidth / race-mode / FCC settings produce a channel
+// pool with no overlap against the session's fixed frequencies. The client
+// uses fixed_freqs to render the channel names in the error dialog.
+type Incompatibility struct {
+	Reason     string `json:"reason"`      // "no_channel_match"
+	FixedFreqs []int  `json:"fixed_freqs"` // session's fixed freqs in MHz
 }
 
 // HandlePreviewJoin dry-runs graduated escalation with a hypothetical new pilot
@@ -452,6 +470,18 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 
 	if strings.TrimSpace(req.Callsign) == "" || strings.TrimSpace(req.VideoSystem) == "" {
 		http.Error(w, "callsign and video_system are required", http.StatusBadRequest)
+		return
+	}
+
+	// Spotters skip fixed-set compatibility (they don't transmit).
+	if req.VideoSystem != "spotter" && !freq.HasFixedSetMatch(req.VideoSystem, req.FCCUnlocked, req.BandwidthMHz, req.RaceMode, req.Goggles, req.AnalogBands, fixedFreqs) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(PreviewResponse{
+			Incompatible: &Incompatibility{
+				Reason:     "no_channel_match",
+				FixedFreqs: fixedFreqs,
+			},
+		})
 		return
 	}
 
@@ -905,6 +935,22 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 	if strings.TrimSpace(req.VideoSystem) == "" {
 		http.Error(w, "video_system is required", http.StatusBadRequest)
 		return
+	}
+
+	// Refuse the change if the new equipment config can't tune the session's
+	// fixed channels. Check BEFORE writing to DB so the pilot isn't left in an
+	// incompatible state. Spotters skip this (they don't transmit).
+	if req.VideoSystem != "spotter" {
+		sess, err := s.DB.GetSession(sessionCode)
+		if err != nil {
+			http.Error(w, "session not found", http.StatusNotFound)
+			return
+		}
+		fixedFreqsCheck := parseFixedFreqs(sess.FixedChannels)
+		if !freq.HasFixedSetMatch(req.VideoSystem, req.FCCUnlocked, req.BandwidthMHz, req.RaceMode, req.Goggles, req.AnalogBands, fixedFreqsCheck) {
+			http.Error(w, "no_channel_match", http.StatusConflict)
+			return
+		}
 	}
 
 	if err := s.DB.UpdatePilotVideoSystem(sessionCode, pilotID, req.VideoSystem, req.FCCUnlocked, req.Goggles, req.BandwidthMHz, req.RaceMode, joinBands(req.AnalogBands), req.PreferredFreqMHz); err != nil {
@@ -1407,6 +1453,104 @@ func (s *Server) HandleTransferLeader(w http.ResponseWriter, r *http.Request, co
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// UpdateFixedChannelsRequest is the JSON body for changing a session's fixed
+// channel set (race mode). Leader-only.
+type UpdateFixedChannelsRequest struct {
+	FixedChannels string `json:"fixed_channels"` // JSON array of {name, freq} or "" to clear
+}
+
+// IncompatiblePilot describes an active pilot whose equipment can't tune any
+// of a proposed fixed channel set. Returned in the 409 body when the leader
+// tries to switch to an incompatible set.
+type IncompatiblePilot struct {
+	PilotID     int    `json:"pilot_id"`
+	Callsign    string `json:"callsign"`
+	VideoSystem string `json:"video_system"`
+}
+
+// IncompatiblePilotsResponse is the 409 body for a rejected fixed-channel change.
+type IncompatiblePilotsResponse struct {
+	Reason string              `json:"reason"`
+	Pilots []IncompatiblePilot `json:"pilots"`
+}
+
+// HandleUpdateFixedChannels changes a session's fixed channel set (race mode)
+// mid-session and reoptimizes everyone. Leader-only.
+// If any active pilot's equipment can't tune the new set, the change is refused
+// with HTTP 409 and a list of incompatible pilots so the leader can coordinate.
+// Pass fixed_channels = "" to exit race mode entirely.
+// PUT /api/sessions/{code}/fixed-channels
+func (s *Server) HandleUpdateFixedChannels(w http.ResponseWriter, r *http.Request, code string) {
+	if _, ok := s.requireLeader(w, r, code); !ok {
+		return
+	}
+
+	var req UpdateFixedChannelsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate fixed_channels shape (same format as CreateSession accepts).
+	// Empty string is valid and means "no fixed channels".
+	newFixedFreqs := parseFixedFreqs(req.FixedChannels)
+	if req.FixedChannels != "" && newFixedFreqs == nil {
+		http.Error(w, "invalid fixed_channels JSON", http.StatusBadRequest)
+		return
+	}
+
+	sess, err := s.DB.GetSession(code)
+	if err != nil {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+
+	// Compatibility check: refuse if any active non-spotter pilot's pool has
+	// zero overlap with the new set. Spotters don't transmit so they skip.
+	if len(newFixedFreqs) > 0 {
+		pilots, err := s.DB.GetActivePilots(code)
+		if err != nil {
+			http.Error(w, "failed to get pilots", http.StatusInternalServerError)
+			log.Printf("HandleUpdateFixedChannels GetActivePilots error: %v", err)
+			return
+		}
+		var incompatible []IncompatiblePilot
+		for _, p := range pilots {
+			if p.VideoSystem == "spotter" {
+				continue
+			}
+			if !freq.HasFixedSetMatch(p.VideoSystem, p.FCCUnlocked, p.BandwidthMHz, p.RaceMode, p.Goggles, splitBands(p.AnalogBands), newFixedFreqs) {
+				incompatible = append(incompatible, IncompatiblePilot{
+					PilotID:     p.ID,
+					Callsign:    p.Callsign,
+					VideoSystem: p.VideoSystem,
+				})
+			}
+		}
+		if len(incompatible) > 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(IncompatiblePilotsResponse{
+				Reason: "incompatible_pilots",
+				Pilots: incompatible,
+			})
+			return
+		}
+	}
+
+	// Commit the change and reoptimize everyone against the new set.
+	if err := s.DB.UpdateSessionFixedChannels(code, req.FixedChannels); err != nil {
+		http.Error(w, "failed to update fixed channels", http.StatusInternalServerError)
+		log.Printf("UpdateSessionFixedChannels error: %v", err)
+		return
+	}
+
+	guardBand := freq.PowerToGuardBand(sess.PowerCeilingMW)
+	s.reoptimize(code, guardBand, newFixedFreqs)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // HandleAddPilot lets the leader add a phantom pilot to the session.
 // POST /api/sessions/{code}/add-pilot
 func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code string) {
@@ -1431,6 +1575,14 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 
 	if strings.TrimSpace(req.Callsign) == "" || strings.TrimSpace(req.VideoSystem) == "" {
 		http.Error(w, "callsign and video_system are required", http.StatusBadRequest)
+		return
+	}
+
+	// Refuse pilots whose native channel pool has no overlap with the session's
+	// fixed set — their equipment can't tune to any of the locked channels.
+	// Spotters skip this (they don't transmit).
+	if req.VideoSystem != "spotter" && !freq.HasFixedSetMatch(req.VideoSystem, req.FCCUnlocked, req.BandwidthMHz, req.RaceMode, req.Goggles, req.AnalogBands, fixedFreqs) {
+		http.Error(w, "no_channel_match", http.StatusConflict)
 		return
 	}
 

@@ -42,7 +42,7 @@
   "SESSION_CHANNELS_TITLE": "ช่องเซสชัน",
   "POWER_ALERT_TEXT": "ผู้นำเซสชันกำหนดเพดานกำลังส่งไว้ กรุณาตั้ง VTX เป็น {{mw}} mW หรือต่ำกว่าเพื่อประสบการณ์ที่ดีที่สุด",
   "POWER_ALERT_DJI_HINT": "นักบิน DJI: ใช้แบนด์วิดท์ 20 MHz เพื่อความเข้ากันได้ของช่องที่ดีที่สุด",
-  "FIXED_CHANNELS_HINT": "เซสชันนี้ใช้ช่องคงที่: {{channels}}",
+  "FIXED_CHANNELS_HINT": "เซสชันนี้ใช้ช่องคงที่ (โหมดเรซ): {{channels}}",
 
   "STEP_LEADER_TITLE": "คุณคือผู้นำ",
   "LEADER_INFO_MOVE_BOLD": "ย้ายนักบิน",
@@ -55,7 +55,7 @@
   "LEADER_INFO_TRANSFER_TEXT": " ก่อนออก — แตะแถวของตัวเองในรายชื่อแล้วส่งมอบ",
   "SESSION_OPTIONS_LABEL": "ตัวเลือกเซสชัน",
   "OPT_POWER_CEILING": "เพดานกำลังส่ง",
-  "OPT_FIXED_CHANNELS": "ช่องคงที่",
+  "OPT_FIXED_CHANNELS": "ช่องคงที่ (โหมดเรซ)",
 
   "STEP_POWER_TITLE": "เพดานกำลังส่ง",
   "POWER_SUBTITLE": "กำลังส่งสูงต้องการระยะห่างช่องกว้างขึ้น กำลังมากขึ้นหมายถึงนักบินบนช่องแยกได้น้อยลง",
@@ -78,7 +78,7 @@
   "POWER_TIP_800MW": "กำลังเกือบสูงสุด ใช้ได้ 4 ช่อง กลุ่มใหญ่ต้องใช้ช่องร่วมกัน",
   "POWER_TIP_1000MW": "เต็มกำลัง ใช้ได้สูงสุด 4 ช่อง",
 
-  "STEP_FIXED_CHANNELS_TITLE": "ช่องคงที่",
+  "STEP_FIXED_CHANNELS_TITLE": "ช่องคงที่ (โหมดเรซ)",
   "FIXED_CHANNELS_SUBTITLE": "ระยะห่างกว้างขึ้นสำหรับกำลังสูงและวิดีโอสะอาดขึ้น นักบินเกินจะใช้ช่องร่วมกัน",
   "FC_UNIQUE_CHANNELS": "ช่องไม่ซ้ำ",
   "FC_SELECT_HINT": "แตะเลือกชุดช่อง",
@@ -98,6 +98,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "ปัจจุบัน",
 
   "STEP_VIDEO_TITLE": "ระบบวิดีโอ",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -206,7 +207,7 @@
   "BTN_LEAVE_ANYWAY": "ออกเลย",
 
   "ADD_PILOT_TITLE": "เพิ่มนักบิน",
-  "ADD_PILOT_FIXED_HINT": "ช่องคงที่: {{channels}}",
+  "ADD_PILOT_FIXED_HINT": "ช่องคงที่ (โหมดเรซ): {{channels}}",
   "BTN_ADD_TO_SESSION": "เพิ่มเข้าเซสชัน",
 
   "REBALANCE_CONFIRM_TITLE": "ปรับสมดุลใหม่ทั้งหมด",
@@ -268,7 +269,7 @@
   "MAP_LEGEND_ACTIVE": "กำลังใช้งาน",
   "MAP_LEGEND_PAST": "ที่ผ่านมา",
   "FEAT_POWER_CEILING": "ใช้เพดานกำลังส่ง",
-  "FEAT_FIXED_CHANNELS": "ใช้ช่องคงที่",
+  "FEAT_FIXED_CHANNELS": "ใช้ช่องคงที่ (โหมดเรซ)",
   "FEAT_REBALANCE_RATE": "อัตราการปรับสมดุลใหม่",
   "FEAT_AVG_CHANNEL_CHANGES": "เปลี่ยนช่องเฉลี่ย / เซสชัน",
   "USAGE_LOAD_ERROR": "โหลดข้อมูลการใช้งานไม่สำเร็จ",
@@ -294,6 +295,13 @@
   "ERR_CALLSIGN_EMPTY": "กรุณาใส่ชื่อเรียกขาน",
   "ERR_CALLSIGN_IN_SESSION": "ชื่อเรียกขานมีในเซสชันแล้ว",
   "ERR_JOIN_FAILED": "เข้าร่วมไม่สำเร็จ: {{error}}",
+  "INCOMPATIBLE_TITLE": "ไม่มีช่องที่เข้ากันได้",
+  "INCOMPATIBLE_TEXT": "ระบบวิดีโอของคุณไม่สามารถจูนช่องที่กำหนดของเซสชันนี้ได้ ({{channels}}) กลับไปเปลี่ยนระบบวิดีโอ แบนด์วิดท์ หรือโหมดเรซ หรือขอให้ผู้นำเซสชันใช้ชุดช่องอื่น",
+  "BTN_CHANGE_FIXED_CHANNELS": "ช่องคงที่ (โหมดเรซ)",
+  "BTN_NO_FIXED_CHANNELS": "ไม่มีช่องคงที่",
+  "INCOMPATIBLE_PILOTS_TITLE": "เปลี่ยนไม่ได้ \u2014 นักบินไม่รองรับ",
+  "INCOMPATIBLE_PILOTS_TEXT": "นักบินเหล่านี้ไม่สามารถจูนช่องใดๆ ในชุดที่เลือกได้:",
+  "INCOMPATIBLE_PILOTS_HINT": "ขอให้พวกเขาเปลี่ยนระบบวิดีโอก่อน หรือเลือกชุดช่องอื่น",
   "ERR_UPDATE_FAILED": "อัปเดตไม่สำเร็จ: {{error}}",
   "ERR_CALLSIGN_IN_USE": "ชื่อเรียกขานถูกใช้แล้ว",
   "ERR_FAILED": "ไม่สำเร็จ: {{error}}",

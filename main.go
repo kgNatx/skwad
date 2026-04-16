@@ -173,6 +173,10 @@ func main() {
 		srv.HandleAddPilot(w, r, r.PathValue("code"))
 	})
 
+	mux.HandleFunc("PUT /api/sessions/{code}/fixed-channels", func(w http.ResponseWriter, r *http.Request) {
+		srv.HandleUpdateFixedChannels(w, r, r.PathValue("code"))
+	})
+
 	mux.HandleFunc("POST /api/feedback", srv.HandleFeedback)
 
 	mux.HandleFunc("DELETE /api/pilots/{id}", func(w http.ResponseWriter, r *http.Request) {

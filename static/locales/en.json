@@ -44,7 +44,7 @@
   "SESSION_CHANNELS_TITLE": "SESSION CHANNELS",
   "POWER_ALERT_TEXT": "The session leader has set a transmit power ceiling. Please set your VTX to {{mw}} mW or below for the best experience.",
   "POWER_ALERT_DJI_HINT": "DJI pilots: use 20 MHz bandwidth for best channel compatibility.",
-  "FIXED_CHANNELS_HINT": "This session uses fixed channels: {{channels}}",
+  "FIXED_CHANNELS_HINT": "This session uses fixed channels (race mode): {{channels}}",
 
   "STEP_LEADER_TITLE": "YOU'RE THE LEADER",
   "LEADER_INFO_MOVE_BOLD": "Move pilots",
@@ -57,7 +57,7 @@
   "LEADER_INFO_TRANSFER_TEXT": " before you leave \u2014 tap your own row in the roster and hand it off.",
   "SESSION_OPTIONS_LABEL": "SESSION OPTIONS",
   "OPT_POWER_CEILING": "POWER CEILING",
-  "OPT_FIXED_CHANNELS": "FIXED CHANNELS",
+  "OPT_FIXED_CHANNELS": "FIXED CHANNELS (RACE MODE)",
 
   "STEP_POWER_TITLE": "POWER CEILING",
   "POWER_SUBTITLE": "Higher power needs wider channel spacing. More power means fewer pilots on separate channels.",
@@ -80,7 +80,7 @@
   "POWER_TIP_800MW": "Near-max power. 4 unique channels, buddy up for larger groups.",
   "POWER_TIP_1000MW": "Full send. 4 unique channels max.",
 
-  "STEP_FIXED_CHANNELS_TITLE": "FIXED CHANNELS",
+  "STEP_FIXED_CHANNELS_TITLE": "FIXED CHANNELS (RACE MODE)",
   "FIXED_CHANNELS_SUBTITLE": "Wider spacing for higher power and cleaner video. Extra pilots buddy up on shared channels.",
   "FC_UNIQUE_CHANNELS": "UNIQUE CHANNELS",
   "FC_SELECT_HINT": "TAP A SET TO SELECT",
@@ -100,6 +100,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "CURRENT",
 
   "STEP_VIDEO_TITLE": "VIDEO SYSTEM",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -217,7 +218,7 @@
   "BTN_LEAVE_ANYWAY": "LEAVE ANYWAY",
 
   "ADD_PILOT_TITLE": "ADD PILOT",
-  "ADD_PILOT_FIXED_HINT": "FIXED CHANNELS: {{channels}}",
+  "ADD_PILOT_FIXED_HINT": "FIXED CHANNELS (RACE MODE): {{channels}}",
   "BTN_ADD_TO_SESSION": "ADD TO SESSION",
 
   "REBALANCE_CONFIRM_TITLE": "REBALANCE ALL",
@@ -281,7 +282,7 @@
   "MAP_LEGEND_ACTIVE": "Active",
   "MAP_LEGEND_PAST": "Past",
   "FEAT_POWER_CEILING": "Use Power Ceiling",
-  "FEAT_FIXED_CHANNELS": "Use Fixed Channels",
+  "FEAT_FIXED_CHANNELS": "Use Fixed Channels (Race Mode)",
   "FEAT_REBALANCE_RATE": "Rebalance Rate",
   "FEAT_AVG_CHANNEL_CHANGES": "Avg Ch. Changes / Session",
   "USAGE_LOAD_ERROR": "Failed to load usage data.",
@@ -307,6 +308,13 @@
   "ERR_CALLSIGN_EMPTY": "ENTER YOUR CALLSIGN",
   "ERR_CALLSIGN_IN_SESSION": "CALLSIGN ALREADY IN SESSION",
   "ERR_JOIN_FAILED": "FAILED TO JOIN: {{error}}",
+  "INCOMPATIBLE_TITLE": "NO COMPATIBLE CHANNELS",
+  "INCOMPATIBLE_TEXT": "Your video system can't tune any of this session's fixed channels ({{channels}}). Go back and change your video system, bandwidth, or race mode settings \u2014 or ask the session leader to use a different channel set.",
+  "BTN_CHANGE_FIXED_CHANNELS": "FIXED CHANNELS (RACE MODE)",
+  "BTN_NO_FIXED_CHANNELS": "NO FIXED CHANNELS",
+  "INCOMPATIBLE_PILOTS_TITLE": "CAN'T SWITCH \u2014 PILOTS INCOMPATIBLE",
+  "INCOMPATIBLE_PILOTS_TEXT": "These pilots can't tune any channel in the set you picked:",
+  "INCOMPATIBLE_PILOTS_HINT": "Ask them to change video system first, or pick a different channel set.",
   "ERR_UPDATE_FAILED": "FAILED TO UPDATE: {{error}}",
   "ERR_CALLSIGN_IN_USE": "CALLSIGN ALREADY IN USE",
   "ERR_FAILED": "FAILED: {{error}}",

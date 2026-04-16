@@ -1142,3 +1142,348 @@ func TestJoinSession_SpotterDoesNotAffectOthers(t *testing.T) {
 	}
 	t.Error("analog pilot not found in active pilots")
 }
+
+// TestJoinSession_FixedChannelIncompatible verifies that a pilot whose
+// equipment can't tune any of the session's fixed channels is refused at both
+// the preview and commit endpoints. Prevents silently assigning a pilot to a
+// frequency their radio can't actually use.
+func TestJoinSession_FixedChannelIncompatible(t *testing.T) {
+	s := newTestServer(t)
+
+	// Create a session with race-band fixed channels directly in the DB
+	// (handlers only set power ceiling; fixed channels are set via session
+	// update flow, but the DB layer accepts them directly).
+	fixedJSON := `[{"name":"R1","freq":5658},{"name":"R3","freq":5732},{"name":"R6","freq":5843},{"name":"R8","freq":5917}]`
+	sess, err := s.DB.CreateSession(0, fixedJSON)
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	// DJI V1 FCC has no channels at 5658 / 5732 / 5843 / 5917 — incompatible.
+	joinBody := JoinRequest{
+		Callsign:    "V1PILOT",
+		VideoSystem: "dji_v1",
+		FCCUnlocked: true,
+	}
+	body, _ := json.Marshal(joinBody)
+
+	// Preview should return incompatible (HTTP 200, no level/assignment).
+	previewReq := httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/preview-join", bytes.NewReader(body))
+	previewW := httptest.NewRecorder()
+	s.HandlePreviewJoin(previewW, previewReq, sess.ID)
+
+	if previewW.Result().StatusCode != http.StatusOK {
+		t.Fatalf("preview status = %d, want %d", previewW.Result().StatusCode, http.StatusOK)
+	}
+	var preview PreviewResponse
+	if err := json.NewDecoder(previewW.Result().Body).Decode(&preview); err != nil {
+		t.Fatalf("decode preview: %v", err)
+	}
+	if preview.Incompatible == nil {
+		t.Fatal("preview.Incompatible should be set for V1 FCC pilot on race-band fixed session")
+	}
+	if preview.Incompatible.Reason != "no_channel_match" {
+		t.Errorf("Incompatible.Reason = %q, want %q", preview.Incompatible.Reason, "no_channel_match")
+	}
+	if len(preview.Incompatible.FixedFreqs) != 4 {
+		t.Errorf("Incompatible.FixedFreqs len = %d, want 4", len(preview.Incompatible.FixedFreqs))
+	}
+
+	// Commit should refuse with 409.
+	body2, _ := json.Marshal(joinBody)
+	joinReq := httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body2))
+	joinW := httptest.NewRecorder()
+	s.HandleJoinSession(joinW, joinReq, sess.ID)
+
+	if joinW.Result().StatusCode != http.StatusConflict {
+		t.Errorf("join status = %d, want %d", joinW.Result().StatusCode, http.StatusConflict)
+	}
+
+	// Pilot should NOT have been added to the DB.
+	pilots, err := s.DB.GetActivePilots(sess.ID)
+	if err != nil {
+		t.Fatalf("GetActivePilots: %v", err)
+	}
+	if len(pilots) != 0 {
+		t.Errorf("GetActivePilots returned %d pilots; incompatible join should not have added any", len(pilots))
+	}
+
+	// Sanity: a compatible pilot (analog Race Band) succeeds on the same session.
+	compatBody := JoinRequest{
+		Callsign:    "OKPILOT",
+		VideoSystem: "analog",
+		AnalogBands: []string{"R"},
+	}
+	body3, _ := json.Marshal(compatBody)
+	joinReq2 := httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(body3))
+	joinW2 := httptest.NewRecorder()
+	s.HandleJoinSession(joinW2, joinReq2, sess.ID)
+	if joinW2.Result().StatusCode != http.StatusCreated {
+		t.Errorf("compatible join status = %d, want %d", joinW2.Result().StatusCode, http.StatusCreated)
+	}
+}
+
+// TestAddPilot_FixedChannelIncompatible verifies the leader's manual add-pilot
+// flow also refuses incompatible equipment with HTTP 409 no_channel_match.
+func TestAddPilot_FixedChannelIncompatible(t *testing.T) {
+	s := newTestServer(t)
+
+	fixedJSON := `[{"name":"R1","freq":5658},{"name":"R3","freq":5732},{"name":"R6","freq":5843},{"name":"R8","freq":5917}]`
+	sess, err := s.DB.CreateSession(0, fixedJSON)
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	// Seat a leader first (must be compatible).
+	leaderBody := JoinRequest{Callsign: "LEADER", VideoSystem: "analog", AnalogBands: []string{"R"}}
+	lb, _ := json.Marshal(leaderBody)
+	lReq := httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(lb))
+	lW := httptest.NewRecorder()
+	s.HandleJoinSession(lW, lReq, sess.ID)
+	if lW.Result().StatusCode != http.StatusCreated {
+		t.Fatalf("leader join: status %d", lW.Result().StatusCode)
+	}
+	pilots := getTestPilots(t, s, sess.ID)
+	leaderID := pilots[0].ID
+
+	// Leader tries to add an incompatible pilot (DJI V1 FCC, no race-band channels).
+	incompatBody := JoinRequest{Callsign: "V1GUY", VideoSystem: "dji_v1", FCCUnlocked: true}
+	ib, _ := json.Marshal(incompatBody)
+	aReq := httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/add-pilot", bytes.NewReader(ib))
+	aReq.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
+	aW := httptest.NewRecorder()
+	s.HandleAddPilot(aW, aReq, sess.ID)
+
+	if aW.Result().StatusCode != http.StatusConflict {
+		t.Errorf("add-pilot status = %d, want %d", aW.Result().StatusCode, http.StatusConflict)
+	}
+	if !strings.Contains(aW.Body.String(), "no_channel_match") {
+		t.Errorf("add-pilot body = %q, want to contain %q", aW.Body.String(), "no_channel_match")
+	}
+
+	// Confirm the incompatible pilot was NOT added.
+	after := getTestPilots(t, s, sess.ID)
+	for _, p := range after {
+		if p.Callsign == "V1GUY" {
+			t.Errorf("incompatible pilot V1GUY should not have been added")
+		}
+	}
+}
+
+// TestUpdatePilotVideoSystem_FixedChannelIncompatible verifies that a pilot
+// already in a fixed-channel session can't switch to an incompatible video
+// system. The DB must not be mutated on refusal.
+func TestUpdatePilotVideoSystem_FixedChannelIncompatible(t *testing.T) {
+	s := newTestServer(t)
+
+	fixedJSON := `[{"name":"R1","freq":5658},{"name":"R3","freq":5732},{"name":"R6","freq":5843},{"name":"R8","freq":5917}]`
+	sess, err := s.DB.CreateSession(0, fixedJSON)
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	// Join as compatible analog Race Band pilot.
+	joinBody := JoinRequest{Callsign: "SWITCHY", VideoSystem: "analog", AnalogBands: []string{"R"}}
+	jb, _ := json.Marshal(joinBody)
+	jReq := httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(jb))
+	jW := httptest.NewRecorder()
+	s.HandleJoinSession(jW, jReq, sess.ID)
+	if jW.Result().StatusCode != http.StatusCreated {
+		t.Fatalf("initial join: status %d", jW.Result().StatusCode)
+	}
+	pilots := getTestPilots(t, s, sess.ID)
+	pilotID := pilots[0].ID
+	origSystem := pilots[0].VideoSystem
+
+	// Try to switch to incompatible DJI V1 FCC.
+	updateBody := UpdateVideoSystemRequest{VideoSystem: "dji_v1", FCCUnlocked: true}
+	ub, _ := json.Marshal(updateBody)
+	uReq := httptest.NewRequest(http.MethodPut, "/api/pilots/"+fmt.Sprint(pilotID)+"/video-system?session="+sess.ID, bytes.NewReader(ub))
+	uW := httptest.NewRecorder()
+	s.HandleUpdatePilotVideoSystem(uW, uReq, pilotID, sess.ID)
+
+	if uW.Result().StatusCode != http.StatusConflict {
+		t.Errorf("update video-system status = %d, want %d", uW.Result().StatusCode, http.StatusConflict)
+	}
+
+	// Confirm DB was NOT mutated — video system must still be analog.
+	after := getTestPilots(t, s, sess.ID)
+	if len(after) != 1 {
+		t.Fatalf("expected 1 pilot, got %d", len(after))
+	}
+	if after[0].VideoSystem != origSystem {
+		t.Errorf("video_system = %q, want %q (DB should not mutate on refusal)", after[0].VideoSystem, origSystem)
+	}
+}
+
+// TestUpdateFixedChannels_Success verifies the leader can switch the session's
+// fixed channel set and everyone gets reoptimized against the new set.
+func TestUpdateFixedChannels_Success(t *testing.T) {
+	s := newTestServer(t)
+
+	// Start with a 4-channel race-band fixed set.
+	startingSet := `[{"name":"R1","freq":5658},{"name":"R3","freq":5732},{"name":"R6","freq":5843},{"name":"R8","freq":5917}]`
+	sess, err := s.DB.CreateSession(0, startingSet)
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	// Seat a leader (compatible with both sets below).
+	joinTestPilot(t, s, sess.ID, "LEADER", "analog")
+	pilots := getTestPilots(t, s, sess.ID)
+	leaderID := pilots[0].ID
+
+	// Leader switches to a 2-channel MAX-SPREAD set (still race-band).
+	newSet := `[{"name":"R1","freq":5658},{"name":"R8","freq":5917}]`
+	body, _ := json.Marshal(UpdateFixedChannelsRequest{FixedChannels: newSet})
+	req := httptest.NewRequest(http.MethodPut, "/api/sessions/"+sess.ID+"/fixed-channels", bytes.NewReader(body))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
+	w := httptest.NewRecorder()
+	s.HandleUpdateFixedChannels(w, req, sess.ID)
+
+	if w.Result().StatusCode != http.StatusNoContent {
+		t.Errorf("status = %d, want %d; body=%s", w.Result().StatusCode, http.StatusNoContent, w.Body.String())
+	}
+
+	// Session.fixed_channels should now be the new set.
+	after, err := s.DB.GetSession(sess.ID)
+	if err != nil {
+		t.Fatalf("GetSession: %v", err)
+	}
+	if after.FixedChannels != newSet {
+		t.Errorf("fixed_channels = %q, want %q", after.FixedChannels, newSet)
+	}
+
+	// The leader pilot's assignment should still be on a freq in the new set.
+	aftPilots := getTestPilots(t, s, sess.ID)
+	if aftPilots[0].AssignedFreqMHz != 5658 && aftPilots[0].AssignedFreqMHz != 5917 {
+		t.Errorf("reoptimized freq = %d, not in new fixed set {5658, 5917}", aftPilots[0].AssignedFreqMHz)
+	}
+}
+
+// TestUpdateFixedChannels_Clear verifies the leader can exit race mode
+// entirely by submitting an empty fixed_channels string.
+func TestUpdateFixedChannels_Clear(t *testing.T) {
+	s := newTestServer(t)
+
+	startingSet := `[{"name":"R1","freq":5658},{"name":"R8","freq":5917}]`
+	sess, err := s.DB.CreateSession(0, startingSet)
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	joinTestPilot(t, s, sess.ID, "LEADER", "analog")
+	pilots := getTestPilots(t, s, sess.ID)
+	leaderID := pilots[0].ID
+
+	body, _ := json.Marshal(UpdateFixedChannelsRequest{FixedChannels: ""})
+	req := httptest.NewRequest(http.MethodPut, "/api/sessions/"+sess.ID+"/fixed-channels", bytes.NewReader(body))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
+	w := httptest.NewRecorder()
+	s.HandleUpdateFixedChannels(w, req, sess.ID)
+
+	if w.Result().StatusCode != http.StatusNoContent {
+		t.Errorf("status = %d, want %d", w.Result().StatusCode, http.StatusNoContent)
+	}
+
+	after, err := s.DB.GetSession(sess.ID)
+	if err != nil {
+		t.Fatalf("GetSession: %v", err)
+	}
+	if after.FixedChannels != "" {
+		t.Errorf("fixed_channels = %q, want empty", after.FixedChannels)
+	}
+}
+
+// TestUpdateFixedChannels_LeaderOnly ensures non-leaders are refused.
+func TestUpdateFixedChannels_LeaderOnly(t *testing.T) {
+	s := newTestServer(t)
+	sess := createTestSession(t, s)
+	joinTestPilot(t, s, sess.ID, "LEADER", "analog")
+	joinTestPilot(t, s, sess.ID, "OTHER", "analog")
+
+	pilots := getTestPilots(t, s, sess.ID)
+	var otherID int
+	for _, p := range pilots {
+		if p.Callsign == "OTHER" {
+			otherID = p.ID
+		}
+	}
+
+	body, _ := json.Marshal(UpdateFixedChannelsRequest{FixedChannels: `[{"name":"R1","freq":5658},{"name":"R8","freq":5917}]`})
+	req := httptest.NewRequest(http.MethodPut, "/api/sessions/"+sess.ID+"/fixed-channels", bytes.NewReader(body))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(otherID))
+	w := httptest.NewRecorder()
+	s.HandleUpdateFixedChannels(w, req, sess.ID)
+
+	if w.Result().StatusCode != http.StatusForbidden {
+		t.Errorf("non-leader status = %d, want %d", w.Result().StatusCode, http.StatusForbidden)
+	}
+}
+
+// TestUpdateFixedChannels_IncompatiblePilots verifies the leader's change is
+// refused with HTTP 409 and a pilot list when any pilot's pool can't tune the
+// new set. DB must not mutate.
+func TestUpdateFixedChannels_IncompatiblePilots(t *testing.T) {
+	s := newTestServer(t)
+
+	// Start WITHOUT fixed channels so an incompatible pilot can join.
+	sess, err := s.DB.CreateSession(0, "")
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+
+	// Leader on Race Band.
+	joinTestPilot(t, s, sess.ID, "LEADER", "analog")
+
+	// Incompatible pilot: DJI V1 FCC has no exact race-band matches.
+	incompatBody := JoinRequest{Callsign: "V1GUY", VideoSystem: "dji_v1", FCCUnlocked: true}
+	ib, _ := json.Marshal(incompatBody)
+	j := httptest.NewRequest(http.MethodPost, "/api/sessions/"+sess.ID+"/join", bytes.NewReader(ib))
+	jw := httptest.NewRecorder()
+	s.HandleJoinSession(jw, j, sess.ID)
+	if jw.Result().StatusCode != http.StatusCreated {
+		t.Fatalf("V1 pilot join (no fixed set): status %d", jw.Result().StatusCode)
+	}
+
+	pilots := getTestPilots(t, s, sess.ID)
+	var leaderID int
+	for _, p := range pilots {
+		if p.Callsign == "LEADER" {
+			leaderID = p.ID
+		}
+	}
+
+	// Leader tries to switch to race-band fixed — V1 pilot can't tune any.
+	newSet := `[{"name":"R1","freq":5658},{"name":"R3","freq":5732},{"name":"R6","freq":5843},{"name":"R8","freq":5917}]`
+	body, _ := json.Marshal(UpdateFixedChannelsRequest{FixedChannels: newSet})
+	req := httptest.NewRequest(http.MethodPut, "/api/sessions/"+sess.ID+"/fixed-channels", bytes.NewReader(body))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(leaderID))
+	w := httptest.NewRecorder()
+	s.HandleUpdateFixedChannels(w, req, sess.ID)
+
+	if w.Result().StatusCode != http.StatusConflict {
+		t.Fatalf("status = %d, want %d", w.Result().StatusCode, http.StatusConflict)
+	}
+	var resp IncompatiblePilotsResponse
+	if err := json.NewDecoder(w.Result().Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.Reason != "incompatible_pilots" {
+		t.Errorf("reason = %q, want %q", resp.Reason, "incompatible_pilots")
+	}
+	if len(resp.Pilots) != 1 {
+		t.Fatalf("incompatible pilots len = %d, want 1", len(resp.Pilots))
+	}
+	if resp.Pilots[0].Callsign != "V1GUY" {
+		t.Errorf("incompatible callsign = %q, want V1GUY", resp.Pilots[0].Callsign)
+	}
+
+	// Confirm session.fixed_channels was NOT mutated.
+	after, err := s.DB.GetSession(sess.ID)
+	if err != nil {
+		t.Fatalf("GetSession: %v", err)
+	}
+	if after.FixedChannels != "" {
+		t.Errorf("fixed_channels = %q, want empty (DB should not mutate on refusal)", after.FixedChannels)
+	}
+}

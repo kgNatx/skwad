@@ -188,6 +188,7 @@
       <p class="fc-hint" data-i18n="FC_SKIP_HINT">For 6+ pilots, skip this and let the optimizer assign channels.</p>
       <button id="btn-fc-use-set" class="btn btn-primary btn-large" disabled data-i18n="BTN_USE_THIS_SET">USE THIS SET</button>
       <button id="btn-fc-skip" class="btn btn-secondary btn-large" data-i18n="BTN_SKIP">SKIP</button>
+      <button id="btn-fc-cancel" class="btn btn-secondary btn-large hidden" data-i18n="BTN_CANCEL">CANCEL</button>
     </div>
 
     <!-- Step 2: Video System -->
@@ -324,6 +325,7 @@
     <div id="leader-controls" class="leader-controls hidden">
       <button id="btn-rebalance-all" class="btn btn-secondary btn-leader" data-i18n="BTN_REBALANCE_ALL">REBALANCE ALL</button>
       <button id="btn-add-pilot" class="btn btn-secondary btn-leader" data-i18n="BTN_ADD_PILOT">ADD PILOT</button>
+      <button id="btn-change-fixed-channels" class="btn btn-secondary btn-leader" data-i18n="BTN_CHANGE_FIXED_CHANNELS">FIXED CHANNELS (RACE MODE)</button>
     </div>
     <p id="rebalance-hint" class="rebalance-hint" style="display:none" data-i18n="REBALANCE_HINT">Rebalance recommended</p>
 
@@ -389,6 +391,26 @@
       <p id="override-reason" class="override-reason-text"></p>
       <canvas id="override-spectrum" width="600" height="100"></canvas>
       <button id="btn-override-ok" class="btn btn-primary btn-large" data-i18n="BTN_GOT_IT">GOT IT</button>
+    </div>
+  </div>
+
+  <!-- Fixed-Channel Incompatibility Dialog -->
+  <div id="incompatible-dialog" class="action-sheet" style="display:none">
+    <div class="action-sheet-content">
+      <h3 data-i18n="INCOMPATIBLE_TITLE">NO COMPATIBLE CHANNELS</h3>
+      <p id="incompatible-text" class="override-reason-text"></p>
+      <button id="btn-incompatible-ok" class="btn btn-primary btn-large" data-i18n="BTN_GOT_IT">GOT IT</button>
+    </div>
+  </div>
+
+  <!-- Leader: cannot change fixed-channel set — some pilots are incompatible -->
+  <div id="incompatible-pilots-dialog" class="action-sheet" style="display:none">
+    <div class="action-sheet-content">
+      <h3 data-i18n="INCOMPATIBLE_PILOTS_TITLE">CAN'T SWITCH — PILOTS INCOMPATIBLE</h3>
+      <p id="incompatible-pilots-text" class="override-reason-text"></p>
+      <div id="incompatible-pilots-list" class="displacement-list"></div>
+      <p class="power-guidance-note" data-i18n="INCOMPATIBLE_PILOTS_HINT">Ask these pilots to change video system, or pick a different channel set.</p>
+      <button id="btn-incompatible-pilots-ok" class="btn btn-primary btn-large" data-i18n="BTN_GOT_IT">GOT IT</button>
     </div>
   </div>
 

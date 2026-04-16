@@ -42,7 +42,7 @@
   "SESSION_CHANNELS_TITLE": "KANAŁY SESJI",
   "POWER_ALERT_TEXT": "Lider sesji ustawił limit mocy nadawania. Ustaw VTX na {{mw}} mW lub mniej.",
   "POWER_ALERT_DJI_HINT": "Piloci DJI: użyj pasma 20 MHz dla najlepszej kompatybilności kanałów.",
-  "FIXED_CHANNELS_HINT": "Ta sesja używa stałych kanałów: {{channels}}",
+  "FIXED_CHANNELS_HINT": "Ta sesja używa stałych kanałów (tryb wyścigowy): {{channels}}",
 
   "STEP_LEADER_TITLE": "JESTEŚ LIDEREM",
   "LEADER_INFO_MOVE_BOLD": "Przenoś pilotów",
@@ -55,7 +55,7 @@
   "LEADER_INFO_TRANSFER_TEXT": " zanim wyjdziesz — dotknij swojego wiersza na liście.",
   "SESSION_OPTIONS_LABEL": "OPCJE SESJI",
   "OPT_POWER_CEILING": "LIMIT MOCY",
-  "OPT_FIXED_CHANNELS": "STAŁE KANAŁY",
+  "OPT_FIXED_CHANNELS": "STAŁE KANAŁY (TRYB WYŚCIGOWY)",
 
   "STEP_POWER_TITLE": "LIMIT MOCY",
   "POWER_SUBTITLE": "Większa moc wymaga szerszych odstępów między kanałami. Więcej mocy oznacza mniej pilotów na oddzielnych kanałach.",
@@ -78,7 +78,7 @@
   "POWER_TIP_800MW": "Blisko maksymalnej mocy. 4 unikalne kanały, buddy up dla większych grup.",
   "POWER_TIP_1000MW": "Pełna moc. Maksymalnie 4 unikalne kanały.",
 
-  "STEP_FIXED_CHANNELS_TITLE": "STAŁE KANAŁY",
+  "STEP_FIXED_CHANNELS_TITLE": "STAŁE KANAŁY (TRYB WYŚCIGOWY)",
   "FIXED_CHANNELS_SUBTITLE": "Szersze odstępy dla większej mocy i czystszego obrazu. Dodatkowi piloci dzielą kanały.",
   "FC_UNIQUE_CHANNELS": "UNIKALNE KANAŁY",
   "FC_SELECT_HINT": "DOTKNIJ ZESTAW ABY WYBRAĆ",
@@ -98,6 +98,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "OBECNY",
 
   "STEP_VIDEO_TITLE": "SYSTEM WIDEO",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -209,7 +210,7 @@
   "BTN_LEAVE_ANYWAY": "WYJDŹ MIMO TO",
 
   "ADD_PILOT_TITLE": "DODAJ PILOTA",
-  "ADD_PILOT_FIXED_HINT": "STAŁE KANAŁY: {{channels}}",
+  "ADD_PILOT_FIXED_HINT": "STAŁE KANAŁY (TRYB WYŚCIGOWY): {{channels}}",
   "BTN_ADD_TO_SESSION": "DODAJ DO SESJI",
 
   "REBALANCE_CONFIRM_TITLE": "ZRÓWNOWAŻ WSZYSTKO",
@@ -277,7 +278,7 @@
   "MAP_LEGEND_ACTIVE": "Aktywna",
   "MAP_LEGEND_PAST": "Zakończona",
   "FEAT_POWER_CEILING": "Użycie Limitu Mocy",
-  "FEAT_FIXED_CHANNELS": "Użycie Stałych Kanałów",
+  "FEAT_FIXED_CHANNELS": "Użycie Stałych Kanałów (Tryb Wyścigowy)",
   "FEAT_REBALANCE_RATE": "Wskaźnik Zrównoważeń",
   "FEAT_AVG_CHANNEL_CHANGES": "Śr. Zmian Kanału / Sesja",
   "USAGE_LOAD_ERROR": "Nie udało się załadować danych.",
@@ -303,6 +304,13 @@
   "ERR_CALLSIGN_EMPTY": "WPISZ SWÓJ CALLSIGN",
   "ERR_CALLSIGN_IN_SESSION": "CALLSIGN JUŻ W SESJI",
   "ERR_JOIN_FAILED": "DOŁĄCZENIE NIE POWIODŁO SIĘ: {{error}}",
+  "INCOMPATIBLE_TITLE": "BRAK ZGODNYCH KANAŁÓW",
+  "INCOMPATIBLE_TEXT": "Twój system wideo nie jest w stanie dostroić żadnego ze stałych kanałów tej sesji ({{channels}}). Wróć i zmień system wideo, szerokość pasma lub tryb wyścigowy — albo poproś lidera sesji o użycie innego zestawu kanałów.",
+  "BTN_CHANGE_FIXED_CHANNELS": "STAŁE KANAŁY (TRYB WYŚCIGOWY)",
+  "BTN_NO_FIXED_CHANNELS": "BEZ STAŁYCH KANAŁÓW",
+  "INCOMPATIBLE_PILOTS_TITLE": "ZMIANA NIEMOŻLIWA \u2014 PILOCI NIEZGODNI",
+  "INCOMPATIBLE_PILOTS_TEXT": "Ci piloci nie mogą dostroić żadnego kanału z wybranego zestawu:",
+  "INCOMPATIBLE_PILOTS_HINT": "Poproś ich, aby najpierw zmienili system wideo, lub wybierz inny zestaw kanałów.",
   "ERR_UPDATE_FAILED": "AKTUALIZACJA NIE POWIODŁA SIĘ: {{error}}",
   "ERR_CALLSIGN_IN_USE": "CALLSIGN JUŻ W UŻYCIU",
   "ERR_FAILED": "BŁĄD: {{error}}",

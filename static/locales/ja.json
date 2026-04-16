@@ -42,7 +42,7 @@
   "SESSION_CHANNELS_TITLE": "セッションチャンネル",
   "POWER_ALERT_TEXT": "セッションリーダーが送信出力の上限を設定しました。VTX を {{mw}} mW 以下に設定してください。",
   "POWER_ALERT_DJI_HINT": "DJI パイロット：チャンネル互換性のため 20 MHz 帯域幅を使用してください。",
-  "FIXED_CHANNELS_HINT": "このセッションは固定チャンネルを使用：{{channels}}",
+  "FIXED_CHANNELS_HINT": "このセッションは固定チャンネル（レースモード）を使用：{{channels}}",
 
   "STEP_LEADER_TITLE": "あなたはリーダーです",
   "LEADER_INFO_MOVE_BOLD": "パイロットを移動",
@@ -55,7 +55,7 @@
   "LEADER_INFO_TRANSFER_TEXT": "：退出前に移譲してください。名簿で自分の行をタップ。",
   "SESSION_OPTIONS_LABEL": "セッションオプション",
   "OPT_POWER_CEILING": "出力上限",
-  "OPT_FIXED_CHANNELS": "固定チャンネル",
+  "OPT_FIXED_CHANNELS": "固定チャンネル（レースモード）",
 
   "STEP_POWER_TITLE": "出力上限",
   "POWER_SUBTITLE": "出力が高いほど広いチャンネル間隔が必要です。出力が大きいと使えるチャンネル数が減ります。",
@@ -78,7 +78,7 @@
   "POWER_TIP_800MW": "最大出力に近い。独立チャンネル4つ、大人数はバディ共有で。",
   "POWER_TIP_1000MW": "フルパワー。独立チャンネル最大4つ。",
 
-  "STEP_FIXED_CHANNELS_TITLE": "固定チャンネル",
+  "STEP_FIXED_CHANNELS_TITLE": "固定チャンネル（レースモード）",
   "FIXED_CHANNELS_SUBTITLE": "広い間隔で高出力・クリーンな映像に対応。余剰パイロットは共有チャンネルでバディアップ。",
   "FC_UNIQUE_CHANNELS": "独立チャンネル",
   "FC_SELECT_HINT": "セットをタップして選択",
@@ -98,6 +98,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "現在",
 
   "STEP_VIDEO_TITLE": "ビデオシステム",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -206,7 +207,7 @@
   "BTN_LEAVE_ANYWAY": "そのまま退出",
 
   "ADD_PILOT_TITLE": "パイロット追加",
-  "ADD_PILOT_FIXED_HINT": "固定チャンネル：{{channels}}",
+  "ADD_PILOT_FIXED_HINT": "固定チャンネル（レースモード）：{{channels}}",
   "BTN_ADD_TO_SESSION": "セッションに追加",
 
   "REBALANCE_CONFIRM_TITLE": "全体リバランス",
@@ -268,7 +269,7 @@
   "MAP_LEGEND_ACTIVE": "アクティブ",
   "MAP_LEGEND_PAST": "終了",
   "FEAT_POWER_CEILING": "出力上限の使用",
-  "FEAT_FIXED_CHANNELS": "固定チャンネルの使用",
+  "FEAT_FIXED_CHANNELS": "固定チャンネル（レースモード）の使用",
   "FEAT_REBALANCE_RATE": "リバランス率",
   "FEAT_AVG_CHANNEL_CHANGES": "セッション平均チャンネル変更数",
   "USAGE_LOAD_ERROR": "利用統計の読み込みに失敗しました。",
@@ -294,6 +295,13 @@
   "ERR_CALLSIGN_EMPTY": "コールサインを入力してください",
   "ERR_CALLSIGN_IN_SESSION": "このコールサインは既にセッション内にあります",
   "ERR_JOIN_FAILED": "参加失敗：{{error}}",
+  "INCOMPATIBLE_TITLE": "互換性のあるチャンネルなし",
+  "INCOMPATIBLE_TEXT": "使用している映像システムはこのセッションの固定チャンネル（{{channels}}）に合わせられません。戻って映像システム、帯域幅、レースモードを変更するか、セッションリーダーに別のチャンネルセットを使うよう依頼してください。",
+  "BTN_CHANGE_FIXED_CHANNELS": "固定チャンネル（レースモード）",
+  "BTN_NO_FIXED_CHANNELS": "固定チャンネルなし",
+  "INCOMPATIBLE_PILOTS_TITLE": "切り替え不可 \u2014 パイロットが非対応",
+  "INCOMPATIBLE_PILOTS_TEXT": "次のパイロットは選択したチャンネルセットのどのチャンネルにも合わせられません：",
+  "INCOMPATIBLE_PILOTS_HINT": "先に映像システムを変更してもらうか、別のチャンネルセットを選択してください。",
   "ERR_UPDATE_FAILED": "更新失敗：{{error}}",
   "ERR_CALLSIGN_IN_USE": "このコールサインは既に使用中です",
   "ERR_FAILED": "失敗：{{error}}",

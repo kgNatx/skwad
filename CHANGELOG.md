@@ -4,6 +4,25 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.7.2] — 2026-04-16
+
+### Fixed
+- **Fixed-channel buddy stampede.** In fixed-channel sessions with more pilots than channels, overflow pilots were all steered onto the first fixed channel (always Buddy Group 1) instead of distributing round-robin across channels. Root cause: `findBestBuddy` scored candidates only by video-system and bandwidth similarity, so in a uniform-system session every candidate tied at score 100. Stable sort then returned the first pilot in insertion order (always the pilot on the first fixed channel), and the client used that freq as the new pilot's `preferred_frequency_mhz`, forcing the optimizer to pin them there. Fix: `findBestBuddy` now sorts by load ascending first, then uses the video-system/bandwidth score as a tiebreaker. Regression test `TestFindMinimalDisplacement_FixedChannels_SequentialOverflow` verifies 8 O4 race-mode pilots on 4 fixed channels distribute 2-per-channel.
+
+### Added
+- **Fixed-set compatibility check on all join paths.** New `freq.HasFixedSetMatch()` helper. `HandleJoinSession`, `HandlePreviewJoin`, `HandleAddPilot`, and `HandleUpdatePilotVideoSystem` all refuse pilots whose native channel pool has zero overlap with the session's fixed set. `/join`, `/add-pilot`, and `/video-system` return HTTP 409 `no_channel_match` with no DB mutation. `/preview-join` returns `{incompatible: {reason, fixed_freqs}}`. Frontend shows a dialog explaining the mismatch and suggests changing video system or asking the session leader to use a different channel set.
+- **Leader endpoint: change fixed channels mid-session.** New `PUT /api/sessions/{code}/fixed-channels`. Pre-checks every active non-spotter pilot against the new set; if any are incompatible, returns 409 with `{reason: "incompatible_pilots", pilots: [{pilot_id, callsign, video_system}]}` and no DB mutation. Otherwise writes the new set and runs `reoptimize` against the new constraints. Supports empty `fixed_channels` to exit race mode entirely.
+- **Leader UI: change fixed channels (race mode) picker.** New button in leader controls opens the same preset picker shown at session creation. Channel-count slider defaults to the current set's count. The preset matching the current session (same channel count + same freq set) is marked with a CURRENT badge and a subtle blue highlight. "SKIP" button repurposed to "NO FIXED CHANNELS" for exiting race mode cleanly, and a new CANCEL button is added for backing out.
+
+### Improved
+- **"Fixed channels" relabeled as "(race mode)" throughout.** Titles, button labels, and hints updated across 14 locales: `FIXED_CHANNELS_HINT`, `OPT_FIXED_CHANNELS`, `STEP_FIXED_CHANNELS_TITLE`, `ADD_PILOT_FIXED_HINT`, `FEAT_FIXED_CHANNELS`.
+- **`findBestBuddy` load awareness.** Now ranks candidates by load ascending first, video-system/bandwidth similarity as tiebreaker. Fixes the stampede described above.
+
+### Developer
+- New tests: `TestFindMinimalDisplacement_FixedChannels_SequentialOverflow`, `TestFindBestBuddy_LoadBalancing`, `TestHasFixedSetMatch`, `TestJoinSession_FixedChannelIncompatible`, `TestAddPilot_FixedChannelIncompatible`, `TestUpdatePilotVideoSystem_FixedChannelIncompatible`, `TestUpdateFixedChannels_Success`, `_Clear`, `_LeaderOnly`, `_IncompatiblePilots`.
+- New DB function: `UpdateSessionFixedChannels(sessionID, fixedChannels string)`.
+- New translation keys in all 14 locales: `INCOMPATIBLE_TITLE`, `INCOMPATIBLE_TEXT`, `BTN_CHANGE_FIXED_CHANNELS`, `BTN_NO_FIXED_CHANNELS`, `INCOMPATIBLE_PILOTS_TITLE`, `INCOMPATIBLE_PILOTS_TEXT`, `INCOMPATIBLE_PILOTS_HINT`, `FC_BADGE_CURRENT`.
+
 ## [0.7.1] — 2026-03-30
 
 ### Security

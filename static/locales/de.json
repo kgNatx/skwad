@@ -42,7 +42,7 @@
   "SESSION_CHANNELS_TITLE": "SESSION-KANÄLE",
   "POWER_ALERT_TEXT": "Der Session-Leader hat ein Sendeleistungslimit festgelegt. Bitte stelle deinen VTX auf {{mw}} mW oder weniger ein.",
   "POWER_ALERT_DJI_HINT": "DJI-Piloten: 20 MHz Bandbreite für beste Kanalkompatibilität verwenden.",
-  "FIXED_CHANNELS_HINT": "Diese Session verwendet feste Kanäle: {{channels}}",
+  "FIXED_CHANNELS_HINT": "Diese Session verwendet feste Kanäle (Race-Modus): {{channels}}",
 
   "STEP_LEADER_TITLE": "DU BIST DER LEADER",
   "LEADER_INFO_MOVE_BOLD": "Piloten verschieben",
@@ -55,7 +55,7 @@
   "LEADER_INFO_TRANSFER_TEXT": " bevor du gehst — tippe auf deine eigene Zeile im Roster und übergib.",
   "SESSION_OPTIONS_LABEL": "SESSION-OPTIONEN",
   "OPT_POWER_CEILING": "LEISTUNGSLIMIT",
-  "OPT_FIXED_CHANNELS": "FESTE KANÄLE",
+  "OPT_FIXED_CHANNELS": "FESTE KANÄLE (RACE-MODUS)",
 
   "STEP_POWER_TITLE": "LEISTUNGSLIMIT",
   "POWER_SUBTITLE": "Höhere Leistung braucht größeren Kanalabstand. Mehr Leistung bedeutet weniger Piloten auf getrennten Kanälen.",
@@ -78,7 +78,7 @@
   "POWER_TIP_800MW": "Fast maximale Leistung. 4 eigene Kanäle, bei größeren Gruppen Buddy Up.",
   "POWER_TIP_1000MW": "Vollgas. Maximal 4 eigene Kanäle.",
 
-  "STEP_FIXED_CHANNELS_TITLE": "FESTE KANÄLE",
+  "STEP_FIXED_CHANNELS_TITLE": "FESTE KANÄLE (RACE-MODUS)",
   "FIXED_CHANNELS_SUBTITLE": "Größerer Abstand für höhere Leistung und saubereres Video. Zusätzliche Piloten teilen sich Kanäle per Buddy Up.",
   "FC_UNIQUE_CHANNELS": "EIGENE KANÄLE",
   "FC_SELECT_HINT": "TIPPE AUF EIN SET ZUR AUSWAHL",
@@ -98,6 +98,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "AKTUELL",
 
   "STEP_VIDEO_TITLE": "VIDEOSYSTEM",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -207,7 +208,7 @@
   "BTN_LEAVE_ANYWAY": "TROTZDEM VERLASSEN",
 
   "ADD_PILOT_TITLE": "PILOT HINZUFÜGEN",
-  "ADD_PILOT_FIXED_HINT": "FESTE KANÄLE: {{channels}}",
+  "ADD_PILOT_FIXED_HINT": "FESTE KANÄLE (RACE-MODUS): {{channels}}",
   "BTN_ADD_TO_SESSION": "ZUR SESSION HINZUFÜGEN",
 
   "REBALANCE_CONFIRM_TITLE": "ALLE NEU VERTEILEN",
@@ -271,7 +272,7 @@
   "MAP_LEGEND_ACTIVE": "Aktiv",
   "MAP_LEGEND_PAST": "Vergangen",
   "FEAT_POWER_CEILING": "Leistungslimit verwenden",
-  "FEAT_FIXED_CHANNELS": "Feste Kanäle verwenden",
+  "FEAT_FIXED_CHANNELS": "Feste Kanäle (Race-Modus) verwenden",
   "FEAT_REBALANCE_RATE": "Neuverteilungsrate",
   "FEAT_AVG_CHANNEL_CHANGES": "Durchschn. Kanalwechsel / Session",
   "USAGE_LOAD_ERROR": "Nutzungsdaten konnten nicht geladen werden.",
@@ -297,6 +298,13 @@
   "ERR_CALLSIGN_EMPTY": "GIB DEIN CALLSIGN EIN",
   "ERR_CALLSIGN_IN_SESSION": "CALLSIGN BEREITS IN DIESER SESSION",
   "ERR_JOIN_FAILED": "BEITRITT FEHLGESCHLAGEN: {{error}}",
+  "INCOMPATIBLE_TITLE": "KEINE KOMPATIBLEN KANÄLE",
+  "INCOMPATIBLE_TEXT": "Dein Videosystem kann keinen der festen Kanäle dieser Session ({{channels}}) empfangen. Geh zurück und ändere Videosystem, Bandbreite oder Race-Modus — oder bitte den Session-Leiter um einen anderen Kanalsatz.",
+  "BTN_CHANGE_FIXED_CHANNELS": "FESTE KANÄLE (RACE-MODUS)",
+  "BTN_NO_FIXED_CHANNELS": "KEINE FESTEN KANÄLE",
+  "INCOMPATIBLE_PILOTS_TITLE": "WECHSEL NICHT MÖGLICH \u2014 PILOTEN INKOMPATIBEL",
+  "INCOMPATIBLE_PILOTS_TEXT": "Diese Piloten können keinen der gewählten Kanäle empfangen:",
+  "INCOMPATIBLE_PILOTS_HINT": "Bitte sie, zuerst ihr Videosystem zu ändern, oder wähle einen anderen Kanalsatz.",
   "ERR_UPDATE_FAILED": "AKTUALISIERUNG FEHLGESCHLAGEN: {{error}}",
   "ERR_CALLSIGN_IN_USE": "CALLSIGN BEREITS VERGEBEN",
   "ERR_FAILED": "FEHLGESCHLAGEN: {{error}}",

@@ -42,7 +42,7 @@
   "SESSION_CHANNELS_TITLE": "CANAIS DA SESSÃO",
   "POWER_ALERT_TEXT": "O líder da sessão definiu um limite de potência. Configure seu VTX para {{mw}} mW ou menos para a melhor experiência.",
   "POWER_ALERT_DJI_HINT": "Pilotos DJI: use largura de banda de 20 MHz para melhor compatibilidade de canais.",
-  "FIXED_CHANNELS_HINT": "Esta sessão usa canais fixos: {{channels}}",
+  "FIXED_CHANNELS_HINT": "Esta sessão usa canais fixos (modo corrida): {{channels}}",
 
   "STEP_LEADER_TITLE": "VOCÊ É O LÍDER",
   "LEADER_INFO_MOVE_BOLD": "Mover pilotos",
@@ -55,7 +55,7 @@
   "LEADER_INFO_TRANSFER_TEXT": " antes de sair — toque na sua própria linha e passe adiante.",
   "SESSION_OPTIONS_LABEL": "OPÇÕES DA SESSÃO",
   "OPT_POWER_CEILING": "LIMITE DE POTÊNCIA",
-  "OPT_FIXED_CHANNELS": "CANAIS FIXOS",
+  "OPT_FIXED_CHANNELS": "CANAIS FIXOS (MODO CORRIDA)",
 
   "STEP_POWER_TITLE": "LIMITE DE POTÊNCIA",
   "POWER_SUBTITLE": "Mais potência exige maior espaçamento entre canais. Mais potência significa menos pilotos em canais separados.",
@@ -78,7 +78,7 @@
   "POWER_TIP_800MW": "Potência quase máxima. 4 canais únicos, buddy up para grupos maiores.",
   "POWER_TIP_1000MW": "Potência máxima. 4 canais únicos no máximo.",
 
-  "STEP_FIXED_CHANNELS_TITLE": "CANAIS FIXOS",
+  "STEP_FIXED_CHANNELS_TITLE": "CANAIS FIXOS (MODO CORRIDA)",
   "FIXED_CHANNELS_SUBTITLE": "Maior espaçamento para mais potência e vídeo mais limpo. Pilotos extras compartilham canais.",
   "FC_UNIQUE_CHANNELS": "CANAIS ÚNICOS",
   "FC_SELECT_HINT": "TOQUE EM UM CONJUNTO PARA SELECIONAR",
@@ -98,6 +98,7 @@
   "FC_SET_DJI_5": "DJI 5",
   "FC_SET_ET5A": "ET5A",
   "FC_IMD_BADGE": "IMD {{score}}",
+  "FC_BADGE_CURRENT": "ATUAL",
 
   "STEP_VIDEO_TITLE": "SISTEMA DE VÍDEO",
   "VS_ANALOG": "ANALOG 5.8GHz",
@@ -207,7 +208,7 @@
   "BTN_LEAVE_ANYWAY": "SAIR MESMO ASSIM",
 
   "ADD_PILOT_TITLE": "ADICIONAR PILOTO",
-  "ADD_PILOT_FIXED_HINT": "CANAIS FIXOS: {{channels}}",
+  "ADD_PILOT_FIXED_HINT": "CANAIS FIXOS (MODO CORRIDA): {{channels}}",
   "BTN_ADD_TO_SESSION": "ADICIONAR À SESSÃO",
 
   "REBALANCE_CONFIRM_TITLE": "REBALANCEAR TODOS",
@@ -271,7 +272,7 @@
   "MAP_LEGEND_ACTIVE": "Ativa",
   "MAP_LEGEND_PAST": "Passada",
   "FEAT_POWER_CEILING": "Usar Limite de Potência",
-  "FEAT_FIXED_CHANNELS": "Usar Canais Fixos",
+  "FEAT_FIXED_CHANNELS": "Usar Canais Fixos (Modo Corrida)",
   "FEAT_REBALANCE_RATE": "Taxa de Rebalanceamento",
   "FEAT_AVG_CHANNEL_CHANGES": "Média de Mudanças de Canal / Sessão",
   "USAGE_LOAD_ERROR": "Falha ao carregar dados de uso.",
@@ -297,6 +298,13 @@
   "ERR_CALLSIGN_EMPTY": "DIGITE SEU CALLSIGN",
   "ERR_CALLSIGN_IN_SESSION": "CALLSIGN JÁ NA SESSÃO",
   "ERR_JOIN_FAILED": "FALHA AO ENTRAR: {{error}}",
+  "INCOMPATIBLE_TITLE": "SEM CANAIS COMPATÍVEIS",
+  "INCOMPATIBLE_TEXT": "Seu sistema de vídeo não consegue sintonizar nenhum dos canais fixos desta sessão ({{channels}}). Volte e altere o sistema de vídeo, a largura de banda ou o modo de corrida — ou peça ao líder da sessão para usar outro conjunto de canais.",
+  "BTN_CHANGE_FIXED_CHANNELS": "CANAIS FIXOS (MODO CORRIDA)",
+  "BTN_NO_FIXED_CHANNELS": "SEM CANAIS FIXOS",
+  "INCOMPATIBLE_PILOTS_TITLE": "NÃO É POSSÍVEL MUDAR \u2014 PILOTOS INCOMPATÍVEIS",
+  "INCOMPATIBLE_PILOTS_TEXT": "Estes pilotos não conseguem sintonizar nenhum canal do conjunto escolhido:",
+  "INCOMPATIBLE_PILOTS_HINT": "Peça para eles mudarem o sistema de vídeo primeiro, ou escolha outro conjunto de canais.",
   "ERR_UPDATE_FAILED": "FALHA AO ATUALIZAR: {{error}}",
   "ERR_CALLSIGN_IN_USE": "CALLSIGN JÁ EM USO",
   "ERR_FAILED": "FALHA: {{error}}",

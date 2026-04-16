@@ -441,6 +441,9 @@ body {
 .fc-set-list { display: flex; flex-direction: column; gap: 6px; max-width: 380px; margin: 0 auto; }
 .fc-set-card { padding: 10px 12px; background: #151515; border: 2px solid #222; border-radius: 10px; cursor: pointer; transition: border-color 0.15s; text-align: left; }
 .fc-set-card.selected { border-color: #33ff33; background: rgba(51,255,51,0.03); }
+.fc-set-card.fc-set-current { border-color: rgba(96,165,250,0.5); background: rgba(96,165,250,0.04); }
+.fc-set-card.fc-set-current.selected { border-color: #33ff33; }
+.fc-set-badge-current { background: rgba(96,165,250,0.12); }
 .fc-set-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
 .fc-set-name { font-size: 16px; font-weight: 900; letter-spacing: 0.5px; }
 .fc-set-badges { display: flex; gap: 5px; align-items: center; }

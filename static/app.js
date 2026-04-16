@@ -1154,6 +1154,27 @@
     // (offsetWidth is 0 before the step is visible, so we defer to when shown)
   }
 
+  // Exposed by initFixedChannelsStep so the leader's change-mode flow can
+  // preset the channel-count slider to the session's current count.
+  var fcPickerAPI = null;
+
+  // Returns true if a FIXED_CHANNEL_SETS preset matches the session's current
+  // fixed channels exactly (same count, same set of frequencies). Used by
+  // renderFCSetList to mark the matching preset with a CURRENT badge when the
+  // leader opens the picker mid-session.
+  function isCurrentFCSet(preset) {
+    if (!state.sessionFixedChannels) return false;
+    try {
+      var current = JSON.parse(state.sessionFixedChannels);
+      if (!current || current.length !== preset.channels.length) return false;
+      var currentFreqs = {};
+      current.forEach(function (c) { currentFreqs[c.freq] = true; });
+      return preset.channels.every(function (ch) { return currentFreqs[ch.f]; });
+    } catch (e) {
+      return false;
+    }
+  }
+
   // ── Setup: Step 1.85 — Fixed Channels (creators only) ─────────
   function initFixedChannelsStep() {
     var FC_COUNT_MIN = 2;
@@ -1266,6 +1287,16 @@
         powerBadge.style.borderColor = set.powerColor + '66';
         powerBadge.style.color = set.powerColor;
         badges.appendChild(powerBadge);
+        // Mark the preset matching the session's current fixed set (change-mode only).
+        if (state._changingFixedChannels && isCurrentFCSet(set)) {
+          card.classList.add('fc-set-current');
+          var currentBadge = document.createElement('span');
+          currentBadge.className = 'fc-set-badge fc-set-badge-current';
+          currentBadge.textContent = t('FC_BADGE_CURRENT');
+          currentBadge.style.borderColor = '#60a5fa';
+          currentBadge.style.color = '#60a5fa';
+          badges.appendChild(currentBadge);
+        }
         header.appendChild(badges);
         card.appendChild(header);
 
@@ -1344,13 +1375,22 @@
 
     $('btn-fc-use-set').addEventListener('click', async function () {
       if (!selectedFCSet) return;
-      state.fixedChannels = JSON.stringify(selectedFCSet.channels.map(function (c) {
+      var json = JSON.stringify(selectedFCSet.channels.map(function (c) {
         return { name: c.n, freq: c.f };
       }));
+      if (state._changingFixedChannels) {
+        await commitFixedChannelsChange(this, json);
+        return;
+      }
+      state.fixedChannels = json;
       await createSessionAndShowVideo(this);
     });
 
     $('btn-fc-skip').addEventListener('click', async function () {
+      if (state._changingFixedChannels) {
+        await commitFixedChannelsChange(this, '');
+        return;
+      }
       state.fixedChannels = '';
       await createSessionAndShowVideo(this);
     });
@@ -1363,11 +1403,91 @@
         // Reset selection
         selectedFCSet = null;
         $('btn-fc-use-set').disabled = true;
+        // Toggle buttons for change mode vs create mode.
+        if (state._changingFixedChannels) {
+          $('btn-fc-skip').textContent = t('BTN_NO_FIXED_CHANNELS');
+          $('btn-fc-cancel').classList.remove('hidden');
+        } else {
+          $('btn-fc-skip').textContent = t('BTN_SKIP');
+          $('btn-fc-cancel').classList.add('hidden');
+        }
         // Defer thumb positioning until track has layout
         requestAnimationFrame(function () {
           updateFCSlider(fcCount);
         });
       }
+    };
+
+    $('btn-fc-cancel').addEventListener('click', function () {
+      state._changingFixedChannels = false;
+      showScreen('session');
+    });
+
+    // Expose a setter so the leader's change-mode flow can preset the slider
+    // to the session's current channel count before the step becomes visible.
+    fcPickerAPI = {
+      setCount: function (count) {
+        if (count >= FC_COUNT_MIN && count <= FC_COUNT_MAX) {
+          fcCount = count;
+        }
+      },
+    };
+  }
+
+  // ── Leader: change fixed channels (race mode) mid-session ──────
+  function openChangeFixedChannelsPicker() {
+    state._changingFixedChannels = true;
+    // Default the slider to the session's current channel count so the leader
+    // lands on familiar ground (and sees their CURRENT preset highlighted).
+    if (state.sessionFixedChannels && fcPickerAPI) {
+      try {
+        var current = JSON.parse(state.sessionFixedChannels);
+        if (current && current.length) {
+          fcPickerAPI.setCount(current.length);
+        }
+      } catch (e) { /* ignore bad JSON */ }
+    }
+    showScreen('setup');
+    showStep('step-fixed-channels');
+  }
+
+  async function commitFixedChannelsChange(btn, fixedChannelsJSON) {
+    setLoading(btn, true);
+    try {
+      await apiPut('/api/sessions/' + state.sessionCode + '/fixed-channels', {
+        fixed_channels: fixedChannelsJSON,
+      });
+      state._changingFixedChannels = false;
+      showScreen('session');
+      refreshSession();
+    } catch (err) {
+      var msg = err.message || '';
+      // Try to parse structured 409 body (incompatible_pilots).
+      var parsed = null;
+      try { parsed = JSON.parse(msg); } catch (e) { /* not JSON */ }
+      if (parsed && parsed.reason === 'incompatible_pilots') {
+        showIncompatiblePilotsDialog(parsed.pilots || []);
+      } else {
+        showError('join-error', t('ERR_UPDATE_FAILED', { error: msg.toUpperCase() }));
+      }
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  function showIncompatiblePilotsDialog(pilots) {
+    var list = $('incompatible-pilots-list');
+    clearChildren(list);
+    pilots.forEach(function (p) {
+      var row = document.createElement('div');
+      row.className = 'displacement-row';
+      row.textContent = p.callsign + ' (' + p.video_system + ')';
+      list.appendChild(row);
+    });
+    $('incompatible-pilots-text').textContent = t('INCOMPATIBLE_PILOTS_TEXT', { count: pilots.length });
+    $('incompatible-pilots-dialog').style.display = '';
+    $('btn-incompatible-pilots-ok').onclick = function () {
+      $('incompatible-pilots-dialog').style.display = 'none';
     };
   }
 
@@ -1636,7 +1756,15 @@
         preferred_frequency_mhz: state.preferredFreqMHz,
       });
     } catch (err) {
-      showError('join-error', t('ERR_UPDATE_FAILED', { error: (err.message || '').toUpperCase() }));
+      var msg = err.message || '';
+      // Equipment can't tune any of the session's fixed channels.
+      if (msg.includes('no_channel_match')) {
+        state.expectingAssignmentChange = false;
+        setLoading(btn, false);
+        showIncompatibleDialog(null);
+        return;
+      }
+      showError('join-error', t('ERR_UPDATE_FAILED', { error: msg.toUpperCase() }));
       setLoading(btn, false);
       return;
     }
@@ -1831,6 +1959,15 @@
     try {
       // Preview first to check for displacements.
       var preview = await apiPost('/api/sessions/' + state.sessionCode + '/preview-join', body);
+
+      // Equipment can't tune any of the session's fixed channels — refuse
+      // the join and tell the pilot how to resolve it.
+      if (preview.incompatible) {
+        setLoading(btn, false);
+        showIncompatibleDialog(preview.incompatible.fixed_freqs);
+        return;
+      }
+
       var level = preview.level || 0;
 
       if (level === 0 && preview.override_reason) {
@@ -1895,6 +2032,28 @@
     } finally {
       setLoading(btn, false);
     }
+  }
+
+  // ── Fixed-Channel Incompatibility Dialog ──────────
+  // Shown when the pilot's equipment can't tune any of the session's fixed
+  // channels. Stays on the wizard so they can back up and change video system.
+  function showIncompatibleDialog(fixedFreqs) {
+    var channels = '';
+    // Prefer the channel names we already have cached on the session.
+    if (state.sessionFixedChannels) {
+      try {
+        var fcList = JSON.parse(state.sessionFixedChannels);
+        channels = fcList.map(function (c) { return c.name; }).join(', ');
+      } catch (e) { /* fall through to MHz formatting */ }
+    }
+    if (!channels && fixedFreqs && fixedFreqs.length) {
+      channels = fixedFreqs.map(function (f) { return f + ' MHz'; }).join(', ');
+    }
+    $('incompatible-text').textContent = t('INCOMPATIBLE_TEXT', { channels: channels });
+    $('incompatible-dialog').style.display = '';
+    $('btn-incompatible-ok').onclick = function () {
+      $('incompatible-dialog').style.display = 'none';
+    };
   }
 
   // ── Override Dialog (preference overridden, GOT IT) ──────────
@@ -3475,6 +3634,10 @@
       showAddPilotDialog();
     });
 
+    $('btn-change-fixed-channels').addEventListener('click', function () {
+      openChangeFixedChannelsPicker();
+    });
+
     $('btn-transfer-leader').addEventListener('click', function () {
       if (!otherPilotTarget) return;
       transferLeadership(otherPilotTarget.ID);
@@ -3826,7 +3989,11 @@
       refreshSession();
     } catch (err) {
       var msg = err.message || '';
-      if (msg.includes('callsign already') || msg.includes('409')) {
+      // Distinct 409 reasons: equipment incompatibility vs. callsign collision.
+      if (msg.includes('no_channel_match')) {
+        hideAddPilotDialog();
+        showIncompatibleDialog(null);
+      } else if (msg.includes('callsign already') || msg.includes('409')) {
         showError('add-pilot-error', t('ERR_CALLSIGN_IN_SESSION'));
       } else {
         showError('add-pilot-error', t('ERR_FAILED', { error: msg.toUpperCase() }));

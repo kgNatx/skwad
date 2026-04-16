@@ -119,6 +119,29 @@
     <h1 data-i18n="CHANGELOG_H1">What's New</h1>
 
     <div class="version">
+      <div class="version-header">v0.7.2</div>
+      <div class="version-date">April 16, 2026</div>
+
+      <h3>Fixed</h3>
+      <ul>
+        <li><strong>Buddy group stampede in fixed channel sessions.</strong> When more pilots joined a fixed channel session than there were channels, everyone after the fourth pilot was piling onto the same first channel (always Buddy Group 1) instead of being spread round-robin across the locked channels. Overflow pilots now distribute two-per-channel (or three, or four, as needed) as intended.</li>
+      </ul>
+
+      <h3>New</h3>
+      <ul>
+        <li><strong>Change fixed channels (race mode) mid-session.</strong> Session leaders can now switch to a different channel set after the session is running. Tap the new "FIXED CHANNELS (RACE MODE)" button to open the same preset picker shown at session creation — the current set is marked with a CURRENT badge. Pick a different preset to reassign everyone, or tap "NO FIXED CHANNELS" to exit race mode entirely. If any pilot's equipment can't tune the new set, the change is blocked with a list of who's affected so you can ask them to change video system first.</li>
+        <li><strong>Equipment compatibility check on join.</strong> If your video system can't tune any of a session's fixed channels (for example, DJI stock joining a race-band-only session), Skwad now blocks the join with a clear message explaining what to change — instead of silently assigning you to a channel your radio can't actually use. The same check runs when you change video system mid-session or when a leader manually adds a pilot.</li>
+      </ul>
+
+      <h3>Improved</h3>
+      <ul>
+        <li><strong>Labeled "race mode" everywhere.</strong> Fixed channels are now labeled "Fixed Channels (Race Mode)" throughout the app — buttons, titles, and hints — so racers can find the feature by the common name. All 14 languages updated.</li>
+      </ul>
+    </div>
+
+    <hr class="divider">
+
+    <div class="version">
       <div class="version-header">v0.7.1</div>
       <div class="version-date">March 30, 2026</div>
 
