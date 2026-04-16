@@ -212,6 +212,18 @@ func main() {
 		http.ServeFile(w, r, staticDir+"/index.html")
 	})
 
+	// Direct link to the in-app feedback screen (/translate pre-selects the
+	// Translation category). Both serve index.html; client route() opens the
+	// feedback screen based on the path.
+	mux.HandleFunc("GET /feedback", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		http.ServeFile(w, r, staticDir+"/index.html")
+	})
+	mux.HandleFunc("GET /translate", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		http.ServeFile(w, r, staticDir+"/index.html")
+	})
+
 	// Service worker must never be HTTP-cached — browsers check for updates every
 	// 24h by default, and no-cache still allows conditional caching. no-store forces
 	// a fresh fetch every time so deploys take effect immediately.

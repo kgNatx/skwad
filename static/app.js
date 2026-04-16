@@ -338,9 +338,11 @@
     return ctx;
   }
 
-  function openFeedbackScreen() {
+  function openFeedbackScreen(type) {
+    // Default to the generic Feedback category; /translate passes 'translation'.
+    type = type || 'feedback';
     // Reset form state
-    state.feedbackType = 'feedback';
+    state.feedbackType = type;
     $('feedback-text').value = '';
     $('btn-feedback-submit').disabled = true;
     $('btn-feedback-submit').textContent = t('FEEDBACK_BTN_SUBMIT');
@@ -349,7 +351,8 @@
 
     // Reset category selection
     document.querySelectorAll('.feedback-cat').forEach(function (b) { b.classList.remove('selected'); });
-    document.querySelector('.feedback-cat[data-type="feedback"]').classList.add('selected');
+    var selectedCat = document.querySelector('.feedback-cat[data-type="' + type + '"]');
+    if (selectedCat) selectedCat.classList.add('selected');
     updateFeedbackPlaceholder();
 
     showScreen('feedback');
@@ -4651,6 +4654,17 @@
   // ── Client-side routing ───────────────────────────────────────
   function route() {
     var path = window.location.pathname;
+
+    // Direct link to the feedback screen (/translate pre-selects Translation).
+    // Close returns to landing; rewrite URL back to / so browser history is clean.
+    if (path === '/feedback' || path === '/translate') {
+      loadState();
+      state.feedbackReturnTo = 'landing';
+      openFeedbackScreen(path === '/translate' ? 'translation' : 'feedback');
+      history.replaceState({ screen: 'feedback' }, '', '/');
+      return;
+    }
+
     var match = path.match(/^\/[sS]\/([A-Fa-f0-9]{6})$/);
 
     if (match) {

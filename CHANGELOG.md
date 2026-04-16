@@ -4,6 +4,12 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.7.3] — 2026-04-16
+
+### Added
+- **Direct-link routes `/feedback` and `/translate`.** Both serve `index.html` (same pattern as `/s/{code}`); client `route()` opens the feedback screen on boot. `/translate` pre-selects the Translation category. URL is rewritten back to `/` via `history.replaceState` after opening so the browser history isn't trapped.
+- **`openFeedbackScreen(type)` now accepts a category arg.** Existing callers pass no argument and get the default `'feedback'` category. `/translate` path passes `'translation'`.
+
 ## [0.7.2] — 2026-04-16
 
 ### Fixed
