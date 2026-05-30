@@ -119,6 +119,26 @@
     <h1 data-i18n="CHANGELOG_H1">What's New</h1>
 
     <div class="version">
+      <div class="version-header">v0.7.4</div>
+      <div class="version-date">May 30, 2026</div>
+
+      <h3>Fixed</h3>
+      <ul>
+        <li><strong>Joining as a spotter no longer flashes a channel/buddy prompt.</strong> Spotters don't get a frequency, so the brief "you're buddies with someone on R2" message during a spotter join was a glitch — it's gone now.</li>
+        <li><strong>Rebalancing a busy session no longer dumps pilots onto one channel.</strong> When there were more pilots than the spectrum could cleanly fit, the leftover pilots were all piling onto a single frequency instead of being spread out. They now distribute across channels (and a deliberate two-pilot buddy pairing is still kept).</li>
+        <li><strong>No more bogus "you've been moved" pop-up.</strong> Changing your own channel could occasionally trigger the notification meant for when a <em>leader</em> moves you. Fixed.</li>
+        <li><strong>Smoother dialogs.</strong> Open channel/equipment pickers no longer get reshuffled underneath you by a background refresh, and the browser Back button now closes the feedback screen instead of leaving you stuck.</li>
+      </ul>
+
+      <h3>Behind the scenes</h3>
+      <ul>
+        <li>Security and stability hardening: tighter permission checks on pilot edits, validated inputs, atomic channel reassignment, and more reliable database writes during busy sessions.</li>
+      </ul>
+    </div>
+
+    <hr class="divider">
+
+    <div class="version">
       <div class="version-header">v0.7.3</div>
       <div class="version-date">April 16, 2026</div>
 
@@ -457,5 +477,9 @@
     </div>
   </div>
 <script src="/i18n.js"></script>
+<script>
+  // Apply the translated document title once i18n strings are loaded (I5b).
+  onI18nReady(function () { document.title = t('CHANGELOG_TITLE'); });
+</script>
 </body>
 </html>

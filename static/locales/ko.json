@@ -1,7 +1,6 @@
 {
   "APP_NAME": "SKWAD",
   "APP_SUBTITLE": "FPV 주파수 코디네이터",
-  "APP_DESCRIPTION": "햇빛 아래서도 잘 보이는 간단한 주파수 배치 최적화 앱. 다음 FPV 비행 세션에 활용하세요.",
 
   "BTN_START_SESSION": "세션 만들기",
   "SESSION_EXPIRY_HINT": "세션 유효 시간 12시간",
@@ -40,7 +39,6 @@
 
   "POWER_ALERT_TITLE": "출력 상한",
   "SESSION_CHANNELS_TITLE": "세션 채널",
-  "POWER_ALERT_TEXT": "세션 리더가 송신 출력 상한을 설정했습니다. 최적의 경험을 위해 VTX를 {{mw}} mW 이하로 설정해주세요.",
   "POWER_ALERT_DJI_HINT": "DJI 조종사: 채널 호환성을 위해 20 MHz 대역폭을 사용하세요.",
   "FIXED_CHANNELS_HINT": "이 세션은 고정 채널(레이스 모드)을 사용합니다: {{channels}}",
 
@@ -151,7 +149,6 @@
   "BTN_ADD_PILOT": "조종사 추가",
   "REBALANCE_HINT": "리밸런스 권장",
   "WAITING_FOR_PILOTS": "조종사 대기 중...",
-  "PILOT_COUNT_ZERO": "0명 조종사",
   "PILOT_COUNT_other": "{{count}}명 조종사",
   "UNIT_MHZ": "MHz",
   "BADGE_BUDDIES": "버디",
@@ -176,7 +173,6 @@
   "INPUT_NEW_CALLSIGN": "새 콜사인",
 
   "BTN_CHANGE_CHANNEL": "채널 변경",
-  "BTN_TRANSFER_LEADERSHIP": "리더 이전",
   "SLIDE_TO_REMOVE": "밀어서 제거",
   "TRANSFER_TO": "{{callsign}}에게 이전",
 
@@ -190,10 +186,7 @@
   "CHOICE_MOVE": "{{callsign}}을 {{oldChannel}}에서 {{newChannel}}로 이동",
   "CHOICE_YOU_GET": "당신은 {{channel}} ({{freq}} MHz) 사용",
 
-  "DISPLACEMENT_TITLE": "알림",
-  "DISPLACEMENT_VERIFY": "계속하기 전에 상대에게 확인하세요",
 
-  "NO_CLEAR_CHANNEL": "빈 채널 없음",
   "BUDDY_CONFIRMATION": "버디 확인",
   "OVERLAP_WARNING": "중복 경고",
   "BTN_BUDDY_UP": "버디 공유",

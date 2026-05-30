@@ -37,6 +37,13 @@ type usedEntry struct {
 	pilotID      int
 }
 
+// maxContendedBuddyLoad caps how many pilots may share a contended channel via
+// their stated frequency preference when no clean slot is available. A value of
+// 1 means a channel may already hold one pilot and still accept a second by
+// preference (an intentional buddy pair); a third preference-pilot is instead
+// distributed to a less-loaded channel. See issue #20.
+const maxContendedBuddyLoad = 1
+
 // Optimize takes a list of pilots and assigns each one a channel that
 // maximizes frequency separation accounting for signal bandwidth.
 // When channels must be shared, it creates buddy groups.
@@ -148,7 +155,17 @@ func Optimize(pilots []PilotInput, guardBandMHz int, fixedFreqs []int) []Assignm
 
 			// Prefer preferred frequency when clean, or when all channels require
 			// buddying (pilot is explicitly choosing which channel to share).
-			if p.PreferredFreqMHz > 0 && ch.FreqMHz == p.PreferredFreqMHz && (margin >= 0 || !hasCleanSlot) {
+			//
+			// Issue #20: in an oversubscribed batch (re)optimization, many flexible
+			// pilots can carry the SAME persisted PreferredFreqMHz (e.g. propagated
+			// from buddy-join suggestions). Honoring the preference unconditionally
+			// when no clean slot exists piled every such pilot onto the one shared
+			// channel, skipping the least-loaded distribution below. Cap the
+			// contended preference at maxContendedBuddyLoad so an intentional buddy
+			// PAIR is still honored, but the rest of the overflow falls through to
+			// the least-loaded balancing branch and distributes across channels.
+			if p.PreferredFreqMHz > 0 && ch.FreqMHz == p.PreferredFreqMHz &&
+				(margin >= 0 || (!hasCleanSlot && freqLoad[ch.FreqMHz] <= maxContendedBuddyLoad)) {
 				bestCh = ch
 				bestMargin = margin
 				break
@@ -576,6 +593,11 @@ func copyAssignments(a []Assignment) []Assignment {
 // distributes round-robin across channels), then by same video system and
 // similar bandwidth as tiebreakers.
 func findBestBuddy(existing []PilotInput, newPilot PilotInput) *BuddySuggestion {
+	// Spotters never transmit and never get a frequency, so they have no buddy.
+	// (Defense in depth: callers should not run the optimizer for spotters at all.)
+	if newPilot.VideoSystem == "spotter" {
+		return nil
+	}
 	newPool := ChannelPool(newPilot.VideoSystem, newPilot.FCCUnlocked, newPilot.BandwidthMHz, newPilot.RaceMode, newPilot.Goggles, newPilot.AnalogBands)
 	newPoolFreqs := make(map[int]bool, len(newPool))
 	for _, ch := range newPool {

@@ -481,6 +481,7 @@ func TestUpdateCallsign(t *testing.T) {
 	csBody, _ := json.Marshal(map[string]string{"callsign": "NEWNAME"})
 	csW := httptest.NewRecorder()
 	csReq := httptest.NewRequest(http.MethodPut, "/api/pilots/1/callsign?session="+sess.ID, bytes.NewReader(csBody))
+	csReq.Header.Set("X-Pilot-ID", fmt.Sprint(pilot.ID))
 	s.HandleUpdatePilotCallsign(csW, csReq, pilot.ID, sess.ID)
 
 	if csW.Result().StatusCode != http.StatusNoContent {
@@ -527,10 +528,64 @@ func TestUpdateCallsign_Duplicate(t *testing.T) {
 	// Try to change BRAVO to ALPHA — should fail.
 	csBody, _ := json.Marshal(map[string]string{"callsign": "ALPHA"})
 	csW := httptest.NewRecorder()
-	s.HandleUpdatePilotCallsign(csW, httptest.NewRequest(http.MethodPut, "/", bytes.NewReader(csBody)), pilot2.ID, sess.ID)
+	csReq := httptest.NewRequest(http.MethodPut, "/", bytes.NewReader(csBody))
+	csReq.Header.Set("X-Pilot-ID", fmt.Sprint(pilot2.ID))
+	s.HandleUpdatePilotCallsign(csW, csReq, pilot2.ID, sess.ID)
 
 	if csW.Result().StatusCode != http.StatusConflict {
 		t.Errorf("duplicate callsign: status = %d, want %d", csW.Result().StatusCode, http.StatusConflict)
+	}
+}
+
+// TestPilotMutation_Authorization verifies the self-or-leader gate on the pilot
+// mutation endpoints: a non-leader cannot mutate another pilot, a missing
+// X-Pilot-ID is rejected, and the leader can mutate anyone.
+func TestPilotMutation_Authorization(t *testing.T) {
+	s := newTestServer(t)
+
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess db.Session
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// First joiner becomes leader.
+	b1, _ := json.Marshal(JoinRequest{Callsign: "LEADER", VideoSystem: "analog"})
+	jW1 := httptest.NewRecorder()
+	s.HandleJoinSession(jW1, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(b1)), sess.ID)
+	var leader db.Pilot
+	json.NewDecoder(jW1.Result().Body).Decode(&leader)
+
+	b2, _ := json.Marshal(JoinRequest{Callsign: "MEMBER", VideoSystem: "analog"})
+	jW2 := httptest.NewRecorder()
+	s.HandleJoinSession(jW2, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(b2)), sess.ID)
+	var member db.Pilot
+	json.NewDecoder(jW2.Result().Body).Decode(&member)
+
+	csBody, _ := json.Marshal(map[string]string{"callsign": "HIJACK"})
+
+	// MEMBER (non-leader) tries to rename LEADER → 403.
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/", bytes.NewReader(csBody))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(member.ID))
+	s.HandleUpdatePilotCallsign(w, req, leader.ID, sess.ID)
+	if w.Result().StatusCode != http.StatusForbidden {
+		t.Errorf("non-leader mutating another pilot: status = %d, want 403", w.Result().StatusCode)
+	}
+
+	// No X-Pilot-ID header → 401.
+	w = httptest.NewRecorder()
+	s.HandleUpdatePilotCallsign(w, httptest.NewRequest(http.MethodPut, "/", bytes.NewReader(csBody)), leader.ID, sess.ID)
+	if w.Result().StatusCode != http.StatusUnauthorized {
+		t.Errorf("missing X-Pilot-ID: status = %d, want 401", w.Result().StatusCode)
+	}
+
+	// Leader renaming a member → allowed (204).
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodPut, "/", bytes.NewReader(csBody))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(leader.ID))
+	s.HandleUpdatePilotCallsign(w, req, member.ID, sess.ID)
+	if w.Result().StatusCode != http.StatusNoContent {
+		t.Errorf("leader mutating a member: status = %d, want 204", w.Result().StatusCode)
 	}
 }
 
@@ -931,6 +986,7 @@ func TestUpdateChannel_NoUnnecessaryDisplacement(t *testing.T) {
 	// Change pilot 2's channel preference (clear preference = auto-assign).
 	body := `{"preferred_frequency_mhz":0}`
 	req := httptest.NewRequest("PUT", "/api/pilots/"+fmt.Sprint(pilot2.ID)+"/channel?session="+sess.ID, strings.NewReader(body))
+	req.Header.Set("X-Pilot-ID", fmt.Sprint(pilot2.ID))
 	w := httptest.NewRecorder()
 	srv.HandleUpdatePilotChannel(w, req, pilot2.ID, sess.ID)
 
@@ -1299,6 +1355,7 @@ func TestUpdatePilotVideoSystem_FixedChannelIncompatible(t *testing.T) {
 	updateBody := UpdateVideoSystemRequest{VideoSystem: "dji_v1", FCCUnlocked: true}
 	ub, _ := json.Marshal(updateBody)
 	uReq := httptest.NewRequest(http.MethodPut, "/api/pilots/"+fmt.Sprint(pilotID)+"/video-system?session="+sess.ID, bytes.NewReader(ub))
+	uReq.Header.Set("X-Pilot-ID", fmt.Sprint(pilotID))
 	uW := httptest.NewRecorder()
 	s.HandleUpdatePilotVideoSystem(uW, uReq, pilotID, sess.ID)
 
@@ -1485,5 +1542,43 @@ func TestUpdateFixedChannels_IncompatiblePilots(t *testing.T) {
 	}
 	if after.FixedChannels != "" {
 		t.Errorf("fixed_channels = %q, want empty (DB should not mutate on refusal)", after.FixedChannels)
+	}
+}
+
+// TestPreviewJoin_SpotterNoBuddyPrompt is a regression test for issue #19: a
+// spotter previewing a join must not run the optimizer or receive a buddy
+// suggestion — they get no frequency at all.
+func TestPreviewJoin_SpotterNoBuddyPrompt(t *testing.T) {
+	s := newTestServer(t)
+
+	createW := httptest.NewRecorder()
+	s.HandleCreateSession(createW, httptest.NewRequest(http.MethodPost, "/api/sessions", nil))
+	var sess db.Session
+	json.NewDecoder(createW.Result().Body).Decode(&sess)
+
+	// Populate the session so a buggy optimizer WOULD have buddy candidates.
+	for _, cs := range []string{"ALPHA", "BRAVO", "CHARLIE"} {
+		b, _ := json.Marshal(JoinRequest{Callsign: cs, VideoSystem: "analog"})
+		s.HandleJoinSession(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(b)), sess.ID)
+	}
+
+	// Preview joining as a spotter.
+	body, _ := json.Marshal(JoinRequest{Callsign: "WATCHER", VideoSystem: "spotter"})
+	w := httptest.NewRecorder()
+	s.HandlePreviewJoin(w, httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(body)), sess.ID)
+
+	if w.Result().StatusCode != http.StatusOK {
+		t.Fatalf("preview status = %d, want 200", w.Result().StatusCode)
+	}
+	var resp PreviewResponse
+	json.NewDecoder(w.Result().Body).Decode(&resp)
+	if resp.Level != 0 {
+		t.Errorf("spotter preview Level = %d, want 0 (no escalation)", resp.Level)
+	}
+	if resp.BuddyOption != nil {
+		t.Errorf("spotter preview returned a buddy suggestion (%+v); spotters must not get one (#19)", resp.BuddyOption)
+	}
+	if resp.Assignment.FreqMHz != 0 {
+		t.Errorf("spotter preview returned a frequency assignment (%d MHz); spotters get none", resp.Assignment.FreqMHz)
 	}
 }

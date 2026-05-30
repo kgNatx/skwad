@@ -28,8 +28,12 @@
     // Leader state
     isLeader: false,
     leaderPilotId: null,
-    // Track whether we initiated the current assignment change
-    expectingAssignmentChange: false,
+    // Tracks a self-initiated assignment change in flight, used to suppress
+    // the "a leader moved you" dialog when the change is our own.
+    //   null            → no self-change pending (a freq change is external)
+    //   EXPECT_ANY_FREQ → self-change pending, target freq unknown (auto/rebalance/video)
+    //   <number MHz>    → self-change pending, expected to land on this freq
+    expectedFreqMHz: null,
     // Whether this pilot created the session (show leader info step)
     isCreator: false,
     // True when user is changing video system from within a session
@@ -56,6 +60,11 @@
     // Race mode alert tracking — IDs of O4 pilots we've already alerted about
     raceModeAlertedPilotIds: [],
   };
+
+  // Sentinel for state.expectedFreqMHz: a self-initiated change is pending but
+  // the resulting frequency is decided server-side (auto-reassign, rebalance,
+  // video-system change), so we expect *some* change rather than a specific freq.
+  const EXPECT_ANY_FREQ = -1;
 
   // ── Buddy group colors ────────────────────────────────────────
   const BUDDY_COLORS = [
@@ -356,6 +365,9 @@
     updateFeedbackPlaceholder();
 
     showScreen('feedback');
+    // Push a history entry so the browser Back button closes the feedback
+    // screen (via the popstate handler) instead of stranding the user (F4).
+    pushNavState('feedback');
   }
 
   function closeFeedbackScreen() {
@@ -583,7 +595,7 @@
     state.myFreqMHz = null;
     state.isLeader = false;
     state.leaderPilotId = null;
-    state.expectingAssignmentChange = false;
+    state.expectedFreqMHz = null;
     state._changingVideoSystem = false;
     localStorage.removeItem('skwad_session');
     localStorage.removeItem('skwad_pilot');
@@ -1746,7 +1758,8 @@
   async function submitVideoSystemChange() {
     var btn = $('btn-join-session');
     setLoading(btn, true);
-    state.expectingAssignmentChange = true;
+    // Server picks the freq for the new equipment, so expect any change.
+    state.expectedFreqMHz = EXPECT_ANY_FREQ;
     state._changingVideoSystem = false;
     try {
       await apiPut('/api/pilots/' + state.pilotId + '/video-system?session=' + state.sessionCode, {
@@ -1762,11 +1775,13 @@
       var msg = err.message || '';
       // Equipment can't tune any of the session's fixed channels.
       if (msg.includes('no_channel_match')) {
-        state.expectingAssignmentChange = false;
+        state.expectedFreqMHz = null;
         setLoading(btn, false);
         showIncompatibleDialog(null);
         return;
       }
+      // Generic error: the change didn't happen, so clear the flag too (F2).
+      state.expectedFreqMHz = null;
       showError('join-error', t('ERR_UPDATE_FAILED', { error: msg.toUpperCase() }));
       setLoading(btn, false);
       return;
@@ -2164,14 +2179,32 @@
 
             // Detect externally-caused assignment change (partial rebalance moved us)
             if (state.myFreqMHz && state.myFreqMHz !== data.pilots[j].AssignedFreqMHz) {
-              if (!state.expectingAssignmentChange) {
+              var newFreq = data.pilots[j].AssignedFreqMHz;
+              // A self-initiated change is "our own" when we expected any change
+              // (server-decided freq) or the new freq matches the freq we asked
+              // for. Only then do we suppress the dialog and clear the flag —
+              // clearing only on a match means a concurrent background poll
+              // can't prematurely drop the flag before our change lands.
+              var isOwnChange = state.expectedFreqMHz !== null &&
+                (state.expectedFreqMHz === EXPECT_ANY_FREQ ||
+                 state.expectedFreqMHz === newFreq);
+              if (isOwnChange) {
+                state.expectedFreqMHz = null;
+              } else {
                 showMovedDialog(
                   data.pilots[j].AssignedChannel,
-                  data.pilots[j].AssignedFreqMHz,
+                  newFreq,
                   data.session.leader_pilot_id,
                   data.pilots
                 );
               }
+            } else if (state.expectedFreqMHz !== null &&
+                       (state.expectedFreqMHz === data.pilots[j].AssignedFreqMHz ||
+                        state.expectedFreqMHz === EXPECT_ANY_FREQ)) {
+              // Self-change resolved to a no-op (server kept us on the same freq,
+              // or a server-decided change we can't predict). Clear the flag so it
+              // can't get stuck and suppress a later genuine leader move.
+              state.expectedFreqMHz = null;
             }
 
             state.myChannel = data.pilots[j].AssignedChannel;
@@ -2189,9 +2222,6 @@
           }
         }
       }
-      // Always reset — even if pilot wasn't found (they were removed).
-      state.expectingAssignmentChange = false;
-
       if (!foundSelf) {
         clearState();
         stopPolling();
@@ -2557,7 +2587,7 @@
         el('div', { className: 'empty-state-text', textContent: t('WAITING_FOR_PILOTS') })
       ]);
       container.appendChild(emptyDiv);
-      $('pilot-count').textContent = t('PILOT_COUNT_ZERO');
+      $('pilot-count').textContent = tPlural('PILOT_COUNT', 0);
       renderSpectrum([]);
       return;
     }
@@ -2865,11 +2895,15 @@
       showStep('step-video');
       return;
     }
+    // Stop the 5s poll while this blocking dialog is open so a background
+    // refresh can't overwrite gear state / re-render under the overlay (F3).
+    stopPolling();
     $('channel-change-options').style.display = '';
   }
 
   function hideChannelChangeOptions() {
     $('channel-change-options').style.display = 'none';
+    startPolling();
   }
 
   function initChannelChangeOptions() {
@@ -2955,6 +2989,8 @@
   }
 
   function showChannelChange() {
+    // Stop the 5s poll while this blocking picker is open (F3).
+    stopPolling();
     var picker = $('channel-change-picker');
     clearChildren(picker);
     channelChangeSelectedFreq = 0;
@@ -3020,6 +3056,7 @@
 
   function hideChannelChange() {
     $('channel-change').classList.add('hidden');
+    startPolling();
   }
 
   function initChannelChange() {
@@ -3109,7 +3146,9 @@
 
   async function commitChannelChange(body) {
     try {
-      state.expectingAssignmentChange = true;
+      // A specific requested freq is our expected landing freq; freq 0
+      // (auto-reassign / rebalance) is server-decided, so expect any change.
+      state.expectedFreqMHz = body.preferred_frequency_mhz || EXPECT_ANY_FREQ;
       await apiPut(
         '/api/pilots/' + state.pilotId + '/channel?session=' + state.sessionCode,
         body
@@ -3117,7 +3156,7 @@
       state.preferredFreqMHz = body.preferred_frequency_mhz;
       refreshSession();
     } catch (err) {
-      state.expectingAssignmentChange = false;
+      state.expectedFreqMHz = null;
       refreshSession();
     }
   }
@@ -3184,6 +3223,8 @@
   }
 
   function showChannelChangeForPilot(pilot) {
+    // Stop the 5s poll while this blocking picker is open (F3).
+    stopPolling();
     var picker = $('channel-change-picker');
     clearChildren(picker);
     channelChangeSelectedFreq = 0;
@@ -3652,14 +3693,15 @@
       var btn = $('btn-rebalance-all');
       setLoading(btn, true);
       try {
-        state.expectingAssignmentChange = true;
+        // Full rebalance may move the leader too; freq is server-decided.
+        state.expectedFreqMHz = EXPECT_ANY_FREQ;
         var body = { power_ceiling_mw: rebalanceMW() };
         var result = await apiPost('/api/sessions/' + state.sessionCode + '/rebalance', body);
         if ($('rebalance-hint')) $('rebalance-hint').style.display = 'none';
         await refreshSession();
         showRebalanceResult(result);
       } catch (err) {
-        state.expectingAssignmentChange = false;
+        state.expectedFreqMHz = null;
         // Silently ignore
       } finally {
         setLoading(btn, false);
@@ -4914,6 +4956,12 @@
   }
 
   window.addEventListener('popstate', function (e) {
+    // If the feedback screen is open, Back closes it (returning to wherever
+    // it was opened from), rather than leaving the page (F4).
+    if (!screens.feedback.classList.contains('hidden')) {
+      closeFeedbackScreen();
+      return;
+    }
     // If we're in the setup wizard for video system change, cancel it
     if (state._changingVideoSystem) {
       state._changingVideoSystem = false;
@@ -4973,9 +5021,34 @@
   });
 
   // Re-render dynamic content when language changes
-  window.addEventListener('skwad-languagechange', function () {
-    if (state.sessionCode) refreshSession();
-  });
+  // Re-apply imperatively-set t() strings on the currently-visible screen
+  // after a live language switch. translateDOM() (called by setLanguage before
+  // this event fires) already handles every data-i18n element; this covers the
+  // labels that app.js sets via textContent and would otherwise stay stale (I4).
+  function retranslateActiveScreen() {
+    // In-session content is fully re-rendered from server state.
+    if (state.sessionCode) {
+      refreshSession();
+      return;
+    }
+    // Setup wizard: refresh the dual-purpose / state-derived labels without
+    // disturbing the user's current selection or step.
+    if (!screens.setup.classList.contains('hidden')) {
+      // #btn-fc-skip is a dual-purpose button set by JS (no data-i18n) — keep
+      // its contextual label in sync (see I1).
+      if (!$('step-fixed-channels').classList.contains('hidden')) {
+        $('btn-fc-skip').textContent = state._changingFixedChannels
+          ? t('BTN_NO_FIXED_CHANNELS')
+          : t('BTN_SKIP');
+      }
+      // Power tip text is derived from the slider position, not data-i18n.
+      if (!$('step-power').classList.contains('hidden')) {
+        $('power-tip').textContent = t(POWER_STEPS[state.powerStepIndex].tipKey);
+      }
+    }
+  }
+
+  window.addEventListener('skwad-languagechange', retranslateActiveScreen);
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);

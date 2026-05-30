@@ -809,3 +809,75 @@ func TestFindBestBuddy_LoadBalancing(t *testing.T) {
 			suggestion.FreqMHz)
 	}
 }
+
+// maxCoChannel returns the largest number of pilots sharing any single frequency.
+func maxCoChannel(assignments []Assignment) int {
+	counts := make(map[int]int)
+	for _, a := range assignments {
+		counts[a.FreqMHz]++
+	}
+	max := 0
+	for _, c := range counts {
+		if c > max {
+			max = c
+		}
+	}
+	return max
+}
+
+// TestOptimize_OverflowDistributesNotPiles reproduces issue #20: when many
+// flexible pilots share the same PreferredFreqMHz in an oversubscribed session,
+// the optimizer must distribute the overflow across channels rather than piling
+// every preference-pilot onto the single shared channel.
+func TestOptimize_OverflowDistributesNotPiles(t *testing.T) {
+	// Three mutually-contended fixed channels (10 MHz apart, 20 MHz signals,
+	// 20 MHz guard => 40 MHz required spacing => none are clean relative to
+	// each other). Five pilots, ALL preferring 5700.
+	fixed := []int{5700, 5710, 5720}
+	var pilots []PilotInput
+	for i := 1; i <= 5; i++ {
+		pilots = append(pilots, PilotInput{
+			ID:               i,
+			VideoSystem:      "analog",
+			PreferredFreqMHz: 5700,
+			AnalogBands:      []string{"R"},
+		})
+	}
+
+	got := Optimize(pilots, 20, fixed)
+
+	if n := maxCoChannel(got); n > 2 {
+		t.Errorf("issue #20: %d pilots piled onto one channel; overflow should distribute (max co-channel should be <= 2). assignments: %+v", n, got)
+	}
+	// All three channels should be in use (overflow spread out).
+	used := make(map[int]bool)
+	for _, a := range got {
+		used[a.FreqMHz] = true
+	}
+	if len(used) < 3 {
+		t.Errorf("issue #20: only %d of 3 channels used; overflow did not distribute. assignments: %+v", len(used), got)
+	}
+}
+
+// TestOptimize_BuddyPairPreserved guards against over-correcting #20: two pilots
+// who both prefer the same channel in an oversubscribed session should still be
+// allowed to share it (an intentional buddy pair), not be force-separated.
+func TestOptimize_BuddyPairPreserved(t *testing.T) {
+	fixed := []int{5700, 5710, 5720}
+	pilots := []PilotInput{
+		{ID: 1, VideoSystem: "analog", PreferredFreqMHz: 5700, AnalogBands: []string{"R"}},
+		{ID: 2, VideoSystem: "analog", PreferredFreqMHz: 5700, AnalogBands: []string{"R"}},
+	}
+
+	got := Optimize(pilots, 20, fixed)
+
+	on5700 := 0
+	for _, a := range got {
+		if a.FreqMHz == 5700 {
+			on5700++
+		}
+	}
+	if on5700 != 2 {
+		t.Errorf("intentional buddy pair (both prefer 5700) should both land on 5700; got %d. assignments: %+v", on5700, got)
+	}
+}

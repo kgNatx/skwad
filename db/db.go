@@ -79,11 +79,16 @@ CREATE TABLE IF NOT EXISTS pilots (
 
 // New opens or creates a SQLite database at path and ensures tables exist.
 func New(path string) (*DB, error) {
-	dsn := path + "?_pragma=journal_mode(wal)&_pragma=foreign_keys(on)"
+	// busy_timeout makes transient lock contention retry instead of failing
+	// immediately; SetMaxOpenConns(1) serializes writers through the pool so
+	// modernc.org/sqlite (one writer at a time, even in WAL) never sees a
+	// concurrent write that would surface as "database is locked".
+	dsn := path + "?_pragma=journal_mode(wal)&_pragma=foreign_keys(on)&_pragma=busy_timeout(5000)"
 	sqlDB, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
+	sqlDB.SetMaxOpenConns(1)
 
 	if err := sqlDB.Ping(); err != nil {
 		sqlDB.Close()
@@ -370,10 +375,10 @@ func (d *DB) reactivatePilot(sessionID string, p *Pilot) (*Pilot, error) {
 			bandwidth_mhz = ?, race_mode = ?, preferred_frequency_mhz = ?,
 			assigned_channel = '', assigned_frequency_mhz = 0, buddy_group = 0,
 			joined_at = ?, active = TRUE, analog_bands = ?
-		WHERE id = ?`,
+		WHERE id = ? AND session_id = ?`,
 		p.VideoSystem, p.FCCUnlocked, p.Goggles,
 		p.BandwidthMHz, p.RaceMode, p.PreferredFreqMHz,
-		time.Now().UTC(), p.AnalogBands, existingID,
+		time.Now().UTC(), p.AnalogBands, existingID, sessionID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("reactivate pilot: %w", err)
@@ -433,6 +438,57 @@ func (d *DB) UpdatePilotAssignment(sessionID string, pilotID int, channel string
 		return fmt.Errorf("pilot %d not found", pilotID)
 	}
 	return nil
+}
+
+// PilotAssignment is one pilot's channel assignment for a batch write.
+type PilotAssignment struct {
+	PilotID    int
+	Channel    string
+	FreqMHz    int
+	BuddyGroup int
+}
+
+// ApplyAssignments writes every pilot assignment and bumps the session version
+// in a single transaction: either all assignments land and the version advances,
+// or nothing changes. This prevents a half-reassigned session being observed if
+// a write fails mid-batch. Stale pilot IDs (0 rows affected) are tolerated — they
+// don't abort the batch — matching the prior per-call best-effort behavior; only
+// a real SQL error rolls the whole thing back.
+func (d *DB) ApplyAssignments(sessionID string, assignments []PilotAssignment) error {
+	tx, err := d.db.Begin()
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	for _, a := range assignments {
+		if _, err := tx.Exec(
+			`UPDATE pilots SET assigned_channel = ?, assigned_frequency_mhz = ?, buddy_group = ? WHERE id = ? AND session_id = ?`,
+			a.Channel, a.FreqMHz, a.BuddyGroup, a.PilotID, sessionID,
+		); err != nil {
+			return fmt.Errorf("apply assignment for pilot %d: %w", a.PilotID, err)
+		}
+	}
+
+	if _, err := tx.Exec(
+		`UPDATE sessions SET version = version + 1 WHERE id = ?`, sessionID,
+	); err != nil {
+		return fmt.Errorf("increment version: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// IsActivePilot reports whether pilotID is an active pilot in the given session.
+// Used for authorization: a request claiming to act as a pilot must reference an
+// active member of that session.
+func (d *DB) IsActivePilot(sessionID string, pilotID int) (bool, error) {
+	var exists bool
+	err := d.db.QueryRow(
+		`SELECT EXISTS(SELECT 1 FROM pilots WHERE id = ? AND session_id = ? AND active = TRUE)`,
+		pilotID, sessionID,
+	).Scan(&exists)
+	return exists, err
 }
 
 // UpdatePilotPreference updates a pilot's preferred frequency (0 = auto-assign).

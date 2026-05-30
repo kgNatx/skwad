@@ -3,7 +3,6 @@
 
   "APP_NAME": "SKWAD",
   "APP_SUBTITLE": "FPV FREQUENCY COORDINATOR",
-  "APP_DESCRIPTION": "Sunlight-readable, dead-simple app for optimizing frequency spread in your next FPV fly session.",
 
   "BTN_START_SESSION": "START SESSION",
   "SESSION_EXPIRY_HINT": "Sessions last 12 hours",
@@ -42,7 +41,6 @@
 
   "POWER_ALERT_TITLE": "POWER CEILING",
   "SESSION_CHANNELS_TITLE": "SESSION CHANNELS",
-  "POWER_ALERT_TEXT": "The session leader has set a transmit power ceiling. Please set your VTX to {{mw}} mW or below for the best experience.",
   "POWER_ALERT_DJI_HINT": "DJI pilots: use 20 MHz bandwidth for best channel compatibility.",
   "FIXED_CHANNELS_HINT": "This session uses fixed channels (race mode): {{channels}}",
 
@@ -126,7 +124,6 @@
   "GOGGLES_INTEGRA": "INTEGRA",
   "LABEL_BANDWIDTH": "BANDWIDTH",
   "LABEL_RACE_MODE": "RACE MODE?",
-  "RACE_MODE_RECOMMENDED_BADGE": "RECOMMENDED",
   "RACE_MODE_MIXED_HINT": "THIS SESSION HAS MIXED VIDEO SYSTEMS. RACE MODE KEEPS YOUR SIGNAL CLEAN FOR OTHER PILOTS.",
   "RACE_MODE_ALERT_TITLE": "RACE MODE RECOMMENDED",
   "RACE_MODE_ALERT_PILOT_TEXT": "This session has mixed video systems. Enable Race Mode in your DJI goggles: Transmission \u003e Race Mode.",
@@ -161,7 +158,6 @@
   "BTN_ADD_PILOT": "ADD PILOT",
   "REBALANCE_HINT": "Rebalance recommended",
   "WAITING_FOR_PILOTS": "WAITING FOR PILOTS...",
-  "PILOT_COUNT_ZERO": "0 PILOTS",
   "PILOT_COUNT_one": "{{count}} PILOT",
   "PILOT_COUNT_other": "{{count}} PILOTS",
   "UNIT_MHZ": "MHz",
@@ -187,7 +183,6 @@
   "INPUT_NEW_CALLSIGN": "NEW CALLSIGN",
 
   "BTN_CHANGE_CHANNEL": "CHANGE CHANNEL",
-  "BTN_TRANSFER_LEADERSHIP": "TRANSFER LEADERSHIP",
   "SLIDE_TO_REMOVE": "SLIDE TO REMOVE",
   "TRANSFER_TO": "TRANSFER TO {{callsign}}",
 
@@ -201,10 +196,7 @@
   "CHOICE_MOVE": "Move {{callsign}} from {{oldChannel}} to {{newChannel}}",
   "CHOICE_YOU_GET": "You get {{channel}} ({{freq}} MHz)",
 
-  "DISPLACEMENT_TITLE": "HEADS UP",
-  "DISPLACEMENT_VERIFY": "VERIFY WITH THEM BEFORE CONTINUING",
 
-  "NO_CLEAR_CHANNEL": "NO CLEAR CHANNEL",
   "BUDDY_CONFIRMATION": "BUDDY CONFIRMATION",
   "OVERLAP_WARNING": "OVERLAP WARNING",
   "BTN_BUDDY_UP": "BUDDY UP",

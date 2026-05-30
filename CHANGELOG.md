@@ -4,6 +4,30 @@ All notable changes to Skwad are documented in this file.
 
 > **Note:** User-facing release notes are maintained separately in `static/changelog.html`. Keep both in sync — developer details here, plain-language descriptions there.
 
+## [0.7.4] — 2026-05-30
+
+Security and reliability fixes from a multi-agent codebase review, plus the field-reported full-spectrum rebalance issue.
+
+### Security
+- **Authorization on pilot mutation endpoints (#22).** `PUT /api/pilots/{id}/channel`, `/video-system`, `/callsign`, and `POST .../preview-channel` now require `X-Pilot-ID` and enforce self-or-leader access via a new `requireSelfOrLeader` helper; the leader-only `force` pin flag is gated to leaders, the requester must be an active session member, and `HandleDeactivatePilot` shares the same gate. Note: `X-Pilot-ID` is still an unauthenticated claim — a session member can spoof another member's ID; full closure needs per-pilot tokens (tracked separately).
+- **Server-side input bounds.** Callsign length, bandwidth, preferred frequency, and power ceiling are validated server-side, not just by the HTML form.
+- **Feedback issue injection.** User-supplied message text and context values are angle-escaped before embedding in the GitHub issue body so they can't break the `<details>` structure.
+
+### Fixed
+- **Spotter join showed a spurious buddy/channel prompt (#19).** `HandlePreviewJoin` ran the optimizer for spotters, returning a bogus buddy suggestion so the join flow flashed a "you're buddies with … on R2" prompt before adding the spotter with no channel. Spotters now short-circuit the preview (Level 0, no assignment), mirroring the actual-join handler; `findBestBuddy` also returns nil for spotters as defense in depth.
+- **Full-spectrum rebalance piled overflow pilots onto one channel (#20).** When no clean slot existed, the frequency-preference shortcut bypassed load balancing and stacked every preference-sharing pilot onto the same channel. Overflow now distributes round-robin; an intentional buddy pair (two pilots) is still honored (`maxContendedBuddyLoad`).
+- **Surgical rebalance could trade a warning for an overlap.** The surgical-vs-full comparison now weighs danger (overlap) conflicts, not just total conflict count.
+- **Spurious "a leader moved you" dialog.** Replaced a global boolean with a tracked expected-frequency (`expectedFreqMHz` + `EXPECT_ANY_FREQ`) so a background poll can't surface the dialog to a pilot who moved themselves; fixed a stuck-flag edge case on no-op self-changes.
+- **Atomic reassignment.** Optimizer assignment writes and the session version bump now run in one transaction (`ApplyAssignments`) — no half-reassigned state if a write fails mid-batch.
+- Channel-change dialogs pause the background poll while open; the feedback screen handles the browser Back button; `reactivatePilot` is session-scoped.
+
+### i18n
+- Removed dead locale keys (`PILOT_COUNT_ZERO` now derived via `tPlural`, plus other orphans) and a dual-purpose `data-i18n` clobber on the fixed-channels skip button; added missing `_many` plural forms for it/fr/es/pt-BR; standalone page `<title>`s now translate.
+
+### Internal
+- SQLite opened with `SetMaxOpenConns(1)` + `busy_timeout(5000)` to avoid "database is locked" under concurrent writes.
+- HTTP server gains panic-recovery middleware, baseline security headers (`nosniff`, `Referrer-Policy`, `X-Frame-Options`), and graceful shutdown.
+
 ## [0.7.3] — 2026-04-16
 
 ### Added

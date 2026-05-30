@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"runtime/debug"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/kyleg/skwad/api"
@@ -236,13 +240,59 @@ func main() {
 	staticFS := http.FileServer(http.Dir(staticDir))
 	mux.Handle("GET /", noCacheMiddleware(staticFS))
 
-	// Wrap with CORS middleware.
-	handler := corsMiddleware(mux)
+	// Middleware chain (outermost first): recover from panics, set security
+	// headers, then CORS.
+	handler := recoverMiddleware(securityHeadersMiddleware(corsMiddleware(mux)))
 
-	log.Printf("Skwad listening on :%s", port)
-	if err := http.ListenAndServe(":"+port, handler); err != nil {
-		log.Fatal(err)
+	httpSrv := &http.Server{Addr: ":" + port, Handler: handler}
+
+	// Graceful shutdown: on SIGINT/SIGTERM, stop accepting connections, let
+	// in-flight requests drain, then return from main so the deferred
+	// database.Close() actually runs (plain ListenAndServe + log.Fatal skips it).
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		log.Printf("Skwad listening on :%s", port)
+		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("server error: %v", err)
+		}
+	}()
+
+	<-ctx.Done()
+	stop()
+	log.Println("Shutting down...")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("graceful shutdown error: %v", err)
 	}
+}
+
+// recoverMiddleware recovers from handler panics, logs the stack, and returns a
+// clean 500 instead of dropping the connection with no logged context.
+func recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Printf("panic in %s %s: %v\n%s", r.Method, r.URL.Path, rec, debug.Stack())
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+
+// securityHeadersMiddleware sets baseline security response headers on every
+// response. (A Content-Security-Policy is intentionally omitted here — it needs
+// in-browser verification against the SPA's inline styles before enabling.)
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
+		next.ServeHTTP(w, r)
+	})
 }
 
 // noCacheMiddleware sets Cache-Control: no-cache on static file responses.

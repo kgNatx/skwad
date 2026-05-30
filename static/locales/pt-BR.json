@@ -1,7 +1,6 @@
 {
   "APP_NAME": "SKWAD",
   "APP_SUBTITLE": "COORDENADOR DE FREQUÊNCIA FPV",
-  "APP_DESCRIPTION": "App simples e legível ao sol para otimizar a distribuição de frequências na sua próxima sessão de voo FPV.",
 
   "BTN_START_SESSION": "INICIAR SESSÃO",
   "SESSION_EXPIRY_HINT": "Sessões duram 12 horas",
@@ -40,7 +39,6 @@
 
   "POWER_ALERT_TITLE": "LIMITE DE POTÊNCIA",
   "SESSION_CHANNELS_TITLE": "CANAIS DA SESSÃO",
-  "POWER_ALERT_TEXT": "O líder da sessão definiu um limite de potência. Configure seu VTX para {{mw}} mW ou menos para a melhor experiência.",
   "POWER_ALERT_DJI_HINT": "Pilotos DJI: use largura de banda de 20 MHz para melhor compatibilidade de canais.",
   "FIXED_CHANNELS_HINT": "Esta sessão usa canais fixos (modo corrida): {{channels}}",
 
@@ -151,8 +149,8 @@
   "BTN_ADD_PILOT": "ADICIONAR PILOTO",
   "REBALANCE_HINT": "Rebalanceamento recomendado",
   "WAITING_FOR_PILOTS": "AGUARDANDO PILOTOS...",
-  "PILOT_COUNT_ZERO": "0 PILOTOS",
   "PILOT_COUNT_one": "{{count}} PILOTO",
+  "PILOT_COUNT_many": "{{count}} PILOTOS",
   "PILOT_COUNT_other": "{{count}} PILOTOS",
   "UNIT_MHZ": "MHz",
   "BADGE_BUDDIES": "PARCEIROS",
@@ -177,7 +175,6 @@
   "INPUT_NEW_CALLSIGN": "NOVO CALLSIGN",
 
   "BTN_CHANGE_CHANNEL": "MUDAR CANAL",
-  "BTN_TRANSFER_LEADERSHIP": "TRANSFERIR LIDERANÇA",
   "SLIDE_TO_REMOVE": "DESLIZE PARA REMOVER",
   "TRANSFER_TO": "TRANSFERIR PARA {{callsign}}",
 
@@ -191,10 +188,7 @@
   "CHOICE_MOVE": "Mover {{callsign}} de {{oldChannel}} para {{newChannel}}",
   "CHOICE_YOU_GET": "Você fica com {{channel}} ({{freq}} MHz)",
 
-  "DISPLACEMENT_TITLE": "ATENÇÃO",
-  "DISPLACEMENT_VERIFY": "CONFIRME COM ELES ANTES DE CONTINUAR",
 
-  "NO_CLEAR_CHANNEL": "NENHUM CANAL LIVRE",
   "BUDDY_CONFIRMATION": "CONFIRMAÇÃO DE BUDDY",
   "OVERLAP_WARNING": "AVISO DE SOBREPOSIÇÃO",
   "BTN_BUDDY_UP": "BUDDY UP",
@@ -266,8 +260,10 @@
   "STAT_LARGEST_SESSION": "Maior Sessão",
   "STAT_AVG_DURATION": "Duração Média",
   "MAP_SESSION_one": "{{count}} sessão",
+  "MAP_SESSION_many": "{{count}} sessões",
   "MAP_SESSION_other": "{{count}} sessões",
   "MAP_ACTIVE_one": "{{count}} sessão ativa",
+  "MAP_ACTIVE_many": "{{count}} sessões ativas",
   "MAP_ACTIVE_other": "{{count}} sessões ativas",
   "MAP_LEGEND_ACTIVE": "Ativa",
   "MAP_LEGEND_PAST": "Passada",

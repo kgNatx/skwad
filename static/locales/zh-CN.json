@@ -1,7 +1,6 @@
 {
   "APP_NAME": "SKWAD",
   "APP_SUBTITLE": "FPV 频率协调器",
-  "APP_DESCRIPTION": "阳光下清晰可读、简单好用的频率分配优化工具，让你的 FPV 飞行更顺畅。",
 
   "BTN_START_SESSION": "创建场次",
   "SESSION_EXPIRY_HINT": "场次有效期 12 小时",
@@ -40,7 +39,6 @@
 
   "POWER_ALERT_TITLE": "功率上限",
   "SESSION_CHANNELS_TITLE": "场次频道",
-  "POWER_ALERT_TEXT": "场次领队已设定发射功率上限。请将你的 VTX 设为 {{mw}} mW 或以下，以获得最佳体验。",
   "POWER_ALERT_DJI_HINT": "DJI 飞手：使用 20 MHz 带宽以获得最佳频道兼容性。",
   "FIXED_CHANNELS_HINT": "此场次使用固定频道（竞速模式）：{{channels}}",
 
@@ -151,7 +149,6 @@
   "BTN_ADD_PILOT": "添加飞手",
   "REBALANCE_HINT": "建议重新平衡",
   "WAITING_FOR_PILOTS": "等待飞手加入...",
-  "PILOT_COUNT_ZERO": "0 位飞手",
   "PILOT_COUNT_other": "{{count}} 位飞手",
   "UNIT_MHZ": "MHz",
   "BADGE_BUDDIES": "共用",
@@ -176,7 +173,6 @@
   "INPUT_NEW_CALLSIGN": "新呼号",
 
   "BTN_CHANGE_CHANNEL": "更改频道",
-  "BTN_TRANSFER_LEADERSHIP": "移交领队",
   "SLIDE_TO_REMOVE": "滑动以移除",
   "TRANSFER_TO": "移交给 {{callsign}}",
 
@@ -190,10 +186,7 @@
   "CHOICE_MOVE": "将 {{callsign}} 从 {{oldChannel}} 移至 {{newChannel}}",
   "CHOICE_YOU_GET": "你将使用 {{channel}}（{{freq}} MHz）",
 
-  "DISPLACEMENT_TITLE": "注意",
-  "DISPLACEMENT_VERIFY": "继续前请先与对方确认",
 
-  "NO_CLEAR_CHANNEL": "没有干净的频道",
   "BUDDY_CONFIRMATION": "共用确认",
   "OVERLAP_WARNING": "重叠警告",
   "BTN_BUDDY_UP": "共用频道",

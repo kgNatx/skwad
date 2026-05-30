@@ -1,7 +1,6 @@
 {
   "APP_NAME": "SKWAD",
   "APP_SUBTITLE": "FPV FREQUENTIECOÖRDINATOR",
-  "APP_DESCRIPTION": "Zonlicht-leesbare, simpele app om frequentiespreiding te optimaliseren voor je volgende FPV vliegsessie.",
 
   "BTN_START_SESSION": "SESSIE STARTEN",
   "SESSION_EXPIRY_HINT": "Sessies duren 12 uur",
@@ -40,7 +39,6 @@
 
   "POWER_ALERT_TITLE": "VERMOGENSLIMIET",
   "SESSION_CHANNELS_TITLE": "SESSIEKANALEN",
-  "POWER_ALERT_TEXT": "De sessieleider heeft een vermogenslimiet ingesteld. Stel je VTX in op {{mw}} mW of lager voor de beste ervaring.",
   "POWER_ALERT_DJI_HINT": "DJI piloten: gebruik 20 MHz bandbreedte voor de beste kanaalcompatibiliteit.",
   "FIXED_CHANNELS_HINT": "Deze sessie gebruikt vaste kanalen (race mode): {{channels}}",
 
@@ -151,7 +149,6 @@
   "BTN_ADD_PILOT": "PILOOT TOEVOEGEN",
   "REBALANCE_HINT": "Herbalancering aanbevolen",
   "WAITING_FOR_PILOTS": "WACHTEN OP PILOTEN...",
-  "PILOT_COUNT_ZERO": "0 PILOTEN",
   "PILOT_COUNT_one": "{{count}} PILOOT",
   "PILOT_COUNT_other": "{{count}} PILOTEN",
   "UNIT_MHZ": "MHz",
@@ -177,7 +174,6 @@
   "INPUT_NEW_CALLSIGN": "NIEUW CALLSIGN",
 
   "BTN_CHANGE_CHANNEL": "KANAAL WIJZIGEN",
-  "BTN_TRANSFER_LEADERSHIP": "LEIDERSCHAP OVERDRAGEN",
   "SLIDE_TO_REMOVE": "VEEG OM TE VERWIJDEREN",
   "TRANSFER_TO": "OVERDRAGEN AAN {{callsign}}",
 
@@ -191,10 +187,7 @@
   "CHOICE_MOVE": "Verplaats {{callsign}} van {{oldChannel}} naar {{newChannel}}",
   "CHOICE_YOU_GET": "Jij krijgt {{channel}} ({{freq}} MHz)",
 
-  "DISPLACEMENT_TITLE": "LET OP",
-  "DISPLACEMENT_VERIFY": "CHECK MET HEN VOORDAT JE DOORGAAT",
 
-  "NO_CLEAR_CHANNEL": "GEEN VRIJ KANAAL",
   "BUDDY_CONFIRMATION": "BUDDY BEVESTIGING",
   "OVERLAP_WARNING": "OVERLAP WAARSCHUWING",
   "BTN_BUDDY_UP": "BUDDY UP",

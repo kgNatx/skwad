@@ -1,7 +1,6 @@
 {
   "APP_NAME": "SKWAD",
   "APP_SUBTITLE": "FPV КООРДИНАТОР НА ЧЕСТОТИ",
-  "APP_DESCRIPTION": "Четимо на слънце, елементарно просто приложение за оптимизиране на честотния разнос на следващата ви FPV сесия.",
 
   "BTN_START_SESSION": "НОВА СЕСИЯ",
   "SESSION_EXPIRY_HINT": "Сесиите траят 12 часа",
@@ -40,7 +39,6 @@
 
   "POWER_ALERT_TITLE": "ОГРАНИЧЕНИЕ НА МОЩНОСТТА",
   "SESSION_CHANNELS_TITLE": "КАНАЛИ НА СЕСИЯТА",
-  "POWER_ALERT_TEXT": "Лидерът е задал таван на предавателната мощност. Моля, настройте VTX на {{mw}} mW или по-малко за най-добро качество.",
   "POWER_ALERT_DJI_HINT": "DJI пилоти: използвайте 20 MHz ширина за най-добра съвместимост.",
   "FIXED_CHANNELS_HINT": "Тази сесия използва фиксирани канали (рейс режим): {{channels}}",
 
@@ -151,7 +149,6 @@
   "BTN_ADD_PILOT": "ДОБАВИ ПИЛОТ",
   "REBALANCE_HINT": "Препоръчва се преразпределяне",
   "WAITING_FOR_PILOTS": "ЧАКАМЕ ПИЛОТИ...",
-  "PILOT_COUNT_ZERO": "0 ПИЛОТИ",
   "PILOT_COUNT_one": "{{count}} ПИЛОТ",
   "PILOT_COUNT_other": "{{count}} ПИЛОТИ",
   "UNIT_MHZ": "MHz",
@@ -177,7 +174,6 @@
   "INPUT_NEW_CALLSIGN": "НОВА ПОЗИВНА",
 
   "BTN_CHANGE_CHANNEL": "СМЕНИ КАНАЛ",
-  "BTN_TRANSFER_LEADERSHIP": "ПРЕДАЙ ЛИДЕРСТВО",
   "SLIDE_TO_REMOVE": "ПЛЪЗНИ ЗА ПРЕМАХВАНЕ",
   "TRANSFER_TO": "ПРЕДАЙ НА {{callsign}}",
 
@@ -191,10 +187,7 @@
   "CHOICE_MOVE": "Премести {{callsign}} от {{oldChannel}} на {{newChannel}}",
   "CHOICE_YOU_GET": "Ти получаваш {{channel}} ({{freq}} MHz)",
 
-  "DISPLACEMENT_TITLE": "ВНИМАНИЕ",
-  "DISPLACEMENT_VERIFY": "ПРОВЕРИ С ТЯХ ПРЕДИ ДА ПРОДЪЛЖИШ",
 
-  "NO_CLEAR_CHANNEL": "НЯМА ЧИСТ КАНАЛ",
   "BUDDY_CONFIRMATION": "ПОТВЪРДИ СПОДЕЛЯНЕ",
   "OVERLAP_WARNING": "ПРЕДУПРЕЖДЕНИЕ ЗА ПРИПОКРИВАНЕ",
   "BTN_BUDDY_UP": "СПОДЕЛИ КАНАЛ",

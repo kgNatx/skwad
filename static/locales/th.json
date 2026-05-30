@@ -1,7 +1,6 @@
 {
   "APP_NAME": "SKWAD",
   "APP_SUBTITLE": "ระบบจัดการความถี่ FPV",
-  "APP_DESCRIPTION": "แอปอ่านง่ายกลางแจ้ง ใช้ง่ายสุดๆ สำหรับจัดความถี่ให้เหมาะสมในเซสชันบิน FPV ของคุณ",
 
   "BTN_START_SESSION": "เริ่มเซสชัน",
   "SESSION_EXPIRY_HINT": "เซสชันใช้ได้ 12 ชั่วโมง",
@@ -40,7 +39,6 @@
 
   "POWER_ALERT_TITLE": "เพดานกำลังส่ง",
   "SESSION_CHANNELS_TITLE": "ช่องเซสชัน",
-  "POWER_ALERT_TEXT": "ผู้นำเซสชันกำหนดเพดานกำลังส่งไว้ กรุณาตั้ง VTX เป็น {{mw}} mW หรือต่ำกว่าเพื่อประสบการณ์ที่ดีที่สุด",
   "POWER_ALERT_DJI_HINT": "นักบิน DJI: ใช้แบนด์วิดท์ 20 MHz เพื่อความเข้ากันได้ของช่องที่ดีที่สุด",
   "FIXED_CHANNELS_HINT": "เซสชันนี้ใช้ช่องคงที่ (โหมดเรซ): {{channels}}",
 
@@ -151,7 +149,6 @@
   "BTN_ADD_PILOT": "เพิ่มนักบิน",
   "REBALANCE_HINT": "แนะนำให้ปรับสมดุลใหม่",
   "WAITING_FOR_PILOTS": "รอนักบิน...",
-  "PILOT_COUNT_ZERO": "0 นักบิน",
   "PILOT_COUNT_other": "{{count}} นักบิน",
   "UNIT_MHZ": "MHz",
   "BADGE_BUDDIES": "คู่หู",
@@ -176,7 +173,6 @@
   "INPUT_NEW_CALLSIGN": "ชื่อเรียกขานใหม่",
 
   "BTN_CHANGE_CHANNEL": "เปลี่ยนช่อง",
-  "BTN_TRANSFER_LEADERSHIP": "โอนผู้นำ",
   "SLIDE_TO_REMOVE": "เลื่อนเพื่อลบ",
   "TRANSFER_TO": "โอนให้ {{callsign}}",
 
@@ -190,10 +186,7 @@
   "CHOICE_MOVE": "ย้าย {{callsign}} จาก {{oldChannel}} ไป {{newChannel}}",
   "CHOICE_YOU_GET": "คุณได้ {{channel}} ({{freq}} MHz)",
 
-  "DISPLACEMENT_TITLE": "แจ้งให้ทราบ",
-  "DISPLACEMENT_VERIFY": "ยืนยันกับเขาก่อนดำเนินต่อ",
 
-  "NO_CLEAR_CHANNEL": "ไม่มีช่องว่าง",
   "BUDDY_CONFIRMATION": "ยืนยันใช้ช่องร่วม",
   "OVERLAP_WARNING": "คำเตือนทับซ้อน",
   "BTN_BUDDY_UP": "ใช้ช่องร่วมกัน",

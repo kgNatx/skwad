@@ -1,7 +1,6 @@
 {
   "APP_NAME": "SKWAD",
   "APP_SUBTITLE": "KOORDYNATOR CZĘSTOTLIWOŚCI FPV",
-  "APP_DESCRIPTION": "Czytelna w słońcu, prosta aplikacja do optymalizacji rozkładu częstotliwości na następną sesję FPV.",
 
   "BTN_START_SESSION": "ROZPOCZNIJ SESJĘ",
   "SESSION_EXPIRY_HINT": "Sesje trwają 12 godzin",
@@ -40,7 +39,6 @@
 
   "POWER_ALERT_TITLE": "LIMIT MOCY",
   "SESSION_CHANNELS_TITLE": "KANAŁY SESJI",
-  "POWER_ALERT_TEXT": "Lider sesji ustawił limit mocy nadawania. Ustaw VTX na {{mw}} mW lub mniej.",
   "POWER_ALERT_DJI_HINT": "Piloci DJI: użyj pasma 20 MHz dla najlepszej kompatybilności kanałów.",
   "FIXED_CHANNELS_HINT": "Ta sesja używa stałych kanałów (tryb wyścigowy): {{channels}}",
 
@@ -151,7 +149,6 @@
   "BTN_ADD_PILOT": "DODAJ PILOTA",
   "REBALANCE_HINT": "Zalecane zrównoważenie",
   "WAITING_FOR_PILOTS": "CZEKAM NA PILOTÓW...",
-  "PILOT_COUNT_ZERO": "0 PILOTÓW",
   "PILOT_COUNT_one": "{{count}} PILOT",
   "PILOT_COUNT_few": "{{count}} PILOTÓW",
   "PILOT_COUNT_many": "{{count}} PILOTÓW",
@@ -179,7 +176,6 @@
   "INPUT_NEW_CALLSIGN": "NOWY CALLSIGN",
 
   "BTN_CHANGE_CHANNEL": "ZMIEŃ KANAŁ",
-  "BTN_TRANSFER_LEADERSHIP": "PRZEKAŻ LIDEROWANIE",
   "SLIDE_TO_REMOVE": "PRZESUŃ ABY USUNĄĆ",
   "TRANSFER_TO": "PRZEKAŻ DO {{callsign}}",
 
@@ -193,10 +189,7 @@
   "CHOICE_MOVE": "Przenieś {{callsign}} z {{oldChannel}} na {{newChannel}}",
   "CHOICE_YOU_GET": "Dostajesz {{channel}} ({{freq}} MHz)",
 
-  "DISPLACEMENT_TITLE": "UWAGA",
-  "DISPLACEMENT_VERIFY": "POTWIERDŹ Z NIMI PRZED KONTYNUOWANIEM",
 
-  "NO_CLEAR_CHANNEL": "BRAK WOLNEGO KANAŁU",
   "BUDDY_CONFIRMATION": "POTWIERDZENIE BUDDY",
   "OVERLAP_WARNING": "OSTRZEŻENIE O NAKŁADANIU",
   "BTN_BUDDY_UP": "BUDDY UP",

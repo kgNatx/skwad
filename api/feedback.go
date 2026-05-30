@@ -146,9 +146,18 @@ func buildTitle(fbType, msg string) string {
 }
 
 // buildBody composes the GitHub issue body from the message and optional context.
+// escapeAngles neutralizes HTML/markdown structure in user-supplied text so a
+// crafted message (e.g. one containing </summary> or raw tags) cannot break out
+// of or restructure the rendered GitHub issue, which embeds a <details> block.
+var angleEscaper = strings.NewReplacer("<", "&lt;", ">", "&gt;")
+
+func escapeAngles(s string) string {
+	return angleEscaper.Replace(s)
+}
+
 func buildBody(msg string, ctx json.RawMessage) string {
 	var sb strings.Builder
-	sb.WriteString(msg)
+	sb.WriteString(escapeAngles(msg))
 	if details := formatContext(ctx); details != "" {
 		sb.WriteString("\n\n")
 		sb.WriteString(details)
@@ -200,7 +209,7 @@ func formatContext(raw json.RawMessage) string {
 			if v == "" {
 				continue
 			}
-			fmt.Fprintf(&rows, "- **%s**: %s\n", f.label, v)
+			fmt.Fprintf(&rows, "- **%s**: %s\n", f.label, escapeAngles(v))
 		case float64:
 			if v == 0 {
 				continue

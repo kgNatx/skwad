@@ -583,6 +583,9 @@
     }
   }
 
+  // Apply the translated document title once i18n strings are loaded (I5b).
+  onI18nReady(function () { document.title = t('USAGE_BROWSER_TITLE'); });
+
   load();
 })();
 </script>

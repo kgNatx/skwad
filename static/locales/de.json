@@ -1,7 +1,6 @@
 {
   "APP_NAME": "SKWAD",
   "APP_SUBTITLE": "FPV-FREQUENZKOORDINATOR",
-  "APP_DESCRIPTION": "Sonnenlicht-taugliche, kinderleichte App zur Optimierung der Frequenzverteilung bei deiner nächsten FPV-Session.",
 
   "BTN_START_SESSION": "SESSION STARTEN",
   "SESSION_EXPIRY_HINT": "Sessions laufen 12 Stunden",
@@ -40,7 +39,6 @@
 
   "POWER_ALERT_TITLE": "LEISTUNGSLIMIT",
   "SESSION_CHANNELS_TITLE": "SESSION-KANÄLE",
-  "POWER_ALERT_TEXT": "Der Session-Leader hat ein Sendeleistungslimit festgelegt. Bitte stelle deinen VTX auf {{mw}} mW oder weniger ein.",
   "POWER_ALERT_DJI_HINT": "DJI-Piloten: 20 MHz Bandbreite für beste Kanalkompatibilität verwenden.",
   "FIXED_CHANNELS_HINT": "Diese Session verwendet feste Kanäle (Race-Modus): {{channels}}",
 
@@ -151,7 +149,6 @@
   "BTN_ADD_PILOT": "PILOT HINZUFÜGEN",
   "REBALANCE_HINT": "Neuverteilung empfohlen",
   "WAITING_FOR_PILOTS": "WARTE AUF PILOTEN...",
-  "PILOT_COUNT_ZERO": "0 PILOTEN",
   "PILOT_COUNT_one": "{{count}} PILOT",
   "PILOT_COUNT_other": "{{count}} PILOTEN",
   "UNIT_MHZ": "MHz",
@@ -177,7 +174,6 @@
   "INPUT_NEW_CALLSIGN": "NEUES CALLSIGN",
 
   "BTN_CHANGE_CHANNEL": "KANAL ÄNDERN",
-  "BTN_TRANSFER_LEADERSHIP": "LEADERSHIP ÜBERGEBEN",
   "SLIDE_TO_REMOVE": "WISCHEN ZUM ENTFERNEN",
   "TRANSFER_TO": "ÜBERGEBEN AN {{callsign}}",
 
@@ -191,10 +187,7 @@
   "CHOICE_MOVE": "{{callsign}} von {{oldChannel}} nach {{newChannel}} verschieben",
   "CHOICE_YOU_GET": "Du bekommst {{channel}} ({{freq}} MHz)",
 
-  "DISPLACEMENT_TITLE": "ACHTUNG",
-  "DISPLACEMENT_VERIFY": "KLÄRE DAS MIT IHNEN, BEVOR DU WEITERMACHST",
 
-  "NO_CLEAR_CHANNEL": "KEIN FREIER KANAL",
   "BUDDY_CONFIRMATION": "BUDDY-BESTÄTIGUNG",
   "OVERLAP_WARNING": "ÜBERLAPPUNGSWARNUNG",
   "BTN_BUDDY_UP": "BUDDY UP",

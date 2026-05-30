@@ -129,6 +129,40 @@ func (s *Server) requireLeader(w http.ResponseWriter, r *http.Request, sessionCo
 	return pilotID, true
 }
 
+// requireSelfOrLeader authorizes a pilot-scoped mutation. The caller (identified
+// by the X-Pilot-ID header) must be either the pilot being mutated (self) or the
+// session leader. Returns the requesting pilot ID, whether that requester is the
+// session leader (so callers can gate leader-only sub-actions like force-pin),
+// and ok. On failure it writes the HTTP error and returns ok=false.
+func (s *Server) requireSelfOrLeader(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) (requestingID int, isLeader bool, ok bool) {
+	idStr := r.Header.Get("X-Pilot-ID")
+	if idStr == "" {
+		http.Error(w, "X-Pilot-ID header required", http.StatusUnauthorized)
+		return 0, false, false
+	}
+	requestingID, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "invalid X-Pilot-ID", http.StatusBadRequest)
+		return 0, false, false
+	}
+	// The requester must be an active member of this session. Note: X-Pilot-ID is
+	// an unauthenticated claim (no per-pilot secret), so this is defense-in-depth,
+	// not full authentication — a session member can still spoof another member's
+	// ID. Closing that fully requires per-pilot tokens (tracked separately).
+	if member, err := s.DB.IsActivePilot(sessionCode, requestingID); err != nil || !member {
+		http.Error(w, "X-Pilot-ID is not an active pilot in this session", http.StatusForbidden)
+		return 0, false, false
+	}
+	if leaderID, err := s.DB.GetLeader(sessionCode); err == nil && leaderID != 0 && leaderID == requestingID {
+		isLeader = true
+	}
+	if requestingID != pilotID && !isLeader {
+		http.Error(w, "leader access required", http.StatusForbidden)
+		return 0, false, false
+	}
+	return requestingID, isLeader, true
+}
+
 // JoinRequest is the JSON body for joining a session.
 type JoinRequest struct {
 	Callsign         string   `json:"callsign"`
@@ -159,12 +193,36 @@ type PilotWithConflicts struct {
 
 // HandleCreateSession creates a new frequency-coordination session.
 // POST /api/sessions
+const maxCallsignLen = 32
+
+// validatePilotFields enforces server-side bounds on pilot-supplied fields so a
+// non-browser client cannot bypass the HTML form limits. Bandwidth is a range
+// (not an exact set) because different video systems legitimately report
+// different occupied bandwidths. Returns an error message, empty when valid.
+func validatePilotFields(callsign string, bandwidthMHz, preferredFreqMHz int) string {
+	if n := len([]rune(strings.TrimSpace(callsign))); n < 1 || n > maxCallsignLen {
+		return fmt.Sprintf("callsign must be 1-%d characters", maxCallsignLen)
+	}
+	if bandwidthMHz < 0 || bandwidthMHz > 100 {
+		return "bandwidth out of range"
+	}
+	if preferredFreqMHz != 0 && (preferredFreqMHz < 5000 || preferredFreqMHz > 6100) {
+		return "preferred frequency out of range"
+	}
+	return ""
+}
+
 func (s *Server) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		PowerCeilingMW int    `json:"power_ceiling_mw"`
 		FixedChannels  string `json:"fixed_channels"`
 	}
 	json.NewDecoder(r.Body).Decode(&req) // ignore error — empty body is fine
+
+	if req.PowerCeilingMW < 0 || req.PowerCeilingMW > 5000 {
+		http.Error(w, "power ceiling out of range", http.StatusBadRequest)
+		return
+	}
 
 	sess, err := s.DB.CreateSession(req.PowerCeilingMW, req.FixedChannels)
 	if err != nil {
@@ -280,6 +338,10 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 		http.Error(w, "callsign and video_system are required", http.StatusBadRequest)
 		return
 	}
+	if msg := validatePilotFields(req.Callsign, req.BandwidthMHz, req.PreferredFreqMHz); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
 
 	// Refuse pilots whose native channel pool has no overlap with the session's
 	// fixed set — their equipment can't tune to any of the locked channels.
@@ -375,16 +437,8 @@ func (s *Server) HandleJoinSession(w http.ResponseWriter, r *http.Request, code 
 		assignments = result.RebalanceOption.Assignments
 	}
 
-	// Apply all assignments from the selected set.
-	for _, a := range assignments {
-		if err := s.DB.UpdatePilotAssignment(code, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
-			log.Printf("HandleJoinSession: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
-		}
-	}
-
-	if err := s.DB.IncrementVersion(code); err != nil {
-		log.Printf("IncrementVersion error: %v", err)
-	}
+	// Apply all assignments from the selected set atomically.
+	s.applyAssignments(code, assignments)
 
 	// Update usage counters.
 	if err := s.DB.IncrementJoinCount(code); err != nil {
@@ -470,6 +524,20 @@ func (s *Server) HandlePreviewJoin(w http.ResponseWriter, r *http.Request, code 
 
 	if strings.TrimSpace(req.Callsign) == "" || strings.TrimSpace(req.VideoSystem) == "" {
 		http.Error(w, "callsign and video_system are required", http.StatusBadRequest)
+		return
+	}
+	if msg := validatePilotFields(req.Callsign, req.BandwidthMHz, req.PreferredFreqMHz); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
+
+	// Spotters never get a frequency assignment, so the optimizer must not run for
+	// them — otherwise the preview returns a bogus buddy suggestion and the client
+	// shows a spurious channel/buddy prompt mid-join (issue #19). Return a clean
+	// Level-0 "no assignment" preview, mirroring the actual-join short-circuit.
+	if req.VideoSystem == "spotter" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(PreviewResponse{Level: 0})
 		return
 	}
 
@@ -625,6 +693,11 @@ type UpdateChannelRequest struct {
 // their channel preference. Returns the escalation level, assignment, and displaced pilots.
 // POST /api/pilots/{id}/preview-channel?session={code}
 func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
+	_, isLeader, ok := s.requireSelfOrLeader(w, r, pilotID, sessionCode)
+	if !ok {
+		return
+	}
+
 	var req UpdateChannelRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -656,7 +729,7 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 			changingPilotInput = inp
 			changingPilotInput.PreferredFreqMHz = req.PreferredFreqMHz
 			// If force flag (leader), pin the pilot at the requested frequency.
-			if req.Force && req.PreferredFreqMHz > 0 {
+			if req.Force && isLeader && req.PreferredFreqMHz > 0 {
 				changingPilotInput.Pinned = true
 				changingPilotInput.PinnedFreqMHz = req.PreferredFreqMHz
 			}
@@ -766,6 +839,11 @@ func (s *Server) HandlePreviewChannelChange(w http.ResponseWriter, r *http.Reque
 // HandleUpdatePilotChannel updates a pilot's channel preference and reoptimizes.
 // PUT /api/pilots/{id}/channel?session={code}
 func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
+	_, isLeader, ok := s.requireSelfOrLeader(w, r, pilotID, sessionCode)
+	if !ok {
+		return
+	}
+
 	var req UpdateChannelRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -808,7 +886,7 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 			changingPilotInput.PreferredFreqMHz = req.PreferredFreqMHz
 			changingPilotInput.PrevChannel = ""
 			changingPilotInput.PrevFreqMHz = 0
-			if req.Force && req.PreferredFreqMHz > 0 {
+			if req.Force && isLeader && req.PreferredFreqMHz > 0 {
 				changingPilotInput.Pinned = true
 				changingPilotInput.PinnedFreqMHz = req.PreferredFreqMHz
 			}
@@ -895,15 +973,7 @@ func (s *Server) HandleUpdatePilotChannel(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	for _, a := range assignments {
-		if err := s.DB.UpdatePilotAssignment(sessionCode, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
-			log.Printf("HandleUpdatePilotChannel: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
-		}
-	}
-
-	if err := s.DB.IncrementVersion(sessionCode); err != nil {
-		log.Printf("IncrementVersion error: %v", err)
-	}
+	s.applyAssignments(sessionCode, assignments)
 
 	if err := s.DB.IncrementChannelChangeCount(sessionCode); err != nil {
 		log.Printf("IncrementChannelChangeCount error: %v", err)
@@ -926,6 +996,10 @@ type UpdateVideoSystemRequest struct {
 // HandleUpdatePilotVideoSystem changes a pilot's video system and reoptimizes.
 // PUT /api/pilots/{id}/video-system?session={code}
 func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
+	if _, _, ok := s.requireSelfOrLeader(w, r, pilotID, sessionCode); !ok {
+		return
+	}
+
 	var req UpdateVideoSystemRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -1011,15 +1085,7 @@ func (s *Server) HandleUpdatePilotVideoSystem(w http.ResponseWriter, r *http.Req
 
 	result := freq.FindMinimalDisplacement(existingInputs, changingPilotInput, guardBand, fixedFreqs)
 
-	for _, a := range result.Assignments {
-		if err := s.DB.UpdatePilotAssignment(sessionCode, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
-			log.Printf("HandleUpdatePilotVideoSystem: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
-		}
-	}
-
-	if err := s.DB.IncrementVersion(sessionCode); err != nil {
-		log.Printf("IncrementVersion error: %v", err)
-	}
+	s.applyAssignments(sessionCode, result.Assignments)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -1032,6 +1098,10 @@ type UpdateCallsignRequest struct {
 // HandleUpdatePilotCallsign changes a pilot's callsign.
 // PUT /api/pilots/{id}/callsign?session={code}
 func (s *Server) HandleUpdatePilotCallsign(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
+	if _, _, ok := s.requireSelfOrLeader(w, r, pilotID, sessionCode); !ok {
+		return
+	}
+
 	var req UpdateCallsignRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -1041,6 +1111,10 @@ func (s *Server) HandleUpdatePilotCallsign(w http.ResponseWriter, r *http.Reques
 	callsign := strings.TrimSpace(req.Callsign)
 	if callsign == "" {
 		http.Error(w, "callsign is required", http.StatusBadRequest)
+		return
+	}
+	if n := len([]rune(callsign)); n > maxCallsignLen {
+		http.Error(w, fmt.Sprintf("callsign must be 1-%d characters", maxCallsignLen), http.StatusBadRequest)
 		return
 	}
 
@@ -1073,23 +1147,10 @@ func (s *Server) HandleUpdatePilotCallsign(w http.ResponseWriter, r *http.Reques
 //   - Self-removal (X-Pilot-ID == pilotID): always allowed
 //   - Removing another pilot: requires leader
 func (s *Server) HandleDeactivatePilot(w http.ResponseWriter, r *http.Request, pilotID int, sessionCode string) {
-	idStr := r.Header.Get("X-Pilot-ID")
-	if idStr == "" {
-		http.Error(w, "X-Pilot-ID header required", http.StatusUnauthorized)
+	// Self-removal (X-Pilot-ID == pilotID) is allowed; removing another pilot
+	// requires the leader. Same gate as the other pilot-mutation endpoints.
+	if _, _, ok := s.requireSelfOrLeader(w, r, pilotID, sessionCode); !ok {
 		return
-	}
-	requestingID, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, "invalid X-Pilot-ID", http.StatusBadRequest)
-		return
-	}
-	// If not self-removal, require leader.
-	if requestingID != pilotID {
-		leaderID, err := s.DB.GetLeader(sessionCode)
-		if err != nil || leaderID != requestingID {
-			http.Error(w, "leader access required", http.StatusForbidden)
-			return
-		}
 	}
 
 	if err := s.DB.DeactivatePilot(sessionCode, pilotID); err != nil {
@@ -1182,6 +1243,42 @@ func parseFixedFreqs(fixedChannels string) []int {
 	return freqs
 }
 
+// countDanger returns the number of danger-level (signal-overlapping) conflicts.
+func countDanger(conflicts []freq.Conflict) int {
+	n := 0
+	for _, c := range conflicts {
+		if c.Level == freq.ConflictDanger {
+			n++
+		}
+	}
+	return n
+}
+
+// surgicalIsBetter reports whether the surgical (clean-locked) reoptimization is
+// preferable to the full reoptimization. Danger (overlapping) conflicts dominate:
+// never adopt a surgical pass that increases dangers, even if it lowers the total
+// count — otherwise it could trade two harmless warnings for a new signal overlap.
+func surgicalIsBetter(surgical, full []freq.Conflict) bool {
+	ds, df := countDanger(surgical), countDanger(full)
+	if ds > df {
+		return false
+	}
+	return ds < df || len(surgical) < len(full)
+}
+
+// applyAssignments persists the optimizer's assignment set and bumps the session
+// version atomically (all-or-nothing). Errors are logged rather than surfaced, to
+// preserve existing HTTP behavior, but the DB can no longer be left half-updated.
+func (s *Server) applyAssignments(sessionCode string, assignments []freq.Assignment) {
+	as := make([]db.PilotAssignment, 0, len(assignments))
+	for _, a := range assignments {
+		as = append(as, db.PilotAssignment{PilotID: a.PilotID, Channel: a.Channel, FreqMHz: a.FreqMHz, BuddyGroup: a.BuddyGroup})
+	}
+	if err := s.DB.ApplyAssignments(sessionCode, as); err != nil {
+		log.Printf("applyAssignments error for session %s: %v", sessionCode, err)
+	}
+}
+
 // HandlePreviewRebalance runs the optimizer dry-run (leader-only).
 // Returns proposed assignments without committing.
 // POST /api/sessions/{code}/preview-rebalance
@@ -1233,7 +1330,7 @@ func (s *Server) HandlePreviewRebalance(w http.ResponseWriter, r *http.Request, 
 		}
 		surgical := freq.OptimizeWithLocks(inputs, cleanIDs, guardBand, fixedFreqs)
 		surgicalConflicts := freq.DetectConflicts(surgical, guardBand)
-		if len(surgicalConflicts) < len(conflicts) {
+		if surgicalIsBetter(surgicalConflicts, conflicts) {
 			assignments = surgical
 		}
 	}
@@ -1577,6 +1674,10 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 		http.Error(w, "callsign and video_system are required", http.StatusBadRequest)
 		return
 	}
+	if msg := validatePilotFields(req.Callsign, req.BandwidthMHz, req.PreferredFreqMHz); msg != "" {
+		http.Error(w, msg, http.StatusBadRequest)
+		return
+	}
 
 	// Refuse pilots whose native channel pool has no overlap with the session's
 	// fixed set — their equipment can't tune to any of the locked channels.
@@ -1654,15 +1755,7 @@ func (s *Server) HandleAddPilot(w http.ResponseWriter, r *http.Request, code str
 
 	result := freq.FindMinimalDisplacement(existingInputs, newPilotInput, guardBand, fixedFreqs)
 
-	for _, a := range result.Assignments {
-		if err := s.DB.UpdatePilotAssignment(code, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
-			log.Printf("HandleAddPilot: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
-		}
-	}
-
-	if err := s.DB.IncrementVersion(code); err != nil {
-		log.Printf("IncrementVersion error: %v", err)
-	}
+	s.applyAssignments(code, result.Assignments)
 
 	if err := s.DB.IncrementJoinCount(code); err != nil {
 		log.Printf("IncrementJoinCount error: %v", err)
@@ -1723,20 +1816,12 @@ func (s *Server) reoptimize(sessionCode string, guardBandMHz int, fixedFreqs []i
 		surgical := freq.OptimizeWithLocks(inputs, cleanIDs, guardBandMHz, fixedFreqs)
 		surgicalConflicts := freq.DetectConflicts(surgical, guardBandMHz)
 
-		if len(surgicalConflicts) < len(conflicts) {
+		if surgicalIsBetter(surgicalConflicts, conflicts) {
 			assignments = surgical
 		}
 	}
 
-	for _, a := range assignments {
-		if err := s.DB.UpdatePilotAssignment(sessionCode, a.PilotID, a.Channel, a.FreqMHz, a.BuddyGroup); err != nil {
-			log.Printf("reoptimize: UpdatePilotAssignment error for pilot %d: %v", a.PilotID, err)
-		}
-	}
-
-	if err := s.DB.IncrementVersion(sessionCode); err != nil {
-		log.Printf("reoptimize: IncrementVersion error: %v", err)
-	}
+	s.applyAssignments(sessionCode, assignments)
 }
 
 // HandleUsage returns aggregate usage metrics.
